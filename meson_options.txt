@@ -1,0 +1,2 @@
+option('textdomain', type: 'string', value: 'zacos9-netzac',
+  description: 'Gettext domain (use zacos9 when merged into the ZacOS 9 repository)')
