@@ -1,12 +1,14 @@
 #include "preferences.h"
 
 #include "i18n.h"
+#include "webview.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QNetworkProxy>
 #include <QNetworkProxyFactory>
 #include <QPointer>
+#include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QUrl>
@@ -89,6 +91,9 @@ NetzacPreferences NetzacPreferences::defaults()
     NetzacPreferences prefs;
     prefs.homeUrl = QStringLiteral("https://frogfind.com");
     prefs.startupMode = StartupMode::HomePage;
+    prefs.linkOpenMode = LinkOpenMode::Tabs;
+    prefs.tabBarStyle = TabBarStyle::IE45Left;
+    prefs.defaultBrowserPrompted = false;
     prefs.lastUrl.clear();
     prefs.searchEngineId = QStringLiteral("frogfind");
     prefs.autoloadImages = true;
@@ -120,6 +125,11 @@ NetzacPreferences NetzacPreferences::load()
         prefs.homeUrl = QStringLiteral("https://frogfind.com");
     const int startupVal = qBound(0, s.value(QStringLiteral("navigator/startupMode"), int(prefs.startupMode)).toInt(), 1);
     prefs.startupMode = static_cast<StartupMode>(startupVal);
+    const int linkOpenVal = qBound(0, s.value(QStringLiteral("navigator/linkOpenMode"), int(prefs.linkOpenMode)).toInt(), 1);
+    prefs.linkOpenMode = static_cast<LinkOpenMode>(linkOpenVal);
+    const int tabStyleVal = qBound(0, s.value(QStringLiteral("navigator/tabBarStyle"), int(prefs.tabBarStyle)).toInt(), 1);
+    prefs.tabBarStyle = static_cast<TabBarStyle>(tabStyleVal);
+    prefs.defaultBrowserPrompted = s.value(QStringLiteral("navigator/defaultBrowserPrompted"), prefs.defaultBrowserPrompted).toBool();
     prefs.lastUrl = s.value(QStringLiteral("navigator/lastUrl"), prefs.lastUrl).toString().trimmed();
     prefs.searchEngineId = s.value(QStringLiteral("navigator/searchEngine"), prefs.searchEngineId).toString();
     prefs.autoloadImages = s.value(QStringLiteral("navigator/autoloadImages"), prefs.autoloadImages).toBool();
@@ -214,6 +224,9 @@ void NetzacPreferences::save() const
     QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
     s.setValue(QStringLiteral("navigator/homeUrl"), homeUrl);
     s.setValue(QStringLiteral("navigator/startupMode"), int(startupMode));
+    s.setValue(QStringLiteral("navigator/linkOpenMode"), int(linkOpenMode));
+    s.setValue(QStringLiteral("navigator/tabBarStyle"), int(tabBarStyle));
+    s.setValue(QStringLiteral("navigator/defaultBrowserPrompted"), defaultBrowserPrompted);
     if (!lastUrl.isEmpty())
         s.setValue(QStringLiteral("navigator/lastUrl"), lastUrl);
     s.setValue(QStringLiteral("navigator/searchEngine"), searchEngineId);
@@ -281,6 +294,63 @@ void NetzacPreferences::saveLastUrl(const QString &url)
     s.setValue(QStringLiteral("navigator/lastUrl"), clean);
 }
 
+bool NetzacPreferences::isDefaultBrowser()
+{
+    QProcess proc;
+    proc.start(QStringLiteral("xdg-settings"), {QStringLiteral("get"), QStringLiteral("default-web-browser")});
+    if (proc.waitForFinished(2000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
+        const QString out = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
+        if (out == QLatin1String("zacos9-netzac.desktop"))
+            return true;
+    }
+
+    QProcess mimeProc;
+    mimeProc.start(QStringLiteral("xdg-mime"), {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("x-scheme-handler/http")});
+    if (mimeProc.waitForFinished(2000) && mimeProc.exitStatus() == QProcess::NormalExit && mimeProc.exitCode() == 0) {
+        const QString out = QString::fromUtf8(mimeProc.readAllStandardOutput()).trimmed();
+        if (out == QLatin1String("zacos9-netzac.desktop"))
+            return true;
+    }
+    return false;
+}
+
+bool NetzacPreferences::setAsDefaultBrowser()
+{
+    bool ok = false;
+    QProcess settingsProc;
+    settingsProc.start(
+        QStringLiteral("xdg-settings"),
+        {QStringLiteral("set"), QStringLiteral("default-web-browser"), QStringLiteral("zacos9-netzac.desktop")});
+    if (settingsProc.waitForFinished(3000)
+        && settingsProc.exitStatus() == QProcess::NormalExit
+        && settingsProc.exitCode() == 0) {
+        ok = true;
+    }
+
+    QProcess mimeProc;
+    mimeProc.start(
+        QStringLiteral("xdg-mime"),
+        {
+            QStringLiteral("default"),
+            QStringLiteral("zacos9-netzac.desktop"),
+            QStringLiteral("x-scheme-handler/http"),
+            QStringLiteral("x-scheme-handler/https"),
+            QStringLiteral("text/html"),
+            QStringLiteral("application/xhtml+xml"),
+        });
+    if (mimeProc.waitForFinished(3000)
+        && mimeProc.exitStatus() == QProcess::NormalExit
+        && mimeProc.exitCode() == 0) {
+        ok = true;
+    }
+
+    const QString userApps = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
+    if (!userApps.isEmpty() && QDir(userApps).exists())
+        QProcess::execute(QStringLiteral("update-desktop-database"), {userApps});
+
+    return ok || isDefaultBrowser();
+}
+
 QWebEngineProfile *netzacProfile()
 {
     static QPointer<QWebEngineProfile> s_profile;
@@ -302,6 +372,7 @@ QWebEngineProfile *netzacProfile()
         s_profile->setCachePath(cachePath);
         s_profile->setPersistentPermissionsPolicy(
             QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk);
+        installNetzacScripts(s_profile);
     }
     return s_profile;
 }

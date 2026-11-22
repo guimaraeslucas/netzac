@@ -160,9 +160,14 @@ public:
     void setText(const QString &text);
     QString text() const;
     void recordUrl(const QString &url);
+    void setReadOnly(bool readOnly);
+    bool isReadOnly() const;
 
 signals:
     void urlSubmitted(const QString &url);
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void openDropdown();
@@ -173,6 +178,7 @@ private:
     QStringList m_urls;
     QLineEdit *m_edit = nullptr;
     PlatinumDropArrowButton *m_dropBtn = nullptr;
+    bool m_selectAllOnMouseUp = false;
 };
 
 class ToolbarGrip : public QWidget {
@@ -284,4 +290,63 @@ protected:
 
 private:
     QString m_fullText;
+};
+
+class PlatinumTabBar : public QWidget {
+    Q_OBJECT
+
+public:
+    enum class TabStyle {
+        IE45Left,
+        ChromeTop,
+    };
+
+    explicit PlatinumTabBar(QWidget *parent = nullptr);
+
+    void setTabStyle(TabStyle style);
+    TabStyle tabStyle() const { return m_style; }
+
+    int addTab(const QString &title);
+    void removeTab(int index);
+    void setCurrentIndex(int index);
+    int currentIndex() const { return m_currentIndex; }
+    int count() const { return int(m_tabs.size()); }
+
+    void setTabTitle(int index, const QString &title);
+    void setTabUrl(int index, const QString &url);
+    void setTabLoading(int index, bool loading);
+
+signals:
+    void currentChanged(int index);
+    void tabCloseRequested(int index);
+    void newTabRequested();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void leaveEvent(QEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+
+private:
+    struct TabItem {
+        QString title;
+        QString url;
+        bool loading = false;
+    };
+
+    struct TabGeometry {
+        QRect tabRect;
+        QRect closeRect;
+    };
+
+    QVector<TabGeometry> computeTabGeometries(QRect *outNewTabRect) const;
+    void updateGeometryConstraints();
+
+    TabStyle m_style = TabStyle::IE45Left;
+    QVector<TabItem> m_tabs;
+    int m_currentIndex = -1;
+    int m_hoveredTab = -1;
+    int m_hoveredClose = -1;
+    bool m_hoveredNewTab = false;
+    QPixmap m_pageIcon;
 };

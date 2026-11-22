@@ -5,6 +5,8 @@
 
 #include <QAction>
 #include <QEnterEvent>
+#include <QEvent>
+#include <QFocusEvent>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLineEdit>
@@ -476,8 +478,10 @@ PlatinumLocationBar::PlatinumLocationBar(const QStringList &initialUrls, QWidget
     m_edit->setFixedHeight(22);
     m_edit->setMinimumWidth(80);
     m_edit->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    m_edit->installEventFilter(this);
     connect(m_edit, &QLineEdit::returnPressed, this, [this]() {
-        emit urlSubmitted(m_edit->text());
+        if (!m_edit->isReadOnly())
+            emit urlSubmitted(m_edit->text());
     });
     lay->addWidget(m_edit, 1);
 
@@ -500,6 +504,40 @@ void PlatinumLocationBar::recordUrl(const QString &url)
 {
     if (!url.isEmpty() && !m_urls.contains(url))
         m_urls.prepend(url);
+}
+
+void PlatinumLocationBar::setReadOnly(bool readOnly)
+{
+    m_edit->setReadOnly(readOnly);
+    m_dropBtn->setEnabled(!readOnly);
+    m_dropBtn->setVisible(!readOnly);
+}
+
+bool PlatinumLocationBar::isReadOnly() const
+{
+    return m_edit->isReadOnly();
+}
+
+bool PlatinumLocationBar::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_edit) {
+        if (event->type() == QEvent::FocusIn) {
+            auto *fe = static_cast<QFocusEvent *>(event);
+            if (fe->reason() == Qt::MouseFocusReason) {
+                m_selectAllOnMouseUp = true;
+                QTimer::singleShot(0, m_edit, &QLineEdit::selectAll);
+            }
+        } else if (event->type() == QEvent::MouseButtonRelease) {
+            if (m_selectAllOnMouseUp) {
+                m_selectAllOnMouseUp = false;
+                if (!m_edit->hasSelectedText())
+                    m_edit->selectAll();
+            }
+        } else if (event->type() == QEvent::FocusOut) {
+            m_selectAllOnMouseUp = false;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void PlatinumLocationBar::openDropdown()
@@ -893,4 +931,349 @@ void ElidingStatusLabel::paintEvent(QPaintEvent * /*event*/)
     p.setPen(palette().color(QPalette::WindowText));
     const QString elided = fontMetrics().elidedText(m_fullText, Qt::ElideMiddle, qMax(1, width()));
     p.drawText(rect(), Qt::AlignVCenter | Qt::AlignLeft, elided);
+}
+
+PlatinumTabBar::PlatinumTabBar(QWidget *parent)
+    : QWidget(parent)
+    , m_pageIcon(makeMiniIcon(QStringLiteral("page"), 12))
+{
+    setMouseTracking(true);
+    setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 11));
+    updateGeometryConstraints();
+}
+
+void PlatinumTabBar::setTabStyle(TabStyle style)
+{
+    if (m_style == style)
+        return;
+    m_style = style;
+    updateGeometryConstraints();
+    update();
+}
+
+void PlatinumTabBar::updateGeometryConstraints()
+{
+    if (m_style == TabStyle::IE45Left) {
+        setMinimumSize(142, 0);
+        setMaximumSize(142, QWIDGETSIZE_MAX);
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    } else {
+        setMinimumSize(0, 26);
+        setMaximumSize(QWIDGETSIZE_MAX, 26);
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+}
+
+int PlatinumTabBar::addTab(const QString &title)
+{
+    m_tabs.append(TabItem{title.isEmpty() ? ztr("Untitled") : title, QString(), false});
+    const int idx = int(m_tabs.size()) - 1;
+    if (m_currentIndex < 0)
+        m_currentIndex = idx;
+    update();
+    return idx;
+}
+
+void PlatinumTabBar::removeTab(int index)
+{
+    if (index < 0 || index >= m_tabs.size())
+        return;
+    m_tabs.removeAt(index);
+    if (m_tabs.isEmpty()) {
+        m_currentIndex = -1;
+    } else if (m_currentIndex >= m_tabs.size()) {
+        m_currentIndex = int(m_tabs.size()) - 1;
+    } else if (m_currentIndex > index) {
+        --m_currentIndex;
+    }
+    m_hoveredTab = -1;
+    m_hoveredClose = -1;
+    update();
+}
+
+void PlatinumTabBar::setCurrentIndex(int index)
+{
+    if (index < 0 || index >= m_tabs.size() || index == m_currentIndex)
+        return;
+    m_currentIndex = index;
+    update();
+}
+
+void PlatinumTabBar::setTabTitle(int index, const QString &title)
+{
+    if (index < 0 || index >= m_tabs.size())
+        return;
+    const QString resolved = title.isEmpty() ? ztr("Untitled") : title;
+    if (m_tabs[index].title != resolved) {
+        m_tabs[index].title = resolved;
+        update();
+    }
+}
+
+void PlatinumTabBar::setTabUrl(int index, const QString &url)
+{
+    if (index < 0 || index >= m_tabs.size())
+        return;
+    m_tabs[index].url = url;
+}
+
+void PlatinumTabBar::setTabLoading(int index, bool loading)
+{
+    if (index < 0 || index >= m_tabs.size())
+        return;
+    if (m_tabs[index].loading != loading) {
+        m_tabs[index].loading = loading;
+        update();
+    }
+}
+
+QVector<PlatinumTabBar::TabGeometry> PlatinumTabBar::computeTabGeometries(QRect *outNewTabRect) const
+{
+    QVector<TabGeometry> geoms;
+    const int n = int(m_tabs.size());
+    geoms.reserve(n);
+
+    if (m_style == TabStyle::IE45Left) {
+        const int tabH = 26;
+        const int newBtnH = 22;
+        int y = 4;
+        for (int i = 0; i < n; ++i) {
+            if (y + tabH + newBtnH + 8 > height())
+                break;
+            QRect tr(4, y, width() - 4, tabH);
+            QRect cr(tr.right() - 16, tr.center().y() - 6, 12, 12);
+            geoms.append({tr, cr});
+            y += tabH + 2;
+        }
+        if (outNewTabRect)
+            *outNewTabRect = QRect(6, qMin(y + 2, qMax(4, height() - newBtnH - 4)), width() - 12, newBtnH);
+    } else {
+        const int newBtnW = 22;
+        const int avail = qMax(40, width() - newBtnW - 12);
+        const int tabW = n > 0 ? qBound(64, avail / n, 175) : 120;
+        int x = 4;
+        for (int i = 0; i < n; ++i) {
+            QRect tr(x, 3, tabW, height() - 3);
+            QRect cr(tr.right() - 17, tr.center().y() - 5, 12, 12);
+            geoms.append({tr, cr});
+            x += tabW + 2;
+        }
+        if (outNewTabRect)
+            *outNewTabRect = QRect(x + 2, 5, newBtnW, height() - 8);
+    }
+    return geoms;
+}
+
+void PlatinumTabBar::mousePressEvent(QMouseEvent *event)
+{
+    QRect newTabRect;
+    const QVector<TabGeometry> geoms = computeTabGeometries(&newTabRect);
+    const QPoint pos = event->pos();
+
+    if (event->button() == Qt::LeftButton && newTabRect.contains(pos)) {
+        emit newTabRequested();
+        return;
+    }
+
+    for (int i = 0; i < geoms.size(); ++i) {
+        if (geoms[i].tabRect.contains(pos)) {
+            if (event->button() == Qt::MiddleButton
+                || (event->button() == Qt::LeftButton && m_tabs.size() > 1 && geoms[i].closeRect.contains(pos))) {
+                emit tabCloseRequested(i);
+                return;
+            }
+            if (event->button() == Qt::LeftButton) {
+                if (i != m_currentIndex) {
+                    m_currentIndex = i;
+                    update();
+                    emit currentChanged(i);
+                }
+                return;
+            }
+        }
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
+{
+    QRect newTabRect;
+    const QVector<TabGeometry> geoms = computeTabGeometries(&newTabRect);
+    const QPoint pos = event->pos();
+
+    int hovTab = -1;
+    int hovClose = -1;
+    for (int i = 0; i < geoms.size(); ++i) {
+        if (geoms[i].tabRect.contains(pos)) {
+            hovTab = i;
+            if (m_tabs.size() > 1 && geoms[i].closeRect.contains(pos))
+                hovClose = i;
+            break;
+        }
+    }
+    const bool hovNew = newTabRect.contains(pos);
+
+    if (hovTab != m_hoveredTab || hovClose != m_hoveredClose || hovNew != m_hoveredNewTab) {
+        m_hoveredTab = hovTab;
+        m_hoveredClose = hovClose;
+        m_hoveredNewTab = hovNew;
+        if (hovTab >= 0 && hovTab < m_tabs.size()) {
+            const TabItem &t = m_tabs[hovTab];
+            setToolTip(t.url.isEmpty() ? t.title : QStringLiteral("%1\n%2").arg(t.title, t.url));
+        } else if (hovNew) {
+            setToolTip(ztr("New Tab (Ctrl+T)"));
+        } else {
+            setToolTip(QString());
+        }
+        update();
+    }
+    QWidget::mouseMoveEvent(event);
+}
+
+void PlatinumTabBar::leaveEvent(QEvent *event)
+{
+    m_hoveredTab = -1;
+    m_hoveredClose = -1;
+    m_hoveredNewTab = false;
+    update();
+    QWidget::leaveEvent(event);
+}
+
+void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, false);
+    const PlatinumColors c = platinumColors(palette());
+
+    QRect newTabRect;
+    const QVector<TabGeometry> geoms = computeTabGeometries(&newTabRect);
+
+    if (m_style == TabStyle::IE45Left) {
+        p.fillRect(rect(), c.midlight);
+        // Right separator line connecting to viewport
+        p.setPen(c.dark);
+        p.drawLine(width() - 1, 0, width() - 1, height() - 1);
+
+        for (int i = 0; i < geoms.size(); ++i) {
+            const QRect &r = geoms[i].tabRect;
+            const QRect &cr = geoms[i].closeRect;
+            const bool active = (i == m_currentIndex);
+            const bool hovered = (i == m_hoveredTab);
+
+            p.fillRect(r, active ? c.window : (hovered ? c.midlight : c.button));
+
+            // Classic IE 4.5 Mac left-side folder tab bevel
+            p.setPen(c.shadow);
+            p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom() - 1);
+            p.drawLine(r.left() + 1, r.top(), r.right(), r.top());
+            p.drawLine(r.left() + 1, r.bottom(), r.right(), r.bottom());
+
+            p.setPen(active ? c.light : c.midlight);
+            p.drawLine(r.left() + 1, r.top() + 1, r.right() - (active ? 0 : 1), r.top() + 1);
+            p.drawLine(r.left() + 1, r.top() + 1, r.left() + 1, r.bottom() - 1);
+
+            if (!active) {
+                p.setPen(c.dark);
+                p.drawLine(r.right(), r.top() + 1, r.right(), r.bottom() - 1);
+                p.drawLine(r.left() + 1, r.bottom() - 1, r.right(), r.bottom() - 1);
+            } else {
+                p.fillRect(r.right() - 1, r.top() + 1, 2, r.height() - 2, c.window);
+            }
+
+            if (!m_pageIcon.isNull())
+                p.drawPixmap(r.left() + 5, r.center().y() - m_pageIcon.height() / 2, m_pageIcon);
+
+            QFont f = font();
+            f.setBold(active);
+            p.setFont(f);
+            p.setPen(c.text);
+            const int textLeft = r.left() + 20;
+            const int textRight = (m_tabs.size() > 1) ? cr.left() - 3 : r.right() - 4;
+            const QString elided = p.fontMetrics().elidedText(
+                m_tabs[i].title, Qt::ElideRight, qMax(10, textRight - textLeft));
+            p.drawText(
+                QRect(textLeft, r.top(), qMax(10, textRight - textLeft), r.height()),
+                Qt::AlignVCenter | Qt::AlignLeft,
+                elided);
+
+            if (m_tabs.size() > 1) {
+                if (m_hoveredClose == i) {
+                    p.fillRect(cr, c.mid);
+                    p.setPen(c.dark);
+                    p.drawRect(cr.adjusted(0, 0, -1, -1));
+                }
+                p.setPen(c.text);
+                p.drawLine(cr.left() + 3, cr.top() + 3, cr.right() - 3, cr.bottom() - 3);
+                p.drawLine(cr.right() - 3, cr.top() + 3, cr.left() + 3, cr.bottom() - 3);
+            }
+        }
+
+        // "+ New Tab" Platinum bevel button
+        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab);
+        p.setFont(font());
+        p.setPen(c.text);
+        p.drawText(newTabRect, Qt::AlignCenter, QStringLiteral("+ ") + ztr("New Tab"));
+    } else {
+        p.fillRect(rect(), c.mid);
+        p.setPen(c.dark);
+        p.drawLine(0, height() - 1, width() - 1, height() - 1);
+
+        for (int i = 0; i < geoms.size(); ++i) {
+            const QRect &r = geoms[i].tabRect;
+            const QRect &cr = geoms[i].closeRect;
+            const bool active = (i == m_currentIndex);
+            const bool hovered = (i == m_hoveredTab);
+
+            p.fillRect(r, active ? c.window : (hovered ? c.midlight : c.button));
+
+            p.setPen(c.shadow);
+            p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom());
+            p.drawLine(r.left() + 1, r.top(), r.right() - 1, r.top());
+            p.drawLine(r.right(), r.top() + 1, r.right(), r.bottom());
+
+            p.setPen(active ? c.light : c.midlight);
+            p.drawLine(r.left() + 1, r.top() + 1, r.right() - 1, r.top() + 1);
+            p.drawLine(r.left() + 1, r.top() + 1, r.left() + 1, r.bottom() - 1);
+
+            p.setPen(c.dark);
+            p.drawLine(r.right() - 1, r.top() + 1, r.right() - 1, r.bottom() - 1);
+
+            if (active) {
+                p.fillRect(r.left() + 1, r.bottom(), r.width() - 2, 1, c.window);
+            }
+
+            if (!m_pageIcon.isNull())
+                p.drawPixmap(r.left() + 5, r.center().y() - m_pageIcon.height() / 2, m_pageIcon);
+
+            QFont f = font();
+            f.setBold(active);
+            p.setFont(f);
+            p.setPen(c.text);
+            const int textLeft = r.left() + 20;
+            const int textRight = (m_tabs.size() > 1) ? cr.left() - 3 : r.right() - 4;
+            const QString elided = p.fontMetrics().elidedText(
+                m_tabs[i].title, Qt::ElideRight, qMax(10, textRight - textLeft));
+            p.drawText(
+                QRect(textLeft, r.top(), qMax(10, textRight - textLeft), r.height()),
+                Qt::AlignVCenter | Qt::AlignLeft,
+                elided);
+
+            if (m_tabs.size() > 1) {
+                if (m_hoveredClose == i) {
+                    p.fillRect(cr, c.mid);
+                    p.setPen(c.dark);
+                    p.drawRect(cr.adjusted(0, 0, -1, -1));
+                }
+                p.setPen(c.text);
+                p.drawLine(cr.left() + 3, cr.top() + 3, cr.right() - 3, cr.bottom() - 3);
+                p.drawLine(cr.right() - 3, cr.top() + 3, cr.left() + 3, cr.bottom() - 3);
+            }
+        }
+
+        // "+" button
+        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab);
+        p.setFont(font());
+        p.setPen(c.text);
+        p.drawText(newTabRect, Qt::AlignCenter, QStringLiteral("+"));
+    }
 }

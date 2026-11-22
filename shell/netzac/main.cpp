@@ -7,6 +7,7 @@
 #include <QCoreApplication>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QUrl>
 #include <QWebEngineDownloadRequest>
 #include <QWebEngineProfile>
 
@@ -51,7 +52,19 @@ int main(int argc, char *argv[])
             download->accept();
         });
 
-    const QString initialUrl = (argc > 1) ? QString::fromLocal8Bit(argv[1]) : QString();
+    QString initialUrl;
+    for (int i = 1; i < argc; ++i) {
+        const QString arg = QString::fromLocal8Bit(argv[i]).trimmed();
+        if (arg.isEmpty() || arg.startsWith(QLatin1Char('-')))
+            continue;
+        const QFileInfo fi(arg);
+        if (fi.exists() && fi.isFile())
+            initialUrl = QUrl::fromLocalFile(fi.absoluteFilePath()).toString();
+        else
+            initialUrl = arg;
+        break;
+    }
+
     NetzacWindow window(initialUrl);
     window.show();
     return app.exec();

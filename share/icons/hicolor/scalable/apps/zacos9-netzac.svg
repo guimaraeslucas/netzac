@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f5656"/>
+      <stop offset="55%" stop-color="#1b3068"/>
+      <stop offset="100%" stop-color="#2c1d4c"/>
+    </linearGradient>
+    <linearGradient id="platinum" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eeeeee"/>
+      <stop offset="100%" stop-color="#bdbdbd"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Platinum Frame -->
+  <rect x="3" y="3" width="58" height="58" rx="4" fill="url(#platinum)" stroke="#000000" stroke-width="2"/>
+  <path d="M5 56 L5 5 L56 5" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <path d="M58 7 L58 58 L7 58" fill="none" stroke="#7a7a7a" stroke-width="2"/>
+  <!-- Inner Inset Screen -->
+  <rect x="9" y="9" width="46" height="46" rx="2" fill="url(#sky)" stroke="#000000" stroke-width="1.5"/>
+  <path d="M10.5 53.5 L10.5 10.5 L53.5 10.5" fill="none" stroke="#08242a" stroke-width="1.5"/>
+  <!-- Horizon & Grid -->
+  <line x1="10" y1="43" x2="54" y2="43" stroke="#4cc4c4" stroke-width="1" opacity="0.55"/>
+  <path d="M12 54 L26 43 M32 54 L32 43 M52 54 L38 43 M10 48 L54 48" stroke="#4cc4c4" stroke-width="1" opacity="0.4"/>
+  <!-- Navigator Compass / Helm Ring -->
+  <circle cx="32" cy="29" r="14" fill="#685096" fill-opacity="0.35" stroke="#f4c6e7" stroke-width="2"/>
+  <circle cx="32" cy="29" r="10.5" fill="none" stroke="#8b72ba" stroke-width="1"/>
+  <!-- Compass Spokes -->
+  <line x1="32" y1="12" x2="32" y2="17" stroke="#f4c6e7" stroke-width="2"/>
+  <line x1="32" y1="41" x2="32" y2="46" stroke="#f4c6e7" stroke-width="2"/>
+  <line x1="15" y1="29" x2="20" y2="29" stroke="#f4c6e7" stroke-width="2"/>
+  <line x1="44" y1="29" x2="49" y2="29" stroke="#f4c6e7" stroke-width="2"/>
+  <!-- Crisp 'Z' Emblem -->
+  <path d="M24 22 L40 22 L40 25 L29 33 L40 33 L40 36 L24 36 L24 33 L35 25 L24 25 Z" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+  <!-- Specular Star -->
+  <path d="M46 15 L47 18 L50 19 L47 20 L46 23 L45 20 L42 19 L45 18 Z" fill="#ffe3f5"/>
+</svg>

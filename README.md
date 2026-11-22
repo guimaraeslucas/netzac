@@ -49,6 +49,15 @@ DESTDIR="$PWD/stage" ninja -C build install
 ZACOS9_LOCALEDIR="$PWD/stage/usr/local/share/locale" ./build/shell/netzac/zacos9-netzac
 ```
 
+## Credits & Community
+
+Netzac started as an initial idea by **Lucas Guimarães**. We welcome contributions,
+bug reports, and pull requests from the **ZacOS 9** community at:
+<https://github.com/guimaraeslucas/netzac>
+
+Special thanks to **Adam Lawson (`@chromasystemprofessional`)** for creating the
+incredible **ZacOS 9** project.
+
 ## Wayland / Pixman Maximize Freeze Mitigation
 
 Under `zacos9-session`, when `WLR_RENDERER=pixman` is active (software compositor on VMs
@@ -58,11 +67,16 @@ maximize/resize. `main.cpp` sets `Qt::AA_ShareOpenGLContexts` and, when
 `QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --disable-gpu-compositing` (unless already set
 in the environment).
 
-## Merging into the ZacOS 9 Repository
+## Standalone & ZacOS 9 Extras Packaging
 
-1. Copy `shell/netzac/` into `shell/netzac/` in the `zacos9` source tree and add
-   `subdir('shell/netzac')` to the root `meson.build` (or pass `-Dtextdomain=zacos9` so
-   strings resolve against the unified `zacos9` domain).
-2. Copy `share/applications/zacos9-netzac.desktop` to `share/applications/`.
-3. Merge the messages from `po/zacos9-netzac.pot` and `po/pt.po` into ZacOS 9's `po/`
-   catalog (using `ztr:1` and `ztrn:1,2` xgettext keywords).
+Netzac lives at <https://github.com/guimaraeslucas/netzac> and builds/runs
+independently without requiring the core ZacOS 9 source tree, while remaining
+compatible with ZacOS 9 Extras packaging (`package.conf` and `install_tag: 'netzac'`).
+
+```sh
+# Install for the current user (~/.local/bin, ~/.local/share/applications)
+./scripts/install-user.sh
+
+# Build a Debian package (build/packages/zacos9-extra-netzac_<version>_<arch>.deb)
+./scripts/build-deb.sh 4.0.8
+```

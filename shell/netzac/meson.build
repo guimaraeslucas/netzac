@@ -23,4 +23,5 @@ executable('zacos9-netzac',
     '-DZACOS9_LOCALEDIR_DEFAULT="' + localedir + '"',
   ],
   install: true,
+  install_tag: 'netzac',
 )

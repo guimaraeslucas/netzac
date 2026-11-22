@@ -1,6 +1,7 @@
 project('zacos9-netzac', 'cpp',
   version: '4.0.8',
   license: 'GPL-3.0-or-later',
+  meson_version: '>=1.0',
   default_options: ['cpp_std=c++17', 'warning_level=2'])
 
 textdomain = get_option('textdomain')
@@ -16,4 +17,9 @@ subdir('shell/netzac')
 subdir('po')
 
 install_data('share/applications/zacos9-netzac.desktop',
-  install_dir: get_option('datadir') / 'applications')
+  install_dir: get_option('datadir') / 'applications',
+  install_tag: 'netzac')
+
+install_data('share/icons/hicolor/scalable/apps/zacos9-netzac.svg',
+  install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
+  install_tag: 'netzac')

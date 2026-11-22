@@ -36,6 +36,16 @@ struct NetzacPreferences {
         RestoreLastPage = 1,
     };
 
+    enum class LinkOpenMode {
+        Tabs = 0,
+        Windows = 1,
+    };
+
+    enum class TabBarStyle {
+        IE45Left = 0,
+        ChromeTop = 1,
+    };
+
     struct PresetEntry {
         const char *id;
         QString label;
@@ -57,6 +67,9 @@ struct NetzacPreferences {
 
     QString homeUrl;
     StartupMode startupMode = StartupMode::HomePage;
+    LinkOpenMode linkOpenMode = LinkOpenMode::Tabs;
+    TabBarStyle tabBarStyle = TabBarStyle::IE45Left;
+    bool defaultBrowserPrompted = false;
     QString lastUrl;
     QString searchEngineId;
     bool autoloadImages = true;
@@ -85,6 +98,8 @@ struct NetzacPreferences {
     static NetzacPreferences load();
     void save() const;
     static void saveLastUrl(const QString &url);
+    static bool isDefaultBrowser();
+    static bool setAsDefaultBrowser();
     void apply(QWebEngineProfile *profile) const;
     QString searchUrlFor(const QString &query) const;
 

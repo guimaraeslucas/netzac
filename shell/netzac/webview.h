@@ -19,16 +19,25 @@ public:
 
     void setBuiltInPage(bool isBuiltIn);
     bool isBuiltInPage() const { return m_isBuiltInPage; }
+    QString takePendingPopupFeatures();
 
 signals:
     void mainFrameNavigationRequested(const QUrl &url, QWebEnginePage::NavigationType type);
 
 protected:
     bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;
+    void javaScriptConsoleMessage(
+        JavaScriptConsoleMessageLevel level,
+        const QString &message,
+        int lineNumber,
+        const QString &sourceID) override;
 
 private:
     bool m_isBuiltInPage = false;
+    QString m_pendingPopupFeatures;
 };
+
+void installNetzacScripts(QWebEngineProfile *profile);
 
 class NetzacWebView : public QWebEngineView {
     Q_OBJECT

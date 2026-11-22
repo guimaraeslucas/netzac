@@ -102,6 +102,8 @@ private:
     PlatinumPopupButton *m_startupPopup = nullptr;
     PlatinumPopupButton *m_searchPopup = nullptr;
     QCheckBox *m_imagesChk = nullptr;
+    QLabel *m_defaultBrowserLbl = nullptr;
+    QPushButton *m_setDefaultBrowserBtn = nullptr;
 
     // Calm Mode
     PlatinumPopupButton *m_calmJsPopup = nullptr;

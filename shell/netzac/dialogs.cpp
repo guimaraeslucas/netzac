@@ -90,7 +90,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     : PlatinumDialog(parent)
 {
     setWindowTitle(ztr("About Netzac"));
-    setFixedSize(410, 250);
+    setFixedSize(460, 310);
 
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(14, 14, 14, 12);
@@ -108,11 +108,15 @@ AboutDialog::AboutDialog(QWidget *parent)
     title->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
     auto *sub = new QLabel(
         ztr("Netzac Navigator (ZacOS 9 / Platinum)\n\n"
-            "Built with Qt 6 WebEngine following ZacOS 9\n"
-            "Platinum controls, pixel fonts"),
+            "Initial idea by Lucas Guimarães. We count on the support of the ZacOS 9 "
+            "community for contributions at:\n"
+            "https://github.com/guimaraeslucas/netzac\n\n"
+            "Special thanks to Adam Lawson (@chromasystemprofessional) for creating "
+            "the incredible ZacOS 9 project."),
         this);
     sub->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
     sub->setWordWrap(true);
+    sub->setTextInteractionFlags(Qt::TextSelectableByMouse);
     info->addWidget(title);
     info->addWidget(sub);
     top->addLayout(info, 1);
@@ -425,6 +429,28 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
     m_imagesChk = new QCheckBox(ztr("Automatically load images"), page);
     m_imagesChk->setChecked(m_prefs.autoloadImages);
     lay->addWidget(m_imagesChk);
+
+    lay->addSpacing(8);
+    lay->addWidget(new QLabel(ztr("Default Browser:"), page));
+    auto *defRow = new QHBoxLayout();
+    m_defaultBrowserLbl = new QLabel(page);
+    m_setDefaultBrowserBtn = makeDialogButton(ztr("Set as Default Browser"), false, page);
+    const auto refreshDefaultStatus = [this]() {
+        const bool isDef = NetzacPreferences::isDefaultBrowser();
+        m_defaultBrowserLbl->setText(
+            isDef
+                ? ztr("Netzac is currently your default browser.")
+                : ztr("Netzac is not your default browser."));
+        m_setDefaultBrowserBtn->setEnabled(!isDef);
+    };
+    refreshDefaultStatus();
+    connect(m_setDefaultBrowserBtn, &QPushButton::clicked, this, [this, refreshDefaultStatus]() {
+        NetzacPreferences::setAsDefaultBrowser();
+        refreshDefaultStatus();
+    });
+    defRow->addWidget(m_defaultBrowserLbl, 1);
+    defRow->addWidget(m_setDefaultBrowserBtn);
+    lay->addLayout(defRow);
 
     lay->addStretch(1);
     return page;
