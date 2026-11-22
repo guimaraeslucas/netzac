@@ -1160,15 +1160,15 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             const bool active = (i == m_currentIndex);
             const bool hovered = (i == m_hoveredTab);
 
-            p.fillRect(r, active ? c.window : (hovered ? c.midlight : c.button));
+            p.fillRect(r, active ? c.highlight : (hovered ? c.midlight : c.button));
 
-            // Classic IE 4.5 Mac left-side folder tab bevel
+            // Classic left-side folder tab bevel
             p.setPen(c.shadow);
             p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom() - 1);
             p.drawLine(r.left() + 1, r.top(), r.right(), r.top());
             p.drawLine(r.left() + 1, r.bottom(), r.right(), r.bottom());
 
-            p.setPen(active ? c.light : c.midlight);
+            p.setPen(active ? c.highlight.lighter(130) : c.midlight);
             p.drawLine(r.left() + 1, r.top() + 1, r.right() - (active ? 0 : 1), r.top() + 1);
             p.drawLine(r.left() + 1, r.top() + 1, r.left() + 1, r.bottom() - 1);
 
@@ -1177,16 +1177,17 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
                 p.drawLine(r.right(), r.top() + 1, r.right(), r.bottom() - 1);
                 p.drawLine(r.left() + 1, r.bottom() - 1, r.right(), r.bottom() - 1);
             } else {
-                p.fillRect(r.right() - 1, r.top() + 1, 2, r.height() - 2, c.window);
+                p.fillRect(r.right() - 1, r.top() + 1, 2, r.height() - 2, c.highlight);
             }
 
             if (!m_pageIcon.isNull())
                 p.drawPixmap(r.left() + 5, r.center().y() - m_pageIcon.height() / 2, m_pageIcon);
 
+            const QColor tabTextColor = active ? palette().color(QPalette::HighlightedText) : c.text;
             QFont f = font();
             f.setBold(active);
             p.setFont(f);
-            p.setPen(c.text);
+            p.setPen(tabTextColor);
             const int textLeft = r.left() + 20;
             const int textRight = (m_tabs.size() > 1) ? cr.left() - 3 : r.right() - 4;
             const QString elided = p.fontMetrics().elidedText(
@@ -1201,8 +1202,10 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
                     p.fillRect(cr, c.mid);
                     p.setPen(c.dark);
                     p.drawRect(cr.adjusted(0, 0, -1, -1));
+                    p.setPen(c.text);
+                } else {
+                    p.setPen(tabTextColor);
                 }
-                p.setPen(c.text);
                 p.drawLine(cr.left() + 3, cr.top() + 3, cr.right() - 3, cr.bottom() - 3);
                 p.drawLine(cr.right() - 3, cr.top() + 3, cr.left() + 3, cr.bottom() - 3);
             }
@@ -1224,31 +1227,32 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             const bool active = (i == m_currentIndex);
             const bool hovered = (i == m_hoveredTab);
 
-            p.fillRect(r, active ? c.window : (hovered ? c.midlight : c.button));
+            p.fillRect(r, active ? c.highlight : (hovered ? c.midlight : c.button));
 
             p.setPen(c.shadow);
             p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom());
             p.drawLine(r.left() + 1, r.top(), r.right() - 1, r.top());
             p.drawLine(r.right(), r.top() + 1, r.right(), r.bottom());
 
-            p.setPen(active ? c.light : c.midlight);
+            p.setPen(active ? c.highlight.lighter(130) : c.midlight);
             p.drawLine(r.left() + 1, r.top() + 1, r.right() - 1, r.top() + 1);
             p.drawLine(r.left() + 1, r.top() + 1, r.left() + 1, r.bottom() - 1);
 
-            p.setPen(c.dark);
+            p.setPen(active ? c.highlight.darker(130) : c.dark);
             p.drawLine(r.right() - 1, r.top() + 1, r.right() - 1, r.bottom() - 1);
 
             if (active) {
-                p.fillRect(r.left() + 1, r.bottom(), r.width() - 2, 1, c.window);
+                p.fillRect(r.left() + 1, r.bottom(), r.width() - 2, 1, c.highlight);
             }
 
             if (!m_pageIcon.isNull())
                 p.drawPixmap(r.left() + 5, r.center().y() - m_pageIcon.height() / 2, m_pageIcon);
 
+            const QColor tabTextColor = active ? palette().color(QPalette::HighlightedText) : c.text;
             QFont f = font();
             f.setBold(active);
             p.setFont(f);
-            p.setPen(c.text);
+            p.setPen(tabTextColor);
             const int textLeft = r.left() + 20;
             const int textRight = (m_tabs.size() > 1) ? cr.left() - 3 : r.right() - 4;
             const QString elided = p.fontMetrics().elidedText(
@@ -1263,8 +1267,10 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
                     p.fillRect(cr, c.mid);
                     p.setPen(c.dark);
                     p.drawRect(cr.adjusted(0, 0, -1, -1));
+                    p.setPen(c.text);
+                } else {
+                    p.setPen(tabTextColor);
                 }
-                p.setPen(c.text);
                 p.drawLine(cr.left() + 3, cr.top() + 3, cr.right() - 3, cr.bottom() - 3);
                 p.drawLine(cr.right() - 3, cr.top() + 3, cr.left() + 3, cr.bottom() - 3);
             }

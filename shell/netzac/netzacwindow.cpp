@@ -55,187 +55,148 @@ QString retroHtmlPage(const QString &title, const QString &subtitle, const QStri
         "  * { box-sizing: border-box; }\n"
         "  body {\n"
         "    margin: 0;\n"
-        "    padding: 28px 18px 40px 18px;\n"
-        "    background-color: #c6c6d2;\n"
-        "    background-image: repeating-linear-gradient(\n"
-        "      0deg, rgba(255,255,255,0.22) 0px, rgba(255,255,255,0.22) 1px,\n"
-        "      transparent 1px, transparent 3px);\n"
-        "    color: #111111;\n"
-        "    font-family: 'ZacOS 9 System', 'Geneva', 'Lucida Grande', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;\n"
-        "    font-size: 14px;\n"
-        "    line-height: 1.55;\n"
-        "  }\n"
-        "  .plat-window {\n"
-        "    max-width: 740px;\n"
-        "    margin: 0 auto;\n"
-        "    background-color: #dddddd;\n"
-        "    border: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888899, 4px 4px 0 rgba(0,0,0,0.22);\n"
-        "    padding: 4px;\n"
-        "  }\n"
-        "  .titlebar {\n"
-        "    display: flex;\n"
-        "    align-items: center;\n"
-        "    gap: 8px;\n"
-        "    height: 24px;\n"
-        "    padding: 0 8px;\n"
-        "    background-color: #ccccd8;\n"
-        "    border-bottom: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #9999aa;\n"
-        "    background-image: repeating-linear-gradient(\n"
-        "      0deg, transparent 0px, transparent 2px, #8f8fa3 2px, #8f8fa3 3px, #ffffff 3px, #ffffff 4px);\n"
-        "    background-position: 0 4px;\n"
-        "    background-size: 100% 14px;\n"
-        "    background-repeat: no-repeat;\n"
-        "  }\n"
-        "  .win-box {\n"
-        "    width: 11px;\n"
-        "    height: 11px;\n"
-        "    background: #dddddd;\n"
-        "    border: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;\n"
-        "    flex-shrink: 0;\n"
-        "  }\n"
-        "  .titlebar-label {\n"
-        "    margin: 0 auto;\n"
-        "    padding: 0 10px;\n"
-        "    background: #ccccd8;\n"
-        "    font-size: 12px;\n"
-        "    font-weight: bold;\n"
+        "    padding: 28px 20px 36px 20px;\n"
+        "    background-color: #e8e8e8;\n"
         "    color: #000000;\n"
-        "    letter-spacing: 0.2px;\n"
+        "    font-family: 'ZacOS 9 System', sans-serif;\n"
+        "    font-size: 13px;\n"
+        "    line-height: 1.5;\n"
         "  }\n"
-        "  .win-inner {\n"
-        "    background: #f2f2f6;\n"
-        "    border: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #9999aa, inset -1px -1px 0 #ffffff;\n"
-        "    margin-top: 4px;\n"
-        "    overflow: hidden;\n"
+        "  .page {\n"
+        "    max-width: 700px;\n"
+        "    margin: 0 auto;\n"
         "  }\n"
-        "  .banner {\n"
-        "    background: linear-gradient(135deg, #0f5656 0%, #1b3068 58%, #4d3577 100%);\n"
-        "    color: #ffffff;\n"
-        "    padding: 20px 24px;\n"
-        "    border-bottom: 1px solid #000000;\n"
-        "  }\n"
-        "  .banner h1 {\n"
-        "    margin: 0;\n"
-        "    font-size: 22px;\n"
+        "  h1 {\n"
+        "    margin: 0 0 4px 0;\n"
+        "    font-size: 20px;\n"
         "    font-weight: bold;\n"
-        "    letter-spacing: 0.3px;\n"
-        "    text-shadow: 1px 1px 0 rgba(0,0,0,0.45);\n"
+        "    color: #005a5a;\n"
         "  }\n"
-        "  .banner p {\n"
-        "    margin: 5px 0 0 0;\n"
-        "    color: #f4c6e7;\n"
-        "    font-size: 13px;\n"
-        "  }\n"
-        "  .content {\n"
-        "    padding: 20px 24px;\n"
-        "  }\n"
-        "  .content p { margin: 0 0 12px 0; }\n"
-        "  .cards {\n"
-        "    display: grid;\n"
-        "    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));\n"
-        "    gap: 10px;\n"
-        "    margin: 14px 0 18px 0;\n"
-        "  }\n"
-        "  .card {\n"
-        "    display: block;\n"
-        "    text-decoration: none;\n"
-        "    color: #111111;\n"
-        "    background: #e5e5ec;\n"
-        "    border: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #8f8fa3;\n"
-        "    padding: 10px 12px;\n"
-        "    transition: background 0.12s ease;\n"
-        "  }\n"
-        "  .card:hover {\n"
-        "    background: #ffffff;\n"
-        "    border-color: #3b2a5e;\n"
-        "  }\n"
-        "  .card strong {\n"
-        "    display: block;\n"
-        "    color: #2f2060;\n"
-        "    font-size: 14px;\n"
-        "    margin-bottom: 2px;\n"
-        "  }\n"
-        "  .card span {\n"
+        "  .subtitle {\n"
+        "    margin: 0 0 14px 0;\n"
+        "    color: #444444;\n"
         "    font-size: 12px;\n"
-        "    color: #444455;\n"
         "  }\n"
-        "  .credits-box {\n"
-        "    background: #e6e4ee;\n"
-        "    border: 1px solid #555566;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #aaaabc;\n"
-        "    padding: 14px 16px;\n"
-        "    margin-top: 16px;\n"
-        "    font-size: 13px;\n"
-        "  }\n"
-        "  .credits-box h2 {\n"
-        "    margin: 0 0 8px 0;\n"
-        "    font-size: 14px;\n"
-        "    color: #2f2060;\n"
+        "  hr {\n"
+        "    border: none;\n"
+        "    border-top: 1px solid #b0b0b0;\n"
+        "    margin: 14px 0;\n"
         "  }\n"
         "  .shortcut-list {\n"
         "    list-style: none;\n"
         "    padding: 0;\n"
-        "    margin: 8px 0 0 0;\n"
+        "    margin: 8px 0;\n"
         "  }\n"
         "  .shortcut-list li {\n"
         "    display: flex;\n"
         "    justify-content: space-between;\n"
         "    align-items: center;\n"
-        "    padding: 7px 10px;\n"
-        "    border-bottom: 1px solid #d4d4df;\n"
+        "    padding: 6px 4px;\n"
+        "    border-bottom: 1px solid #d0d0d0;\n"
         "  }\n"
         "  .shortcut-list li:last-child { border-bottom: none; }\n"
-        "  a { color: #2a3990; }\n"
+        "  a { color: #0000ee; }\n"
         "  a:visited { color: #551a8b; }\n"
         "  code {\n"
-        "    font-family: 'SF Mono', 'Liberation Mono', monospace;\n"
+        "    font-family: monospace;\n"
         "    font-size: 12px;\n"
-        "    background: #dddddd;\n"
-        "    padding: 2px 6px;\n"
-        "    border: 1px solid #000000;\n"
-        "    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;\n"
+        "    background: #dcdcdc;\n"
+        "    padding: 1px 5px;\n"
+        "    border: 1px solid #999999;\n"
         "  }\n"
         "  .footer {\n"
-        "    display: flex;\n"
-        "    justify-content: space-between;\n"
-        "    align-items: center;\n"
-        "    padding: 8px 14px;\n"
-        "    background: #dddddd;\n"
-        "    border-top: 1px solid #888899;\n"
+        "    margin-top: 18px;\n"
         "    font-size: 11px;\n"
-        "    color: #444455;\n"
+        "    color: #555555;\n"
         "  }\n"
         "</style>\n"
         "</head>\n"
         "<body>\n"
-        "  <div class=\"plat-window\">\n"
-        "    <div class=\"titlebar\">\n"
-        "      <div class=\"win-box\"></div>\n"
-        "      <div class=\"titlebar-label\">%1</div>\n"
-        "      <div class=\"win-box\"></div>\n"
-        "    </div>\n"
-        "    <div class=\"win-inner\">\n"
-        "      <div class=\"banner\">\n"
-        "        <h1>%1</h1>\n"
-        "        <p>%2</p>\n"
-        "      </div>\n"
-        "      <div class=\"content\">\n"
-        "        %3\n"
-        "      </div>\n"
-        "      <div class=\"footer\">\n"
-        "        <span>%4</span>\n"
-        "        <span>Mac OS 8 / Platinum</span>\n"
-        "      </div>\n"
-        "    </div>\n"
+        "  <div class=\"page\">\n"
+        "    <h1>%1</h1>\n"
+        "    <p class=\"subtitle\">%2</p>\n"
+        "    <hr>\n"
+        "    %3\n"
+        "    <hr>\n"
+        "    <div class=\"footer\">%4</div>\n"
         "  </div>\n"
         "</body>\n"
         "</html>")
         .arg(title.toHtmlEscaped(), subtitle.toHtmlEscaped(), bodyHtml, footer);
+}
+
+QString navigatorStartHtmlPage(const QString &title, const QString &searchPlaceholder, const QString &searchBtnText)
+{
+    return QStringLiteral(
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        "<meta charset=\"utf-8\">\n"
+        "<title>%1</title>\n"
+        "<style>\n"
+        "  * { box-sizing: border-box; }\n"
+        "  body {\n"
+        "    margin: 0;\n"
+        "    padding: 0 20px;\n"
+        "    min-height: 85vh;\n"
+        "    display: flex;\n"
+        "    flex-direction: column;\n"
+        "    align-items: center;\n"
+        "    justify-content: center;\n"
+        "    background-color: #e8e8e8;\n"
+        "    color: #000000;\n"
+        "    font-family: 'ZacOS 9 System', sans-serif;\n"
+        "    font-size: 13px;\n"
+        "  }\n"
+        "  .brand {\n"
+        "    margin: 0 0 22px 0;\n"
+        "    font-size: 44px;\n"
+        "    font-weight: bold;\n"
+        "    color: #005a5a;\n"
+        "    letter-spacing: 1px;\n"
+        "    text-align: center;\n"
+        "  }\n"
+        "  .search-form {\n"
+        "    display: flex;\n"
+        "    gap: 8px;\n"
+        "    width: 100%;\n"
+        "    max-width: 460px;\n"
+        "  }\n"
+        "  .search-input {\n"
+        "    flex: 1;\n"
+        "    height: 30px;\n"
+        "    padding: 4px 8px;\n"
+        "    font-family: inherit;\n"
+        "    font-size: 13px;\n"
+        "    color: #000000;\n"
+        "    background-color: #ffffff;\n"
+        "    border: 1px solid #004444;\n"
+        "  }\n"
+        "  .search-btn {\n"
+        "    height: 30px;\n"
+        "    padding: 0 16px;\n"
+        "    font-family: inherit;\n"
+        "    font-size: 13px;\n"
+        "    font-weight: bold;\n"
+        "    color: #ffffff;\n"
+        "    background-color: #006666;\n"
+        "    border: 1px solid #003b3b;\n"
+        "    cursor: pointer;\n"
+        "  }\n"
+        "  .search-btn:hover {\n"
+        "    background-color: #007a7a;\n"
+        "  }\n"
+        "</style>\n"
+        "</head>\n"
+        "<body>\n"
+        "  <h1 class=\"brand\">NetZac</h1>\n"
+        "  <form class=\"search-form\" action=\"https://duckduckgo.com/\" method=\"get\">\n"
+        "    <input class=\"search-input\" type=\"text\" name=\"q\" placeholder=\"%2\" autofocus>\n"
+        "    <button class=\"search-btn\" type=\"submit\">%3</button>\n"
+        "  </form>\n"
+        "</body>\n"
+        "</html>")
+        .arg(title.toHtmlEscaped(), searchPlaceholder.toHtmlEscaped(), searchBtnText.toHtmlEscaped());
 }
 
 NetzacWindow::PopupOptions parsePopupFeatures(
@@ -315,6 +276,14 @@ NetzacWindow::PopupOptions parsePopupFeatures(
 NetzacWindow::NetzacWindow(
     const QString &initialUrl,
     QWidget *parent,
+    bool loadInitial)
+    : NetzacWindow(initialUrl, parent, loadInitial, PopupOptions())
+{
+}
+
+NetzacWindow::NetzacWindow(
+    const QString &initialUrl,
+    QWidget *parent,
     bool loadInitial,
     const PopupOptions &popupOpts)
     : QMainWindow(parent)
@@ -349,17 +318,26 @@ NetzacWindow::NetzacWindow(
     buildCentralArea();
     buildStatusBar();
 
-    QString startTarget = initialUrl;
-    if (loadInitial && startTarget.isEmpty()) {
-        if (m_prefs.startupMode == NetzacPreferences::StartupMode::RestoreLastPage
-            && !m_prefs.lastUrl.isEmpty()) {
-            startTarget = m_prefs.lastUrl;
-        } else {
-            startTarget = m_prefs.homeUrl;
+    if (loadInitial && initialUrl.isEmpty() && !m_popupOpts.isPopup
+        && m_prefs.startupMode == NetzacPreferences::StartupMode::RestoreLastPage
+        && !m_prefs.lastTabs.isEmpty()) {
+        for (int i = 0; i < m_prefs.lastTabs.size(); ++i)
+            createTabInternal(m_prefs.lastTabs.at(i), i == 0, true);
+        const int targetTab = qBound(0, m_prefs.lastActiveTab, int(m_tabs.size()) - 1);
+        if (targetTab != m_currentTabIndex)
+            switchToTab(targetTab);
+    } else {
+        QString startTarget = initialUrl;
+        if (loadInitial && startTarget.isEmpty()) {
+            if (m_prefs.startupMode == NetzacPreferences::StartupMode::RestoreLastPage
+                && !m_prefs.lastUrl.isEmpty()) {
+                startTarget = m_prefs.lastUrl;
+            } else {
+                startTarget = m_prefs.homeUrl;
+            }
         }
+        createTabInternal(startTarget, true, loadInitial);
     }
-
-    createTabInternal(startTarget, true, loadInitial);
     updateTabBarPlacement();
     applyPopupRestrictions();
 
@@ -413,8 +391,11 @@ void NetzacWindow::closeEvent(QCloseEvent *event)
 {
     HistoryStorage::save(m_history);
     if (!m_popupOpts.isPopup) {
-        if (const BrowserTab *tab = currentTab())
-            NetzacPreferences::saveLastUrl(tab->currentUrl);
+        QStringList tabUrls;
+        tabUrls.reserve(m_tabs.size());
+        for (const BrowserTab &tab : m_tabs)
+            tabUrls.append(tab.currentUrl);
+        NetzacPreferences::saveLastTabs(tabUrls, m_currentTabIndex);
     }
     QMainWindow::closeEvent(event);
 }
@@ -467,7 +448,7 @@ void NetzacWindow::buildMenus()
     connect(addMenuAction(fileMenu, ztr("Close"), QKeySequence(QStringLiteral("Ctrl+Shift+W"))),
             &QAction::triggered, this, &QWidget::close);
     connect(addMenuAction(fileMenu, ztr("Quit"), QKeySequence::Quit),
-            &QAction::triggered, QApplication::instance(), &QApplication::quit);
+            &QAction::triggered, QApplication::instance(), &QApplication::closeAllWindows);
 
     // Edit
     QMenu *editMenu = mb->addMenu(ztr("Edit"));
@@ -527,7 +508,7 @@ void NetzacWindow::buildMenus()
     auto *tabStyleGroup = new QActionGroup(this);
     m_actTabStyleLeft = addCheckableAction(
         tabsMenu,
-        ztr("Classic Left Tabs (IE 4.5)"),
+        ztr("Classic Left Tabs"),
         m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::IE45Left);
     m_actTabStyleTop = addCheckableAction(
         tabsMenu,
@@ -1727,7 +1708,7 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
 
     QString aboutUrl = aboutUrlInput;
     if (aboutUrl == QLatin1String("about:netscape"))
-        aboutUrl = QStringLiteral("about:netzac");
+        aboutUrl = QStringLiteral("about:navigator");
 
     tab->showingBuiltin = true;
     tab->page->setBuiltInPage(true);
@@ -1738,38 +1719,35 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
         m_statusSecurity->setIconName(QStringLiteral("security_open"));
     }
 
+    if (aboutUrl == QLatin1String("about:navigator") || aboutUrl == QLatin1String("about:netzac")) {
+        const QString title = QStringLiteral("NetZac");
+        tab->title = title;
+        const int idx = indexOfView(tab->view);
+        if (idx >= 0) {
+            m_tabBar->setTabTitle(idx, title);
+            m_tabBar->setTabUrl(idx, aboutUrl);
+        }
+        if (tab == currentTab())
+            setWindowTitle(ztr("Netzac: %1").arg(title));
+        tab->view->setHtml(
+            navigatorStartHtmlPage(
+                title,
+                ztr("Search with DuckDuckGo..."),
+                ztr("Search")),
+            QUrl(QStringLiteral("https://localhost/")));
+        return;
+    }
+
     QString title;
     QString subtitle;
     QString body;
 
-    if (aboutUrl == QLatin1String("about:netzac")) {
-        title = ztr("Welcome to Netzac Navigator 4.0");
-        subtitle = ztr("Communicator Platinum Edition on ZacOS 9");
-        body = ztr(
-            "<p>Welcome aboard <b>Netzac Navigator 4.0</b> running on <b>ZacOS 9</b>.</p>"
-            "<p>Quick links to explore the classic &amp; text-friendly Web:</p>"
-            "<div class=\"cards\">"
-            "<a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>Classic search engine for retro browsers</span></a>"
-            "<a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>Search engine for classic web pages</span></a>"
-            "<a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>Fast headlines formatted for classic Macs</span></a>"
-            "<a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>Browse snapshots of the 1990s web</span></a>"
-            "</div>"
-            "<div class=\"credits-box\">"
-            "<h2>Credits &amp; Community</h2>"
-            "<p>Netzac started as an initial idea by <b>Lucas Guimarães</b>. We hope to count on the full support of the "
-            "<b>ZacOS 9</b> community for contributions, ideas, and pull requests at "
-            "<a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p>"
-            "<p style=\"margin-bottom:0;\">Special thanks to <b>Adam Lawson (@chromasystemprofessional)</b> for creating this incredible ZacOS 9 project.</p>"
-            "</div>");
-    } else if (aboutUrl == QLatin1String("about:mail")) {
+    if (aboutUrl == QLatin1String("about:mail")) {
         title = ztr("Netzac - Mail");
         subtitle = ztr("Communicator Mail Quick Link");
         body = ztr(
-            "<div class=\"credits-box\" style=\"margin-top:0;\">"
-            "<h2>Netzac Mail</h2>"
-            "<p style=\"margin-bottom:0;\">To configure this button to open your mail link (for example Gmail or webmail), "
-            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>"
-            "</div>");
+            "<p>To configure this button to open your mail link (for example Gmail or webmail), "
+            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>");
     } else if (aboutUrl == QLatin1String("about:chat") || aboutUrl == QLatin1String("about:news")) {
         aboutUrl = QStringLiteral("about:chat");
         tab->currentUrl = aboutUrl;
@@ -1778,11 +1756,8 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
         title = ztr("Netzac - Chat");
         subtitle = ztr("Communicator Chat Quick Link");
         body = ztr(
-            "<div class=\"credits-box\" style=\"margin-top:0;\">"
-            "<h2>Netzac Chat</h2>"
-            "<p style=\"margin-bottom:0;\">To configure this button to open your chat service, "
-            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>"
-            "</div>");
+            "<p>To configure this button to open your chat service, "
+            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>");
     } else if (aboutUrl == QLatin1String("about:git") || aboutUrl == QLatin1String("about:composer")) {
         aboutUrl = QStringLiteral("about:git");
         tab->currentUrl = aboutUrl;
@@ -1791,11 +1766,8 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
         title = ztr("Netzac - Git");
         subtitle = ztr("Communicator Git Quick Link");
         body = ztr(
-            "<div class=\"credits-box\" style=\"margin-top:0;\">"
-            "<h2>Netzac Git</h2>"
-            "<p style=\"margin-bottom:0;\">To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), "
-            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>"
-            "</div>");
+            "<p>To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), "
+            "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>");
     } else if (aboutUrl == QLatin1String("about:help")) {
         title = ztr("Netzac Navigator Help");
         subtitle = ztr("Keyboard Shortcuts &amp; Toolbar Guide");

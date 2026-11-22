@@ -197,7 +197,7 @@ msgid "Chrome (Linux) — Default"
 msgstr ""
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Classic Left Tabs (IE 4.5)"
+msgid "Classic Left Tabs"
 msgstr ""
 
 #: shell/netzac/dialogs.cpp

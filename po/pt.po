@@ -197,8 +197,8 @@ msgid "Chrome (Linux) — Default"
 msgstr "Chrome (Linux) — Padrão"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Classic Left Tabs (IE 4.5)"
-msgstr "Abas Clássicas à Esquerda (IE 4.5)"
+msgid "Classic Left Tabs"
+msgstr "Abas Clássicas à Esquerda"
 
 #: shell/netzac/dialogs.cpp
 msgid "Clean full page (keep layout, remove distractions)"

@@ -68,7 +68,7 @@ QString NetzacPreferences::userAgentForPreset(const QString &presetId)
 QVector<NetzacPreferences::PersonalToolbarItem> NetzacPreferences::defaultPersonalToolbar()
 {
     return {
-        {ztr("Home"), QStringLiteral("https://frogfind.com"), QStringLiteral("home"), false, {}},
+        {ztr("Home"), QStringLiteral("about:netzac"), QStringLiteral("home"), false, {}},
         {ztr("FrogFind"), QStringLiteral("https://frogfind.com"), QStringLiteral("search"), false, {}},
         {ztr("Wiby"), QStringLiteral("https://wiby.me"), QStringLiteral("guide"), false, {}},
         {ztr("68k News"), QStringLiteral("http://68k.news"), QStringLiteral("page"), false, {}},
@@ -89,13 +89,13 @@ QVector<NetzacPreferences::PersonalToolbarItem> NetzacPreferences::defaultPerson
 NetzacPreferences NetzacPreferences::defaults()
 {
     NetzacPreferences prefs;
-    prefs.homeUrl = QStringLiteral("https://frogfind.com");
+    prefs.homeUrl = QStringLiteral("about:netzac");
     prefs.startupMode = StartupMode::HomePage;
     prefs.linkOpenMode = LinkOpenMode::Tabs;
     prefs.tabBarStyle = TabBarStyle::IE45Left;
     prefs.defaultBrowserPrompted = false;
     prefs.lastUrl.clear();
-    prefs.searchEngineId = QStringLiteral("frogfind");
+    prefs.searchEngineId = QStringLiteral("duckduckgo");
     prefs.autoloadImages = true;
     prefs.calm = CalmConfig();
     prefs.personalToolbar = defaultPersonalToolbar();
@@ -131,6 +131,17 @@ NetzacPreferences NetzacPreferences::load()
     prefs.tabBarStyle = static_cast<TabBarStyle>(tabStyleVal);
     prefs.defaultBrowserPrompted = s.value(QStringLiteral("navigator/defaultBrowserPrompted"), prefs.defaultBrowserPrompted).toBool();
     prefs.lastUrl = s.value(QStringLiteral("navigator/lastUrl"), prefs.lastUrl).toString().trimmed();
+    const QStringList rawTabs = s.value(QStringLiteral("navigator/lastTabs")).toStringList();
+    for (const QString &t : rawTabs) {
+        const QString clean = t.trimmed();
+        if (!clean.isEmpty()
+            && clean != QLatin1String("about:blank")
+            && clean != QLatin1String("https://localhost/")
+            && !clean.startsWith(QLatin1String("data:"))) {
+            prefs.lastTabs.append(clean);
+        }
+    }
+    prefs.lastActiveTab = qMax(0, s.value(QStringLiteral("navigator/lastActiveTab"), 0).toInt());
     prefs.searchEngineId = s.value(QStringLiteral("navigator/searchEngine"), prefs.searchEngineId).toString();
     prefs.autoloadImages = s.value(QStringLiteral("navigator/autoloadImages"), prefs.autoloadImages).toBool();
 
@@ -292,6 +303,29 @@ void NetzacPreferences::saveLastUrl(const QString &url)
     }
     QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
     s.setValue(QStringLiteral("navigator/lastUrl"), clean);
+}
+
+void NetzacPreferences::saveLastTabs(const QStringList &urls, int activeIndex)
+{
+    QStringList cleaned;
+    int mappedActive = 0;
+    for (int i = 0; i < urls.size(); ++i) {
+        const QString clean = urls.at(i).trimmed();
+        if (clean.isEmpty()
+            || clean == QLatin1String("about:blank")
+            || clean == QLatin1String("https://localhost/")
+            || clean.startsWith(QLatin1String("data:"))) {
+            continue;
+        }
+        if (i == activeIndex)
+            mappedActive = cleaned.size();
+        cleaned.append(clean);
+    }
+    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+    s.setValue(QStringLiteral("navigator/lastTabs"), cleaned);
+    s.setValue(QStringLiteral("navigator/lastActiveTab"), mappedActive);
+    if (!cleaned.isEmpty() && mappedActive >= 0 && mappedActive < cleaned.size())
+        s.setValue(QStringLiteral("navigator/lastUrl"), cleaned.at(mappedActive));
 }
 
 bool NetzacPreferences::isDefaultBrowser()

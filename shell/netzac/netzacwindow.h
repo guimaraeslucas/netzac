@@ -53,8 +53,12 @@ public:
     explicit NetzacWindow(
         const QString &initialUrl = QString(),
         QWidget *parent = nullptr,
-        bool loadInitial = true,
-        const PopupOptions &popupOpts = PopupOptions());
+        bool loadInitial = true);
+    NetzacWindow(
+        const QString &initialUrl,
+        QWidget *parent,
+        bool loadInitial,
+        const PopupOptions &popupOpts);
 
     NetzacWebView *webView() const;
     NetzacWebPage *webPage() const;

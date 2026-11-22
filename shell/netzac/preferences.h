@@ -71,6 +71,8 @@ struct NetzacPreferences {
     TabBarStyle tabBarStyle = TabBarStyle::IE45Left;
     bool defaultBrowserPrompted = false;
     QString lastUrl;
+    QStringList lastTabs;
+    int lastActiveTab = 0;
     QString searchEngineId;
     bool autoloadImages = true;
     CalmConfig calm;
@@ -98,6 +100,7 @@ struct NetzacPreferences {
     static NetzacPreferences load();
     void save() const;
     static void saveLastUrl(const QString &url);
+    static void saveLastTabs(const QStringList &urls, int activeIndex);
     static bool isDefaultBrowser();
     static bool setAsDefaultBrowser();
     void apply(QWebEngineProfile *profile) const;
