@@ -26,9 +26,10 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Netzac Navigator"));
-    app.setDesktopFileName(QStringLiteral("zacos9-netzac"));
+    app.setDesktopFileName(QStringLiteral("netzac"));
     applyZacos9Theme(app);
 
+    NetzacPreferences::ensureDesktopEntryRegistered();
     NetzacPreferences::load().apply(netzacProfile());
 
     QObject::connect(

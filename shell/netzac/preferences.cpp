@@ -5,12 +5,15 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QNetworkProxy>
 #include <QNetworkProxyFactory>
 #include <QPointer>
 #include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QTextStream>
 #include <QUrl>
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
@@ -18,11 +21,11 @@
 namespace {
 
 constexpr const char *kChromeLinuxUa =
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) NetZacNavigator/1.0 Chrome/140.0.0.0 Safari/537.36";
 constexpr const char *kFirefoxLinuxUa =
-    "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0";
+    "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 NetZacNavigator/1.0 Firefox/140.0";
 constexpr const char *kSafariMacUa =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_15_7) AppleWebKit/700.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15";
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_15_7) AppleWebKit/700.1.15 (KHTML, like Gecko) Version/17.6 NetZacNavigator/1.0 Safari/605.1.15";
 constexpr const char *kNetzacMacUa =
     "Mozilla/4.08 (Macintosh; U; PPC) NetZacNavigator/1.0";
 
@@ -122,7 +125,7 @@ NetzacPreferences NetzacPreferences::load()
 
     prefs.homeUrl = s.value(QStringLiteral("navigator/homeUrl"), prefs.homeUrl).toString().trimmed();
     if (prefs.homeUrl.isEmpty())
-        prefs.homeUrl = QStringLiteral("https://frogfind.com");
+        prefs.homeUrl = QStringLiteral("about:netzac");
     const int startupVal = qBound(0, s.value(QStringLiteral("navigator/startupMode"), int(prefs.startupMode)).toInt(), 1);
     prefs.startupMode = static_cast<StartupMode>(startupVal);
     const int linkOpenVal = qBound(0, s.value(QStringLiteral("navigator/linkOpenMode"), int(prefs.linkOpenMode)).toInt(), 1);
@@ -328,13 +331,57 @@ void NetzacPreferences::saveLastTabs(const QStringList &urls, int activeIndex)
         s.setValue(QStringLiteral("navigator/lastUrl"), cleaned.at(mappedActive));
 }
 
+void NetzacPreferences::ensureDesktopEntryRegistered()
+{
+    QString userApps = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
+    if (userApps.isEmpty())
+        userApps = QDir::homePath() + QStringLiteral("/.local/share/applications");
+
+    const QString userDesktop = userApps + QStringLiteral("/netzac.desktop");
+    const QString legacyDesktop = userApps + QStringLiteral("/zacos9-netzac.desktop");
+    if (QFileInfo::exists(legacyDesktop))
+        QFile::remove(legacyDesktop);
+
+    const bool inPath = !QStandardPaths::findExecutable(QStringLiteral("zacos9-netzac")).isEmpty();
+    const bool hasSystemDesktop =
+        QFileInfo::exists(QStringLiteral("/usr/share/applications/netzac.desktop"))
+        || QFileInfo::exists(QStringLiteral("/usr/local/share/applications/netzac.desktop"));
+
+    if (inPath && hasSystemDesktop && !QFileInfo::exists(userDesktop))
+        return;
+
+    const QString exePath = QCoreApplication::applicationFilePath();
+    const QString execLine = exePath.isEmpty()
+        ? QStringLiteral("zacos9-netzac %u")
+        : (QStringLiteral("\"") + exePath + QStringLiteral("\" %u"));
+
+    QDir().mkpath(userApps);
+    QFile f(userDesktop);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        QTextStream out(&f);
+        out << "[Desktop Entry]\n"
+            << "Type=Application\n"
+            << "Name=Netzac\n"
+            << "Comment=Browse the World Wide Web in classic Platinum style\n"
+            << "Exec=" << execLine << "\n"
+            << "Icon=netzac\n"
+            << "Terminal=false\n"
+            << "Categories=Network;WebBrowser;\n"
+            << "MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/about;\n";
+        f.close();
+    }
+
+    if (QDir(userApps).exists())
+        QProcess::execute(QStringLiteral("update-desktop-database"), {userApps});
+}
+
 bool NetzacPreferences::isDefaultBrowser()
 {
     QProcess proc;
     proc.start(QStringLiteral("xdg-settings"), {QStringLiteral("get"), QStringLiteral("default-web-browser")});
     if (proc.waitForFinished(2000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
         const QString out = QString::fromUtf8(proc.readAllStandardOutput()).trimmed();
-        if (out == QLatin1String("zacos9-netzac.desktop"))
+        if (out == QLatin1String("netzac.desktop"))
             return true;
     }
 
@@ -342,7 +389,7 @@ bool NetzacPreferences::isDefaultBrowser()
     mimeProc.start(QStringLiteral("xdg-mime"), {QStringLiteral("query"), QStringLiteral("default"), QStringLiteral("x-scheme-handler/http")});
     if (mimeProc.waitForFinished(2000) && mimeProc.exitStatus() == QProcess::NormalExit && mimeProc.exitCode() == 0) {
         const QString out = QString::fromUtf8(mimeProc.readAllStandardOutput()).trimmed();
-        if (out == QLatin1String("zacos9-netzac.desktop"))
+        if (out == QLatin1String("netzac.desktop"))
             return true;
     }
     return false;
@@ -350,11 +397,13 @@ bool NetzacPreferences::isDefaultBrowser()
 
 bool NetzacPreferences::setAsDefaultBrowser()
 {
+    ensureDesktopEntryRegistered();
+
     bool ok = false;
     QProcess settingsProc;
     settingsProc.start(
         QStringLiteral("xdg-settings"),
-        {QStringLiteral("set"), QStringLiteral("default-web-browser"), QStringLiteral("zacos9-netzac.desktop")});
+        {QStringLiteral("set"), QStringLiteral("default-web-browser"), QStringLiteral("netzac.desktop")});
     if (settingsProc.waitForFinished(3000)
         && settingsProc.exitStatus() == QProcess::NormalExit
         && settingsProc.exitCode() == 0) {
@@ -366,7 +415,7 @@ bool NetzacPreferences::setAsDefaultBrowser()
         QStringLiteral("xdg-mime"),
         {
             QStringLiteral("default"),
-            QStringLiteral("zacos9-netzac.desktop"),
+            QStringLiteral("netzac.desktop"),
             QStringLiteral("x-scheme-handler/http"),
             QStringLiteral("x-scheme-handler/https"),
             QStringLiteral("text/html"),
@@ -506,7 +555,7 @@ void NetzacPreferences::apply(QWebEngineProfile *profile) const
 
 QString NetzacPreferences::searchUrlFor(const QString &query) const
 {
-    QString tmpl = QStringLiteral("https://frogfind.com/?q=%1");
+    QString tmpl = QStringLiteral("https://duckduckgo.com/?q=%1");
     for (const auto &entry : searchEnginePresets()) {
         if (searchEngineId == QLatin1String(entry.id)) {
             tmpl = QString::fromLatin1(entry.value);

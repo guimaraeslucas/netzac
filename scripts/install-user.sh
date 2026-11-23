@@ -18,8 +18,9 @@ locale="$HOME/.local/share/locale"
 
 install -Dm755 build/shell/netzac/zacos9-netzac "$bin/zacos9-netzac"
 mkdir -p "$apps" "$icons"
-install -Dm644 share/icons/hicolor/scalable/apps/zacos9-netzac.svg "$icons/zacos9-netzac.svg"
-sed "s|^Exec=.*|Exec=$bin/zacos9-netzac %u|" share/applications/zacos9-netzac.desktop >"$apps/zacos9-netzac.desktop"
+rm -f "$apps/zacos9-netzac.desktop" "$icons/zacos9-netzac.svg"
+install -Dm644 share/icons/hicolor/scalable/apps/netzac.svg "$icons/netzac.svg"
+sed "s|^Exec=.*|Exec=$bin/zacos9-netzac %u|" share/applications/netzac.desktop >"$apps/netzac.desktop"
 update-desktop-database "$apps" 2>/dev/null || true
 gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 

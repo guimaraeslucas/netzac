@@ -16,10 +16,10 @@ qt6_dep = dependency('qt6',
 subdir('shell/netzac')
 subdir('po')
 
-install_data('share/applications/zacos9-netzac.desktop',
+install_data('share/applications/netzac.desktop',
   install_dir: get_option('datadir') / 'applications',
   install_tag: 'netzac')
 
-install_data('share/icons/hicolor/scalable/apps/zacos9-netzac.svg',
+install_data('share/icons/hicolor/scalable/apps/netzac.svg',
   install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
   install_tag: 'netzac')

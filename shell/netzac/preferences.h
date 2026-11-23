@@ -101,6 +101,7 @@ struct NetzacPreferences {
     void save() const;
     static void saveLastUrl(const QString &url);
     static void saveLastTabs(const QStringList &urls, int activeIndex);
+    static void ensureDesktopEntryRegistered();
     static bool isDefaultBrowser();
     static bool setAsDefaultBrowser();
     void apply(QWebEngineProfile *profile) const;
