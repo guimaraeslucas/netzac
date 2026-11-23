@@ -15,10 +15,11 @@
 #include <QColor>
 #include <QDateTime>
 #include <QFile>
-#include <QFileDialog>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -38,13 +39,14 @@
 #include <QWebEngineHistory>
 #include <QWebEnginePage>
 #include <QWebEngineProfile>
+#include <QWebEngineScript>
 #include <QWebEngineSettings>
 
 namespace {
 
 QString retroHtmlPage(const QString &title, const QString &subtitle, const QString &bodyHtml)
 {
-    const QString footer = ztr("Netzac Communicator 4.0 &mdash; ZacOS 9 Platinum Edition");
+    const QString footer = ztr("Netzac Navigator 1.0 &mdash; ZacOS 9 Platinum Edition");
     return QStringLiteral(
         "<!DOCTYPE html>\n"
         "<html>\n"
@@ -487,6 +489,8 @@ void NetzacWindow::buildMenus()
     QMenu *viewMenu = mb->addMenu(ztr("View"));
     QMenu *showHideMenu = viewMenu->addMenu(ztr("Show/Hide"));
     m_actShowNav = addCheckableAction(showHideMenu, ztr("Navigation Toolbar"), true);
+    m_actShowNavText = addCheckableAction(
+        showHideMenu, ztr("Navigation Button Labels"), m_prefs.showNavButtonText);
     m_actShowLoc = addCheckableAction(showHideMenu, ztr("Location Toolbar"), true);
     m_actShowPers = addCheckableAction(showHideMenu, ztr("Personal Toolbar"), true);
     m_actShowStatus = addCheckableAction(showHideMenu, ztr("Status Bar"), true);
@@ -579,8 +583,8 @@ void NetzacWindow::buildMenus()
     connect(m_goMenu, &QMenu::aboutToShow, this, &NetzacWindow::populateGoMenu);
     populateGoMenu();
 
-    // Communicator
-    QMenu *commMenu = mb->addMenu(ztr("Communicator"));
+    // Navigator
+    QMenu *commMenu = mb->addMenu(ztr("Navigator"));
     connect(addMenuAction(commMenu, ztr("Navigator"), QKeySequence(QStringLiteral("Ctrl+1"))),
             &QAction::triggered, this, [this]() { navigateTo(QStringLiteral("about:netzac")); });
     connect(addMenuAction(commMenu, ztr("Mail"), QKeySequence(QStringLiteral("Ctrl+2"))),
@@ -782,8 +786,14 @@ void NetzacWindow::buildToolbars()
     m_persToolbar = new CollapsibleToolbar(ztr("Personal Toolbar"), m_persBody, this);
 
     connect(m_actShowNav, &QAction::toggled, m_navToolbar, &QWidget::setVisible);
+    connect(m_actShowNavText, &QAction::toggled, this, [this](bool showText) {
+        m_prefs.showNavButtonText = showText;
+        m_prefs.save();
+        applyNavToolbarCompact(showText);
+    });
     connect(m_actShowLoc, &QAction::toggled, m_locToolbar, &QWidget::setVisible);
     connect(m_actShowPers, &QAction::toggled, m_persToolbar, &QWidget::setVisible);
+    applyNavToolbarCompact(m_prefs.showNavButtonText);
 }
 
 void NetzacWindow::rebuildPersonalToolbar()
@@ -948,6 +958,7 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     view->setMinimumSize(240, 160);
     page->setBackgroundColor(QColor(QStringLiteral("#dddddd")));
     page->settings()->setAttribute(QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
+    page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
     page->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
     if (m_popupOpts.hideScrollbars)
         page->settings()->setAttribute(QWebEngineSettings::ShowScrollBars, false);
@@ -968,6 +979,7 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     m_tabStack->addWidget(view);
     m_tabBar->addTab(tab.title);
     connectTabSignals(view, page, calm);
+    connect(page, &NetzacWebPage::credentialSubmitted, this, &NetzacWindow::handleCredentialSubmitted);
 
     if (switchTo || m_currentTabIndex < 0)
         switchToTab(idx);
@@ -1144,6 +1156,20 @@ void NetzacWindow::applyPopupRestrictions()
         m_status->setSizeGripEnabled(false);
 }
 
+void NetzacWindow::applyNavToolbarCompact(bool showText)
+{
+    const QVector<PlatinumNavButton *> navButtons = {
+        m_btnBack, m_btnForward, m_btnHome, m_btnReload,
+        m_btnPrint, m_btnFind, m_btnStop, m_btnCalm,
+    };
+    for (PlatinumNavButton *btn : navButtons) {
+        if (btn)
+            btn->setShowText(showText);
+    }
+    if (m_throbber)
+        m_throbber->setCompact(!showText);
+}
+
 void NetzacWindow::toggleFullScreen()
 {
     if (isFullScreen()) {
@@ -1152,11 +1178,27 @@ void NetzacWindow::toggleFullScreen()
             const QSignalBlocker b(m_actFullScreen);
             m_actFullScreen->setChecked(false);
         }
+        if (m_actShowPers)
+            m_actShowPers->setChecked(m_preFsShowPers);
+        applyNavToolbarCompact(m_preFsShowNavText);
+        if (m_actShowNavText) {
+            const QSignalBlocker b(m_actShowNavText);
+            m_actShowNavText->setChecked(m_preFsShowNavText);
+        }
     } else {
+        m_preFsShowPers = m_actShowPers ? m_actShowPers->isChecked() : true;
+        m_preFsShowNavText = m_prefs.showNavButtonText;
         showFullScreen();
         if (m_actFullScreen) {
             const QSignalBlocker b(m_actFullScreen);
             m_actFullScreen->setChecked(true);
+        }
+        if (m_actShowPers)
+            m_actShowPers->setChecked(false);
+        applyNavToolbarCompact(false);
+        if (m_actShowNavText) {
+            const QSignalBlocker b(m_actShowNavText);
+            m_actShowNavText->setChecked(false);
         }
     }
 }
@@ -1451,6 +1493,8 @@ void NetzacWindow::onTabLoadFinished(NetzacWebView *view, bool ok)
     if (ok) {
         HistoryStorage::recordVisit(m_history, m_tabs[idx].currentUrl, view->title());
         HistoryStorage::save(m_history);
+        if (m_prefs.rememberPasswords && m_prefs.enableJavaScript && !m_tabs[idx].showingBuiltin)
+            installPasswordHelpers(m_tabs[idx].page, QUrl(m_tabs[idx].currentUrl));
     }
 
     if (idx == m_currentTabIndex) {
@@ -1744,7 +1788,7 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
 
     if (aboutUrl == QLatin1String("about:mail")) {
         title = ztr("Netzac - Mail");
-        subtitle = ztr("Communicator Mail Quick Link");
+        subtitle = ztr("Navigator Mail Quick Link");
         body = ztr(
             "<p>To configure this button to open your mail link (for example Gmail or webmail), "
             "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>");
@@ -1754,7 +1798,7 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
         if (tab == currentTab())
             m_urlBar->setText(aboutUrl);
         title = ztr("Netzac - Chat");
-        subtitle = ztr("Communicator Chat Quick Link");
+        subtitle = ztr("Navigator Chat Quick Link");
         body = ztr(
             "<p>To configure this button to open your chat service, "
             "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>");
@@ -1764,7 +1808,7 @@ void NetzacWindow::loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrlInpu
         if (tab == currentTab())
             m_urlBar->setText(aboutUrl);
         title = ztr("Netzac - Git");
-        subtitle = ztr("Communicator Git Quick Link");
+        subtitle = ztr("Navigator Git Quick Link");
         body = ztr(
             "<p>To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), "
             "open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>");
@@ -1865,7 +1909,7 @@ void NetzacWindow::openLocationDialog()
     auto *row = new QHBoxLayout();
     QPushButton *chooseBtn = makeDialogButton(ztr("Choose File..."), false, &dlg);
     connect(chooseBtn, &QPushButton::clicked, &dlg, [&dlg, edit]() {
-        const QString path = QFileDialog::getOpenFileName(
+        const QString path = platinumOpenFileName(
             &dlg,
             ztr("Open Local HTML File"),
             QString(),
@@ -1892,7 +1936,7 @@ void NetzacWindow::savePage()
     NetzacWebPage *page = webPage();
     if (!page)
         return;
-    const QString path = QFileDialog::getSaveFileName(
+    const QString path = platinumSaveFileName(
         this,
         ztr("Save Page As"),
         QStringLiteral("page.html"),
@@ -1922,7 +1966,7 @@ void NetzacWindow::printPage()
     NetzacWebPage *page = webPage();
     if (!page)
         return;
-    const QString path = QFileDialog::getSaveFileName(
+    const QString path = platinumSaveFileName(
         this,
         ztr("Print Page to PDF"),
         QStringLiteral("netzac-page.pdf"),
@@ -2100,15 +2144,171 @@ void NetzacWindow::openPreferences()
         m_prefs = dlg.preferences();
         m_prefs.save();
         m_prefs.apply(netzacProfile());
+        if (dlg.didResetAll()) {
+            m_bookmarks = BookmarkStorage::load();
+            m_history = HistoryStorage::load();
+            m_visitedUrls.clear();
+            for (const auto &entry : m_bookmarks) {
+                if (!m_visitedUrls.contains(entry.second))
+                    m_visitedUrls.append(entry.second);
+            }
+            if (m_actLinkModeTabs)
+                m_actLinkModeTabs->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs);
+            if (m_actLinkModeWindows)
+                m_actLinkModeWindows->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Windows);
+            if (m_actTabStyleLeft)
+                m_actTabStyleLeft->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::IE45Left);
+            if (m_actTabStyleTop)
+                m_actTabStyleTop->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::ChromeTop);
+            if (m_actShowNav) m_actShowNav->setChecked(true);
+            if (m_actShowLoc) m_actShowLoc->setChecked(true);
+            if (m_actShowPers) m_actShowPers->setChecked(true);
+            if (m_actShowStatus) m_actShowStatus->setChecked(true);
+            while (m_tabs.size() > 1)
+                closeTab(int(m_tabs.size()) - 1);
+            updateTabBarPlacement();
+            navigateTo(m_prefs.homeUrl);
+        }
         for (BrowserTab &tab : m_tabs) {
             if (tab.page) {
                 tab.page->settings()->setAttribute(
                     QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
+                tab.page->settings()->setAttribute(
+                    QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
             }
             if (tab.calm)
                 tab.calm->setConfig(m_prefs.calm);
         }
+        applyNavToolbarCompact(m_prefs.showNavButtonText);
+        if (m_actShowNavText) {
+            const QSignalBlocker b(m_actShowNavText);
+            m_actShowNavText->setChecked(m_prefs.showNavButtonText);
+        }
         rebuildPersonalToolbar();
+    }
+}
+
+void NetzacWindow::installPasswordHelpers(NetzacWebPage *page, const QUrl &url)
+{
+    if (!page || !url.isValid())
+        return;
+    const QString scheme = url.scheme().toLower();
+    if (scheme != QLatin1String("http") && scheme != QLatin1String("https"))
+        return;
+    const QString host = url.host().trimmed().toLower();
+    if (host.isEmpty() || !PasswordStorage::isAvailable())
+        return;
+
+    PasswordStorage::Credential cred;
+    QString fillJson = QStringLiteral("null");
+    if (PasswordStorage::lookupCredential(host, &cred)) {
+        QJsonObject obj;
+        obj.insert(QStringLiteral("user"), cred.username);
+        obj.insert(QStringLiteral("pass"), cred.password);
+        fillJson = QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    }
+
+    const QString hostJson = QString::fromUtf8(
+        QJsonDocument(QJsonObject{{QStringLiteral("host"), host}}).toJson(QJsonDocument::Compact));
+
+    const QString script = QStringLiteral(
+        "(function(){"
+        "var creds = %1;"
+        "var host = (%2).host;"
+        "function fillForm(f) {"
+        "  if (!creds) return;"
+        "  var pw = f.querySelector('input[type=\"password\"]');"
+        "  if (!pw) return;"
+        "  var inputs = Array.prototype.slice.call(f.querySelectorAll('input'));"
+        "  var userEl = null;"
+        "  for (var i = 0; i < inputs.length; i++) {"
+        "    if (inputs[i] === pw) break;"
+        "    var t = (inputs[i].type || 'text').toLowerCase();"
+        "    if (t === 'text' || t === 'email' || t === 'tel') userEl = inputs[i];"
+        "  }"
+        "  if (userEl && !userEl.value) {"
+        "    userEl.value = creds.user;"
+        "    userEl.dispatchEvent(new Event('input', {bubbles:true}));"
+        "  }"
+        "  if (!pw.value) {"
+        "    pw.value = creds.pass;"
+        "    pw.dispatchEvent(new Event('input', {bubbles:true}));"
+        "  }"
+        "}"
+        "var forms = document.querySelectorAll('form');"
+        "for (var i = 0; i < forms.length; i++) {"
+        "  var f = forms[i];"
+        "  fillForm(f);"
+        "  if (f.dataset.netzacPwHooked) continue;"
+        "  if (!f.querySelector('input[type=\"password\"]')) continue;"
+        "  f.dataset.netzacPwHooked = '1';"
+        "  f.addEventListener('submit', function() {"
+        "    var pw = this.querySelector('input[type=\"password\"]');"
+        "    if (!pw || !pw.value) return;"
+        "    var inputs = Array.prototype.slice.call(this.querySelectorAll('input'));"
+        "    var userVal = '';"
+        "    for (var j = 0; j < inputs.length; j++) {"
+        "      if (inputs[j] === pw) break;"
+        "      var t = (inputs[j].type || 'text').toLowerCase();"
+        "      if ((t === 'text' || t === 'email' || t === 'tel') && inputs[j].value) userVal = inputs[j].value;"
+        "    }"
+        "    if (userVal) {"
+        "      console.debug('__NETZAC_CRED__:' + JSON.stringify({host: host, user: userVal, pass: pw.value}));"
+        "    }"
+        "  }, true);"
+        "}"
+        "})();").arg(fillJson, hostJson);
+
+    page->runJavaScript(script, QWebEngineScript::ApplicationWorld);
+}
+
+void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString &username, const QString &password)
+{
+    if (!m_prefs.rememberPasswords || !PasswordStorage::isAvailable())
+        return;
+
+    PasswordStorage::Credential existing;
+    if (PasswordStorage::lookupCredential(host, &existing)
+        && existing.username == username
+        && existing.password == password) {
+        return;
+    }
+
+    PlatinumDialog dlg(this);
+    dlg.setWindowTitle(ztr("Save Password"));
+    dlg.setFixedWidth(380);
+    auto *lay = new QVBoxLayout(&dlg);
+    lay->setContentsMargins(12, 12, 12, 12);
+    lay->setSpacing(10);
+
+    auto *top = new QHBoxLayout();
+    auto *iconLbl = new QLabel(&dlg);
+    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
+    iconLbl->setAlignment(Qt::AlignTop);
+    auto *msgLbl = new QLabel(
+        ztr("Do you want Netzac to save the password for \"%1\" on %2 in ZacOS Keychain?")
+            .arg(username, host),
+        &dlg);
+    msgLbl->setWordWrap(true);
+    top->addWidget(iconLbl);
+    top->addWidget(msgLbl, 1);
+    lay->addLayout(top);
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->addStretch(1);
+    QPushButton *noBtn = makeDialogButton(ztr("Not Now"), false, &dlg);
+    QPushButton *yesBtn = makeDialogButton(ztr("Save Password"), true, &dlg);
+    yesBtn->setMinimumWidth(130);
+    connect(noBtn, &QPushButton::clicked, &dlg, &QDialog::reject);
+    connect(yesBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
+    btnRow->addWidget(noBtn);
+    btnRow->addWidget(yesBtn);
+    lay->addLayout(btnRow);
+
+    if (dlg.exec() == QDialog::Accepted) {
+        PasswordStorage::saveCredential(host, username, password);
+        if (m_statusLabel)
+            m_statusLabel->setStatusText(ztr("Saved password for %1 in ZacOS Keychain").arg(host));
     }
 }
 

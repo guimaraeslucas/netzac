@@ -75,6 +75,9 @@ struct NetzacPreferences {
     int lastActiveTab = 0;
     QString searchEngineId;
     bool autoloadImages = true;
+    bool enableJavaScript = true;
+    bool rememberPasswords = true;
+    bool showNavButtonText = true;
     CalmConfig calm;
 
     QVector<PersonalToolbarItem> personalToolbar;
@@ -98,6 +101,7 @@ struct NetzacPreferences {
 
     static NetzacPreferences defaults();
     static NetzacPreferences load();
+    static void resetAll();
     void save() const;
     static void saveLastUrl(const QString &url);
     static void saveLastTabs(const QStringList &urls, int activeIndex);
@@ -112,6 +116,19 @@ struct NetzacPreferences {
     static QVector<PersonalToolbarItem> defaultPersonalToolbar();
     static QString defaultChromeUserAgent();
     static QString userAgentForPreset(const QString &presetId);
+};
+
+class PasswordStorage {
+public:
+    struct Credential {
+        QString username;
+        QString password;
+    };
+
+    static bool isAvailable();
+    static bool saveCredential(const QString &host, const QString &username, const QString &password);
+    static bool lookupCredential(const QString &host, Credential *out);
+    static void clearAll();
 };
 
 QWebEngineProfile *netzacProfile();

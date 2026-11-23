@@ -1,5 +1,7 @@
 #include "preferences.h"
 
+#include "bookmarks.h"
+#include "history.h"
 #include "i18n.h"
 #include "webview.h"
 
@@ -21,11 +23,11 @@
 namespace {
 
 constexpr const char *kChromeLinuxUa =
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) NetZacNavigator/1.0 Chrome/140.0.0.0 Safari/537.36";
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) NetZacNavigator/1.0 Chrome/200.0.0.0 Safari/900.36";
 constexpr const char *kFirefoxLinuxUa =
-    "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 NetZacNavigator/1.0 Firefox/140.0";
+    "Mozilla/5.0 (X11; Linux x86_64; rv:200.0) Gecko/20100101 NetZacNavigator/1.0 Firefox/200.0";
 constexpr const char *kSafariMacUa =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11_15_7) AppleWebKit/700.1.15 (KHTML, like Gecko) Version/17.6 NetZacNavigator/1.0 Safari/605.1.15";
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_15_7) AppleWebKit/900.1.15 (KHTML, like Gecko) Version/17.6 NetZacNavigator/1.0 Safari/900.1.15";
 constexpr const char *kNetzacMacUa =
     "Mozilla/4.08 (Macintosh; U; PPC) NetZacNavigator/1.0";
 
@@ -100,6 +102,9 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.lastUrl.clear();
     prefs.searchEngineId = QStringLiteral("duckduckgo");
     prefs.autoloadImages = true;
+    prefs.enableJavaScript = true;
+    prefs.rememberPasswords = true;
+    prefs.showNavButtonText = true;
     prefs.calm = CalmConfig();
     prefs.personalToolbar = defaultPersonalToolbar();
     prefs.mailUrl.clear();
@@ -147,6 +152,9 @@ NetzacPreferences NetzacPreferences::load()
     prefs.lastActiveTab = qMax(0, s.value(QStringLiteral("navigator/lastActiveTab"), 0).toInt());
     prefs.searchEngineId = s.value(QStringLiteral("navigator/searchEngine"), prefs.searchEngineId).toString();
     prefs.autoloadImages = s.value(QStringLiteral("navigator/autoloadImages"), prefs.autoloadImages).toBool();
+    prefs.enableJavaScript = s.value(QStringLiteral("navigator/enableJavaScript"), prefs.enableJavaScript).toBool();
+    prefs.rememberPasswords = s.value(QStringLiteral("navigator/rememberPasswords"), prefs.rememberPasswords).toBool();
+    prefs.showNavButtonText = s.value(QStringLiteral("navigator/showNavButtonText"), prefs.showNavButtonText).toBool();
 
     const int calmJsVal = qBound(0, s.value(QStringLiteral("calm/jsDetection"), int(prefs.calm.jsDetection)).toInt(), 2);
     prefs.calm.jsDetection = static_cast<CalmJsDetection>(calmJsVal);
@@ -245,6 +253,9 @@ void NetzacPreferences::save() const
         s.setValue(QStringLiteral("navigator/lastUrl"), lastUrl);
     s.setValue(QStringLiteral("navigator/searchEngine"), searchEngineId);
     s.setValue(QStringLiteral("navigator/autoloadImages"), autoloadImages);
+    s.setValue(QStringLiteral("navigator/enableJavaScript"), enableJavaScript);
+    s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
+    s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
 
     s.setValue(QStringLiteral("calm/jsDetection"), int(calm.jsDetection));
     s.setValue(QStringLiteral("calm/layoutMode"), int(calm.layoutMode));
@@ -293,6 +304,28 @@ void NetzacPreferences::save() const
 
     s.setValue(QStringLiteral("userAgent/preset"), userAgentPreset);
     s.setValue(QStringLiteral("userAgent/value"), userAgent);
+}
+
+void NetzacPreferences::resetAll()
+{
+    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+    const QString settingsFile = s.fileName();
+    s.clear();
+    s.sync();
+    if (!settingsFile.isEmpty())
+        QFile::remove(settingsFile);
+
+    QFile::remove(BookmarkStorage::defaultFilePath());
+    BookmarkStorage::save(BookmarkStorage::defaultBookmarks());
+    HistoryStorage::save({});
+    PasswordStorage::clearAll();
+
+    if (QWebEngineProfile *profile = netzacProfile()) {
+        if (QWebEngineCookieStore *cookies = profile->cookieStore())
+            cookies->deleteAllCookies();
+        profile->clearHttpCache();
+    }
+    defaults().save();
 }
 
 void NetzacPreferences::saveLastUrl(const QString &url)
@@ -432,6 +465,83 @@ bool NetzacPreferences::setAsDefaultBrowser()
         QProcess::execute(QStringLiteral("update-desktop-database"), {userApps});
 
     return ok || isDefaultBrowser();
+}
+
+bool PasswordStorage::isAvailable()
+{
+    return !QStandardPaths::findExecutable(QStringLiteral("secret-tool")).isEmpty();
+}
+
+bool PasswordStorage::saveCredential(const QString &host, const QString &username, const QString &password)
+{
+    const QString cleanHost = host.trimmed().toLower();
+    const QString cleanUser = username.trimmed();
+    if (cleanHost.isEmpty() || cleanUser.isEmpty() || password.isEmpty() || !isAvailable())
+        return false;
+
+    QProcess proc;
+    proc.start(
+        QStringLiteral("secret-tool"),
+        {
+            QStringLiteral("store"),
+            QStringLiteral("--label=Netzac (%1)").arg(cleanHost),
+            QStringLiteral("application"), QStringLiteral("netzac"),
+            QStringLiteral("origin"), cleanHost,
+            QStringLiteral("username"), cleanUser,
+        });
+    if (!proc.waitForStarted(1500))
+        return false;
+    proc.write(password.toUtf8());
+    proc.closeWriteChannel();
+    return proc.waitForFinished(3000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0;
+}
+
+bool PasswordStorage::lookupCredential(const QString &host, Credential *out)
+{
+    const QString cleanHost = host.trimmed().toLower();
+    if (cleanHost.isEmpty() || !out || !isAvailable())
+        return false;
+
+    QProcess proc;
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start(
+        QStringLiteral("secret-tool"),
+        {
+            QStringLiteral("search"),
+            QStringLiteral("--all"),
+            QStringLiteral("application"), QStringLiteral("netzac"),
+            QStringLiteral("origin"), cleanHost,
+        });
+    if (!proc.waitForFinished(2500) || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+        return false;
+
+    QString foundUser;
+    QString foundPass;
+    const QString output = QString::fromUtf8(proc.readAllStandardOutput());
+    const QStringList lines = output.split(QLatin1Char('\n'));
+    for (const QString &rawLine : lines) {
+        const QString line = rawLine.trimmed();
+        if (line.startsWith(QLatin1String("attribute.username = "))) {
+            foundUser = line.mid(21).trimmed();
+        } else if (line.startsWith(QLatin1String("secret = "))) {
+            foundPass = line.mid(9);
+        }
+        if (!foundUser.isEmpty() && !foundPass.isEmpty()) {
+            out->username = foundUser;
+            out->password = foundPass;
+            return true;
+        }
+    }
+    return false;
+}
+
+void PasswordStorage::clearAll()
+{
+    if (!isAvailable())
+        return;
+    QProcess::execute(
+        QStringLiteral("secret-tool"),
+        {QStringLiteral("clear"), QStringLiteral("application"), QStringLiteral("netzac")});
 }
 
 QWebEngineProfile *netzacProfile()

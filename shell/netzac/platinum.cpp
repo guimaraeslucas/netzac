@@ -8,6 +8,7 @@
 #include <QPoint>
 #include <QPolygon>
 #include <QSet>
+#include <QStyle>
 #include <QStyleFactory>
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold)

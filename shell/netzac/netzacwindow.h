@@ -138,6 +138,9 @@ private:
     void updateNavStates();
     void loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrl);
     void buildNavHistoryMenu(QMenu &menu, bool back);
+    void applyNavToolbarCompact(bool showText);
+    void handleCredentialSubmitted(const QString &host, const QString &username, const QString &password);
+    void installPasswordHelpers(NetzacWebPage *page, const QUrl &url);
     void writeSavedHtml(const QString &path, const QString &htmlText);
     QWebEngineView *createBrowserWindow(NetzacWebView *opener, QWebEnginePage::WebWindowType type);
 
@@ -161,9 +164,12 @@ private:
     QMenu *m_goMenu = nullptr;
     QMenu *m_bookmarksMenu = nullptr;
     QAction *m_actShowNav = nullptr;
+    QAction *m_actShowNavText = nullptr;
     QAction *m_actShowLoc = nullptr;
     QAction *m_actShowPers = nullptr;
     QAction *m_actShowStatus = nullptr;
+    bool m_preFsShowPers = true;
+    bool m_preFsShowNavText = true;
     QAction *m_actCalmMode = nullptr;
     QAction *m_actStopMenu = nullptr;
     QAction *m_actFullScreen = nullptr;

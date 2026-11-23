@@ -57,8 +57,8 @@ msgid "<p>Unknown built-in Navigator location.</p>"
 msgstr "<p>موقع داخلي غير معروف في Navigator.</p>"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "<p>Welcome aboard <b>Netzac Navigator 4.0</b> running on <b>ZacOS 9</b>.</p><p>Quick links to explore the classic &amp; text-friendly Web:</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>Classic search engine for retro browsers</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>Search engine for classic web pages</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>Fast headlines formatted for classic Macs</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>Browse snapshots of the 1990s web</span></a></div><div class=\"credits-box\"><h2>Credits &amp; Community</h2><p>Netzac started as an initial idea by <b>Lucas Guimarães</b>. We hope to count on the full support of the <b>ZacOS 9</b> community for contributions, ideas, and pull requests at <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p><p style=\"margin-bottom:0;\">Special thanks to <b>Adam Lawson (@chromasystemprofessional)</b> for creating this incredible ZacOS 9 project.</p></div>"
-msgstr "<p>مرحباً بك على متن <b>Netzac Navigator 4.0</b> على نظام <b>ZacOS 9</b>.</p><p>روابط سريعة لاستكشاف الويب الكلاسيكي والخفيف:</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>محرك بحث كلاسيكي للمتصفحات القديمة</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>محرك بحث لصفحات الويب الكلاسيكية</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>عناوين أخبار سريعة لأجهزة ماك الكلاسيكية</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>تصفح أرشيف الويب في التسعينيات</span></a></div><div class=\"credits-box\"><h2>الشكر والمجتمع</h2><p>بدأ Netzac كفكرة أولية من <b>Lucas Guimarães</b>. نأمل بدعم مجتمع <b>ZacOS 9</b> الكامل للمساهمات والأفكار وطلبات الدمج عبر <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p><p style=\"margin-bottom:0;\">شكر خاص لـ <b>Adam Lawson (@chromasystemprofessional)</b> على إنشاء مشروع ZacOS 9 الرائع.</p></div>"
+msgid "<p>Welcome aboard <b>Netzac Navigator 1.0</b> running on <b>ZacOS 9</b>.</p><p>Quick links to explore the classic &amp; text-friendly Web:</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>Classic search engine for retro browsers</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>Search engine for classic web pages</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>Fast headlines formatted for classic Macs</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>Browse snapshots of the 1990s web</span></a></div><div class=\"credits-box\"><h2>Credits &amp; Community</h2><p>Netzac started as an initial idea by <b>Lucas Guimarães</b>. We hope to count on the full support of the <b>ZacOS 9</b> community for contributions, ideas, and pull requests at <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p><p style=\"margin-bottom:0;\">Special thanks to <b>Adam Lawson (@chromasystemprofessional)</b> for creating this incredible ZacOS 9 project.</p></div>"
+msgstr "<p>مرحباً بك على متن <b>Netzac Navigator 1.0</b> على نظام <b>ZacOS 9</b>.</p><p>روابط سريعة لاستكشاف الويب الكلاسيكي والخفيف:</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>محرك بحث كلاسيكي للمتصفحات القديمة</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>محرك بحث لصفحات الويب الكلاسيكية</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>عناوين أخبار سريعة لأجهزة ماك الكلاسيكية</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>تصفح أرشيف الويب في التسعينيات</span></a></div><div class=\"credits-box\"><h2>الشكر والمجتمع</h2><p>بدأ Netzac كفكرة أولية من <b>Lucas Guimarães</b>. نأمل بدعم مجتمع <b>ZacOS 9</b> الكامل للمساهمات والأفكار وطلبات الدمج عبر <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p><p style=\"margin-bottom:0;\">شكر خاص لـ <b>Adam Lawson (@chromasystemprofessional)</b> على إنشاء مشروع ZacOS 9 الرائع.</p></div>"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "<ul class=\"shortcut-list\"><li><span><b>Collapse Toolbars</b></span><span>Click the ribbed grip on the left of any toolbar</span></li><li><span><b>Open Page</b></span><span><code>Ctrl+O</code></span></li><li><span><b>New / Close Tab</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>Find in Page / Find Again</b></span><span><code>Ctrl+F</code> or <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>Zoom In / Out / Reset</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>Add / Manage Bookmarks</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>Reload / Stop</b></span><span><code>Ctrl+R</code> or <code>F5</code> / <code>Esc</code></span></li><li><span><b>Full Screen</b></span><span><code>F11</code></span></li><li><span><b>Calm Mode</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>Page Source / Info</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
@@ -97,8 +97,8 @@ msgid "Add Toolbar Button"
 msgstr "إضافة زر للشريط"
 
 #: shell/netzac/dialogs.cpp
-msgid "Add..."
-msgstr "إضافة..."
+msgid "Add"
+msgstr "إضافة"
 
 #: shell/netzac/dialogs.cpp
 msgid "All cookies cleared."
@@ -229,24 +229,20 @@ msgid "Collapse %1"
 msgstr "طي %1"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Communicator"
-msgstr "Communicator"
+msgid "Navigator Chat Quick Link"
+msgstr "رابط سريع لدردشة Navigator"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Communicator Chat Quick Link"
-msgstr "رابط سريع لدردشة Communicator"
+msgid "Navigator Git Quick Link"
+msgstr "رابط سريع لـ Git في Navigator"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Communicator Git Quick Link"
-msgstr "رابط سريع لـ Git في Communicator"
+msgid "Navigator Mail Quick Link"
+msgstr "رابط سريع لبريد Navigator"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Communicator Mail Quick Link"
-msgstr "رابط سريع لبريد Communicator"
-
-#: shell/netzac/netzacwindow.cpp
-msgid "Communicator Platinum Edition on ZacOS 9"
-msgstr "إصدار Communicator Platinum على ZacOS 9"
+msgid "Navigator Platinum Edition on ZacOS 9"
+msgstr "إصدار Navigator Platinum على ZacOS 9"
 
 #: shell/netzac/dialogs.cpp
 msgid "Configure Proxies to Access the Internet:"
@@ -387,10 +383,6 @@ msgstr "تحرير موقع المجلد"
 #: shell/netzac/dialogs.cpp
 msgid "Edit Toolbar Button"
 msgstr "تحرير زر الشريط"
-
-#: shell/netzac/dialogs.cpp
-msgid "Edit..."
-msgstr "تحرير..."
 
 #: shell/netzac/dialogs.cpp
 msgid "Elements to Remove & Clean:"
@@ -693,8 +685,8 @@ msgid "Netzac - Mail"
 msgstr "Netzac - Mail"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Netzac Communicator 4.0 &mdash; ZacOS 9 Platinum Edition"
-msgstr "Netzac Communicator 4.0 &mdash; إصدار ZacOS 9 Platinum"
+msgid "Netzac Navigator 1.0 &mdash; ZacOS 9 Platinum Edition"
+msgstr "Netzac Navigator 1.0 &mdash; إصدار ZacOS 9 Platinum"
 
 #: shell/netzac/widgets.cpp
 msgid "Netzac Home"
@@ -704,35 +696,9 @@ msgstr "رئيسية Netzac"
 msgid "Netzac Navigator"
 msgstr "Netzac Navigator"
 
-#: shell/netzac/dialogs.cpp
-msgid ""
-"Netzac Navigator (ZacOS 9 / Platinum)\n"
-"\n"
-"Initial idea by Lucas Guimarães. We count on the support of the ZacOS 9 community for contributions at:\n"
-"https://github.com/guimaraeslucas/netzac\n"
-"\n"
-"Special thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
-msgstr ""
-"Netzac Navigator (ZacOS 9 / Platinum)\n"
-"\n"
-"فكرة أولية من Lucas Guimarães. نعتمد على دعم مجتمع ZacOS 9 للمساهمات عبر:\n"
-"https://github.com/guimaraeslucas/netzac\n"
-"\n"
-"شكر خاص لـ Adam Lawson (@chromasystemprofessional) على إنشاء مشروع ZacOS 9 الرائع."
-
 #: shell/netzac/netzacwindow.cpp
 msgid "Netzac Navigator Help"
 msgstr "مساعدة Netzac Navigator"
-
-#: shell/netzac/netzacwindow.cpp
-msgid ""
-"Netzac Navigator is not currently set as your default web browser.\n"
-"\n"
-"Would you like to set Netzac as your default browser for web links?"
-msgstr ""
-"Netzac Navigator غير معيّن حالياً كمتصفح الويب الافتراضي.\n"
-"\n"
-"هل ترغب في تعيين Netzac كمتصفح افتراضي لروابط الويب؟"
 
 #: shell/netzac/dialogs.cpp
 msgid "Netzac is currently your default browser."
@@ -990,14 +956,6 @@ msgstr "تعيين كافتراضي"
 msgid "Set as Default Browser"
 msgstr "تعيين كمتصفح افتراضي"
 
-#: shell/netzac/dialogs.cpp
-msgid ""
-"Set custom URLs for the bottom-right Mail, Chat and Git buttons.\n"
-"Leave a field empty to open its built-in about: page."
-msgstr ""
-"عيّن روابط مخصصة لأزرار البريد والدردشة وGit في الزاوية السفلية.\n"
-"اترك الحقل فارغاً لفتح صفحة about: المدمجة."
-
 #: shell/netzac/widgets.cpp
 msgid "Show location history"
 msgstr "إظهار سجل العناوين"
@@ -1049,18 +1007,6 @@ msgstr "الرابط المستهدف:"
 #: shell/netzac/bookmarks.cpp shell/netzac/preferences.cpp
 msgid "The Old Net"
 msgstr "The Old Net"
-
-#: shell/netzac/netzacwindow.cpp
-msgid ""
-"Title: %1\n"
-"Location: %2\n"
-"\n"
-"Security: %3"
-msgstr ""
-"العنوان: %1\n"
-"الموقع: %2\n"
-"\n"
-"الأمان: %3"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Toggle Calm reading mode (configure filters in Edit > Preferences > Calm Mode)"
@@ -1119,8 +1065,8 @@ msgid "Welcome to Netzac"
 msgstr "مرحباً بك في Netzac"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Welcome to Netzac Navigator 4.0"
-msgstr "مرحباً بك في Netzac Navigator 4.0"
+msgid "Welcome to Netzac Navigator 1.0"
+msgstr "مرحباً بك في Netzac Navigator 1.0"
 
 #: shell/netzac/dialogs.cpp
 msgid "When Netzac Starts:"
@@ -1161,3 +1107,36 @@ msgstr "التكبير: %1%"
 #: shell/netzac/netzacwindow.cpp
 msgid "Zoom: 100%"
 msgstr "Zoom: 100%"
+
+msgid "Navigation Button Labels"
+msgstr "تسميات أزرار التنقل"
+
+msgid "Enable JavaScript"
+msgstr "تمكين JavaScript"
+
+msgid "Remember passwords (ZacOS Keychain)"
+msgstr "تذكر كلمات المرور (سلسلة مفاتيح ZacOS)"
+
+msgid "Reset All Settings..."
+msgstr "إعادة تعيين كل الإعدادات..."
+
+msgid "Reset All Settings"
+msgstr "إعادة تعيين كل الإعدادات"
+
+msgid "This will reset all preferences, bookmarks, history, Personal Toolbar, and saved Netzac passwords back to their defaults.\n\nDo you want to continue?"
+msgstr "سيؤدي هذا إلى إعادة تعيين جميع التفضيلات والإشارات المرجعية والسجل وشريط الأدوات الشخصي وكلمات مرور Netzac المحفوظة إلى الإعدادات الافتراضية.\n\nهل تريد المتابعة؟"
+
+msgid "Reset Everything"
+msgstr "إعادة تعيين الكل"
+
+msgid "Save Password"
+msgstr "حفظ كلمة المرور"
+
+msgid "Do you want Netzac to save the password for \"%1\" on %2 in ZacOS Keychain?"
+msgstr "هل تريد أن يحفظ Netzac كلمة مرور \"%1\" على %2 في سلسلة مفاتيح ZacOS؟"
+
+msgid "Saved password for %1 in ZacOS Keychain"
+msgstr "تم حفظ كلمة المرور لـ %1 في سلسلة مفاتيح ZacOS"
+
+msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
+msgstr "Netzac Navigator (ZacOS 9)\n\nتم التطوير بواسطة Lucas Guimarães - G3Pix (@guimaraeslucas). نعتمد على دعم مجتمع ZacOS 9 للمساهمة في:\n%1\n\nشكر خاص لـ Adam Lawson (@chromasystemprofessional) لإنشائه مشروع ZacOS 9 الرائع."

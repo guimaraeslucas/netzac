@@ -23,6 +23,7 @@ public:
 
 signals:
     void mainFrameNavigationRequested(const QUrl &url, QWebEnginePage::NavigationType type);
+    void credentialSubmitted(const QString &host, const QString &username, const QString &password);
 
 protected:
     bool acceptNavigationRequest(const QUrl &url, NavigationType type, bool isMainFrame) override;

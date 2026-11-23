@@ -1,6 +1,12 @@
 #include "webview.h"
 
+#include <QApplication>
 #include <QContextMenuEvent>
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QPalette>
 #include <QUuid>
 #include <QWebEngineContextMenuRequest>
 #include <QWebEngineProfile>
@@ -16,77 +22,185 @@ const QString &popupTokenPrefix()
     return prefix;
 }
 
+struct PlatinumAccentRamp {
+    const char *id;
+    const char *gripHi;
+    const char *light;
+    const char *body;
+    const char *dark;
+    const char *shadow;
+};
+
+PlatinumAccentRamp currentZacosAccentRamp()
+{
+    static constexpr PlatinumAccentRamp kAccents[] = {
+        {"lavender", "#eeeeee", "#ccccff", "#9999ff", "#6666cc", "#333399"},
+        {"graphite", "#eeeeee", "#e6e6e6", "#cccccc", "#999999", "#666666"},
+        {"gold",     "#eeeeee", "#fff2cc", "#ffe699", "#ccb366", "#998033"},
+        {"bronze",   "#eeeeee", "#f4e3d7", "#e8c7b0", "#b5947d", "#82614a"},
+        {"ivy",      "#ccffcc", "#66ff99", "#33cc66", "#339966", "#006633"},
+        {"ocean",    "#eeeeee", "#cfedfc", "#9edbfa", "#6ba8c7", "#387594"},
+        {"rose",     "#eeeeee", "#f9d2df", "#f2a6bf", "#bf738c", "#8c4059"},
+        {"plum",     "#eeeeee", "#f0d6f5", "#e0adeb", "#ad7ab8", "#7a4785"},
+    };
+
+    QString configRoot = qEnvironmentVariable("XDG_CONFIG_HOME");
+    if (configRoot.isEmpty())
+        configRoot = QDir::homePath() + QStringLiteral("/.config");
+
+    QString accentId = QStringLiteral("lavender");
+    QFile desktopConf(configRoot + QStringLiteral("/zacos9/desktop.conf"));
+    if (desktopConf.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        while (!desktopConf.atEnd()) {
+            const QString line = QString::fromUtf8(desktopConf.readLine()).trimmed();
+            if (line.startsWith(QLatin1String("accent="))) {
+                accentId = line.mid(7).trimmed().toLower();
+                break;
+            }
+        }
+    }
+
+    for (const PlatinumAccentRamp &ramp : kAccents) {
+        if (accentId == QLatin1String(ramp.id))
+            return ramp;
+    }
+    return kAccents[0];
+}
+
 QString platinumScrollbarCss()
 {
-    return QStringLiteral(R"CSS(
-*, *::before, *::after {
+    const PlatinumAccentRamp ac = currentZacosAccentRamp();
+    auto esc = [](const char *hex) {
+        return QString::fromLatin1(hex).replace(QLatin1Char('#'), QStringLiteral("%23"));
+    };
+
+    // Note: Do NOT set scrollbar-color to explicit colors here; in Chromium, a non-auto
+    // scrollbar-color disables all ::-webkit-scrollbar pseudo-elements (hiding arrow buttons
+    // and the 3D Platinum thumb/caret). Setting both to 'auto !important' neutralizes page
+    // overrides so the full ::-webkit-scrollbar Platinum styling always renders.
+    QString css = QStringLiteral(R"CSS(
+*, *::before, *::after, html, body {
   scrollbar-width: auto !important;
   scrollbar-color: auto !important;
 }
 ::-webkit-scrollbar {
   width: 16px !important;
   height: 16px !important;
-  background-color: #cccccc !important;
+  background-color: #aaaaaa !important;
+  -webkit-appearance: none !important;
 }
 ::-webkit-scrollbar-track {
-  background-color: #cccccc !important;
-  border: 1px solid #000000 !important;
-  box-shadow: inset 1px 1px 0 #999999, inset -1px -1px 0 #eeeeee !important;
+  background-color: #aaaaaa !important;
+  border-radius: 0 !important;
+}
+::-webkit-scrollbar-track:vertical {
+  border-left: 1px solid #000000 !important;
+  border-right: 1px solid #000000 !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: inset 1px 1px 0 #777777, inset 2px 2px 0 #888888, inset -1px 0 0 #cccccc, inset -2px 0 0 #bbbbbb !important;
+}
+::-webkit-scrollbar-track:horizontal {
+  border-top: 1px solid #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+  border-left: none !important;
+  border-right: none !important;
+  box-shadow: inset 1px 1px 0 #777777, inset 2px 2px 0 #888888, inset 0 -1px 0 #cccccc, inset 0 -2px 0 #bbbbbb !important;
+}
+::-webkit-scrollbar-track-piece {
+  background-color: transparent !important;
+  border: none !important;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #ccccdd !important;
+  background-color: __BODY__ !important;
   border: 1px solid #000000 !important;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #777788 !important;
+  border-radius: 0 !important;
   background-repeat: no-repeat !important;
   background-position: center !important;
 }
 ::-webkit-scrollbar-thumb:vertical {
-  min-height: 24px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect x='0' y='0' width='8' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='1' width='8' height='1' fill='%23666677'/%3E%3Crect x='0' y='3' width='8' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='4' width='8' height='1' fill='%23666677'/%3E%3Crect x='0' y='6' width='8' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='7' width='8' height='1' fill='%23666677'/%3E%3C/svg%3E") !important;
+  min-height: 18px !important;
+  box-shadow: inset 1px 1px 0 __LIGHT__, inset -1px -1px 0 __DARK__, 0 1px 0 #777777, 0 2px 0 #888888 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='0' y='0' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='1' y='0' width='6' height='1' fill='__LIGHT_ENC__'/%3E%3Crect x='1' y='1' width='7' height='1' fill='__SHADOW_ENC__'/%3E%3Crect x='0' y='2' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='1' y='2' width='6' height='1' fill='__LIGHT_ENC__'/%3E%3Crect x='1' y='3' width='7' height='1' fill='__SHADOW_ENC__'/%3E%3Crect x='0' y='4' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='1' y='4' width='6' height='1' fill='__LIGHT_ENC__'/%3E%3Crect x='1' y='5' width='7' height='1' fill='__SHADOW_ENC__'/%3E%3Crect x='0' y='6' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='1' y='6' width='6' height='1' fill='__LIGHT_ENC__'/%3E%3Crect x='1' y='7' width='7' height='1' fill='__SHADOW_ENC__'/%3E%3C/svg%3E") !important;
 }
 ::-webkit-scrollbar-thumb:horizontal {
-  min-width: 24px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect x='0' y='0' width='1' height='8' fill='%23ffffff'/%3E%3Crect x='1' y='0' width='1' height='8' fill='%23666677'/%3E%3Crect x='3' y='0' width='1' height='8' fill='%23ffffff'/%3E%3Crect x='4' y='0' width='1' height='8' fill='%23666677'/%3E%3Crect x='6' y='0' width='1' height='8' fill='%23ffffff'/%3E%3Crect x='7' y='0' width='1' height='8' fill='%23666677'/%3E%3C/svg%3E") !important;
+  min-width: 18px !important;
+  box-shadow: inset 1px 1px 0 __LIGHT__, inset -1px -1px 0 __DARK__, 1px 0 0 #777777, 2px 0 0 #888888 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='0' y='0' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='0' y='1' width='1' height='6' fill='__LIGHT_ENC__'/%3E%3Crect x='1' y='1' width='1' height='7' fill='__SHADOW_ENC__'/%3E%3Crect x='2' y='0' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='2' y='1' width='1' height='6' fill='__LIGHT_ENC__'/%3E%3Crect x='3' y='1' width='1' height='7' fill='__SHADOW_ENC__'/%3E%3Crect x='4' y='0' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='4' y='1' width='1' height='6' fill='__LIGHT_ENC__'/%3E%3Crect x='5' y='1' width='1' height='7' fill='__SHADOW_ENC__'/%3E%3Crect x='6' y='0' width='1' height='1' fill='__GRIP_HI_ENC__'/%3E%3Crect x='6' y='1' width='1' height='6' fill='__LIGHT_ENC__'/%3E%3Crect x='7' y='1' width='1' height='7' fill='__SHADOW_ENC__'/%3E%3C/svg%3E") !important;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #d8d8ea !important;
+  background-color: __BODY__ !important;
 }
-::-webkit-scrollbar-thumb:active {
-  background-color: #9999bb !important;
-  box-shadow: inset 1px 1px 0 #666688, inset -1px -1px 0 #ddddee !important;
+::-webkit-scrollbar-thumb:vertical:active {
+  background-color: __DARK__ !important;
+  box-shadow: inset 1px 1px 0 __SHADOW__, inset -1px -1px 0 __LIGHT__, 0 1px 0 #777777, 0 2px 0 #888888 !important;
 }
-::-webkit-scrollbar-button:single-button {
+::-webkit-scrollbar-thumb:horizontal:active {
+  background-color: __DARK__ !important;
+  box-shadow: inset 1px 1px 0 __SHADOW__, inset -1px -1px 0 __LIGHT__, 1px 0 0 #777777, 2px 0 0 #888888 !important;
+}
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+::-webkit-scrollbar-button:single-button,
+::-webkit-scrollbar-button:vertical:start:decrement,
+::-webkit-scrollbar-button:vertical:end:increment,
+::-webkit-scrollbar-button:horizontal:start:decrement,
+::-webkit-scrollbar-button:horizontal:end:increment {
   display: block !important;
   width: 16px !important;
   height: 16px !important;
   background-color: #dddddd !important;
   border: 1px solid #000000 !important;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888 !important;
+  border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #bbbbbb !important;
   background-repeat: no-repeat !important;
   background-position: center !important;
 }
-::-webkit-scrollbar-button:single-button:active {
-  background-color: #bbbbcc !important;
-  box-shadow: inset 1px 1px 0 #777777, inset -1px -1px 0 #eeeeee !important;
+::-webkit-scrollbar-button:single-button:hover,
+::-webkit-scrollbar-button:vertical:start:decrement:hover,
+::-webkit-scrollbar-button:vertical:end:increment:hover,
+::-webkit-scrollbar-button:horizontal:start:decrement:hover,
+::-webkit-scrollbar-button:horizontal:end:increment:hover {
+  background-color: #e6e6e6 !important;
 }
-::-webkit-scrollbar-button:single-button:vertical:decrement {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpolygon points='4,2 8,6 0,6' fill='%23000000'/%3E%3C/svg%3E") !important;
+::-webkit-scrollbar-button:single-button:active,
+::-webkit-scrollbar-button:vertical:start:decrement:active,
+::-webkit-scrollbar-button:vertical:end:increment:active,
+::-webkit-scrollbar-button:horizontal:start:decrement:active,
+::-webkit-scrollbar-button:horizontal:end:increment:active {
+  background-color: #999999 !important;
+  box-shadow: inset 1px 1px 0 #666666, inset -1px -1px 0 #cccccc !important;
 }
-::-webkit-scrollbar-button:single-button:vertical:increment {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpolygon points='0,3 8,3 4,7' fill='%23000000'/%3E%3C/svg%3E") !important;
+::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' shape-rendering='crispEdges'%3E%3Crect x='6' y='5' width='2' height='1' fill='%23000000'/%3E%3Crect x='5' y='6' width='4' height='1' fill='%23000000'/%3E%3Crect x='4' y='7' width='6' height='1' fill='%23000000'/%3E%3Crect x='3' y='8' width='8' height='1' fill='%23000000'/%3E%3C/svg%3E") !important;
 }
-::-webkit-scrollbar-button:single-button:horizontal:decrement {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpolygon points='2,4 6,0 6,8' fill='%23000000'/%3E%3C/svg%3E") !important;
+::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' shape-rendering='crispEdges'%3E%3Crect x='3' y='5' width='8' height='1' fill='%23000000'/%3E%3Crect x='4' y='6' width='6' height='1' fill='%23000000'/%3E%3Crect x='5' y='7' width='4' height='1' fill='%23000000'/%3E%3Crect x='6' y='8' width='2' height='1' fill='%23000000'/%3E%3C/svg%3E") !important;
 }
-::-webkit-scrollbar-button:single-button:horizontal:increment {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9'%3E%3Cpolygon points='3,0 7,4 3,8' fill='%23000000'/%3E%3C/svg%3E") !important;
+::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' shape-rendering='crispEdges'%3E%3Crect x='5' y='6' width='1' height='2' fill='%23000000'/%3E%3Crect x='6' y='5' width='1' height='4' fill='%23000000'/%3E%3Crect x='7' y='4' width='1' height='6' fill='%23000000'/%3E%3Crect x='8' y='3' width='1' height='8' fill='%23000000'/%3E%3C/svg%3E") !important;
+}
+::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' shape-rendering='crispEdges'%3E%3Crect x='5' y='3' width='1' height='8' fill='%23000000'/%3E%3Crect x='6' y='4' width='1' height='6' fill='%23000000'/%3E%3Crect x='7' y='5' width='1' height='4' fill='%23000000'/%3E%3Crect x='8' y='6' width='1' height='2' fill='%23000000'/%3E%3C/svg%3E") !important;
 }
 ::-webkit-scrollbar-corner {
   background-color: #dddddd !important;
   border: 1px solid #000000 !important;
-  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888 !important;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #bbbbbb !important;
 }
 )CSS");
+
+    css.replace(QStringLiteral("__BODY__"), QString::fromLatin1(ac.body));
+    css.replace(QStringLiteral("__LIGHT__"), QString::fromLatin1(ac.light));
+    css.replace(QStringLiteral("__DARK__"), QString::fromLatin1(ac.dark));
+    css.replace(QStringLiteral("__SHADOW__"), QString::fromLatin1(ac.shadow));
+    css.replace(QStringLiteral("__GRIP_HI_ENC__"), esc(ac.gripHi));
+    css.replace(QStringLiteral("__LIGHT_ENC__"), esc(ac.light));
+    css.replace(QStringLiteral("__SHADOW_ENC__"), esc(ac.shadow));
+    return css;
 }
 
 }  // namespace
@@ -101,7 +215,9 @@ void installNetzacScripts(QWebEngineProfile *profile)
         return;
 
     const QString scrollbarScriptName = QStringLiteral("netzac-platinum-scrollbars");
-    if (scripts->find(scrollbarScriptName).isEmpty()) {
+    for (const QWebEngineScript &old : scripts->find(scrollbarScriptName))
+        scripts->remove(old);
+    {
         QString css = platinumScrollbarCss();
         css.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
         css.replace(QLatin1Char('`'), QStringLiteral("\\`"));
@@ -112,17 +228,30 @@ void installNetzacScripts(QWebEngineProfile *profile)
             "  var id = 'zacos9-platinum-scrollbars';\n"
             "  var css = `%1`;\n"
             "  function ensureStyle() {\n"
-            "    if (document.getElementById(id)) return;\n"
+            "    var existing = document.getElementById(id);\n"
             "    var target = document.head || document.documentElement;\n"
             "    if (!target) return;\n"
+            "    if (existing) {\n"
+            "      if (existing.parentNode !== target || existing.nextSibling !== null) {\n"
+            "        target.appendChild(existing);\n"
+            "      }\n"
+            "      return;\n"
+            "    }\n"
             "    var st = document.createElement('style');\n"
             "    st.id = id;\n"
             "    st.textContent = css;\n"
             "    target.appendChild(st);\n"
             "  }\n"
             "  ensureStyle();\n"
-            "  if (document.readyState === 'loading') {\n"
-            "    document.addEventListener('DOMContentLoaded', ensureStyle, { once: true });\n"
+            "  document.addEventListener('DOMContentLoaded', ensureStyle, { once: true });\n"
+            "  window.addEventListener('load', ensureStyle, { once: true });\n"
+            "  if (typeof MutationObserver !== 'undefined') {\n"
+            "    var obs = new MutationObserver(function() {\n"
+            "      if (!document.getElementById(id)) ensureStyle();\n"
+            "    });\n"
+            "    if (document.documentElement) {\n"
+            "      obs.observe(document.documentElement, { childList: true, subtree: true });\n"
+            "    }\n"
             "  }\n"
             "})();\n").arg(css);
 
@@ -189,6 +318,20 @@ void NetzacWebPage::javaScriptConsoleMessage(
     const QString &prefix = popupTokenPrefix();
     if (message.startsWith(prefix)) {
         m_pendingPopupFeatures = message.mid(prefix.size()).trimmed();
+        return;
+    }
+    static constexpr const char *kCredPrefix = "__NETZAC_CRED__:";
+    if (message.startsWith(QLatin1String(kCredPrefix))) {
+        const QByteArray jsonBytes = message.mid(int(strlen(kCredPrefix))).toUtf8();
+        const QJsonDocument doc = QJsonDocument::fromJson(jsonBytes);
+        if (doc.isObject()) {
+            const QJsonObject obj = doc.object();
+            const QString host = obj.value(QStringLiteral("host")).toString().trimmed();
+            const QString user = obj.value(QStringLiteral("user")).toString().trimmed();
+            const QString pass = obj.value(QStringLiteral("pass")).toString();
+            if (!host.isEmpty() && !user.isEmpty() && !pass.isEmpty())
+                emit credentialSubmitted(host, user, pass);
+        }
         return;
     }
     QWebEnginePage::javaScriptConsoleMessage(level, message, lineNumber, sourceID);

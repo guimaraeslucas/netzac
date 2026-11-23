@@ -33,7 +33,19 @@ PlatinumNavButton::PlatinumNavButton(const QString &label, const QString &iconNa
 
     setFixedSize(54, 44);
     setFocusPolicy(Qt::NoFocus);
-    setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 7));
+}
+
+void PlatinumNavButton::setShowText(bool show)
+{
+    if (m_showText == show)
+        return;
+    m_showText = show;
+    if (m_showText)
+        setFixedSize(54, 44);
+    else
+        setFixedSize(30, 28);
+    update();
 }
 
 void PlatinumNavButton::setHistoryMenuProvider(HistoryMenuProvider provider)
@@ -119,15 +131,18 @@ void PlatinumNavButton::paintEvent(QPaintEvent * /*event*/)
     const int offset = pressed ? 1 : 0;
     const QPixmap &pm = isEnabled() ? m_iconPm : m_disabledPm;
     const int ix = (width() - pm.width()) / 2 + offset;
-    const int iy = 5 + offset;
+    const int iy = m_showText ? (5 + offset) : ((height() - pm.height()) / 2 + offset);
     painter.drawPixmap(ix, iy, pm);
 
-    painter.setFont(font());
     const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
     const QColor textColor = palette().color(group, QPalette::ButtonText);
-    painter.setPen(textColor);
-    const QRect textRect(2 + offset, 26 + offset, width() - 4, 14);
-    painter.drawText(textRect, Qt::AlignCenter, m_label);
+
+    if (m_showText) {
+        painter.setFont(font());
+        painter.setPen(textColor);
+        const QRect textRect(2 + offset, 26 + offset, width() - 4, 14);
+        painter.drawText(textRect, Qt::AlignCenter, m_label);
+    }
 
     if (m_historyMenuProvider) {
         const int tx = width() - 9 + offset;
@@ -240,6 +255,15 @@ NetzacThrobber::NetzacThrobber(QWidget *parent)
     connect(&m_timer, &QTimer::timeout, this, &NetzacThrobber::advanceFrame);
 }
 
+void NetzacThrobber::setCompact(bool compact)
+{
+    if (m_compact == compact)
+        return;
+    m_compact = compact;
+    setFixedSize(m_compact ? QSize(28, 28) : QSize(44, 44));
+    update();
+}
+
 void NetzacThrobber::setLoading(bool loading)
 {
     if (loading == m_animating)
@@ -312,13 +336,13 @@ void NetzacThrobber::paintEvent(QPaintEvent * /*event*/)
 
     const int offset = isDown() ? 1 : 0;
     QFont nFont(QStringLiteral("Nimbus Roman"));
-    nFont.setPixelSize(27);
+    nFont.setPixelSize(m_compact ? 17 : 27);
     nFont.setBold(true);
     painter.setFont(nFont);
     painter.setPen(QColor(QStringLiteral("#000000")));
-    painter.drawText(inner.adjusted(1 + offset, offset, 1, -2), Qt::AlignCenter, QStringLiteral("Z"));
+    painter.drawText(inner.adjusted(1 + offset, offset, 1, m_compact ? -1 : -2), Qt::AlignCenter, QStringLiteral("Z"));
     painter.setPen(QColor(QStringLiteral("#ffffff")));
-    painter.drawText(inner.adjusted(offset, -1 + offset, 0, -3), Qt::AlignCenter, QStringLiteral("Z"));
+    painter.drawText(inner.adjusted(offset, -1 + offset, 0, m_compact ? -2 : -3), Qt::AlignCenter, QStringLiteral("Z"));
 }
 
 PlatinumDropArrowButton::PlatinumDropArrowButton(QWidget *parent)

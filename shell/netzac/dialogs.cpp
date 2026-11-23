@@ -2,13 +2,16 @@
 
 #include "bookmarks.h"
 #include "i18n.h"
+#include "netzacwindow.h"
 #include "platinum.h"
 #include "widgets.h"
 
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QDesktopServices>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -36,6 +39,62 @@ QPushButton *makeDialogButton(const QString &text, bool isDefault, QWidget *pare
     btn->setAutoDefault(isDefault);
     btn->setDefault(isDefault);
     return btn;
+}
+
+namespace {
+
+QString runPlatinumFileDialog(
+    QWidget *parent,
+    const QString &caption,
+    const QString &dirOrFile,
+    const QString &filter,
+    bool saveMode)
+{
+    QFileDialog dlg(parent, caption);
+    dlg.setOption(QFileDialog::DontUseNativeDialog, true);
+    dlg.setAcceptMode(saveMode ? QFileDialog::AcceptSave : QFileDialog::AcceptOpen);
+    dlg.setFileMode(saveMode ? QFileDialog::AnyFile : QFileDialog::ExistingFile);
+    if (!filter.isEmpty())
+        dlg.setNameFilter(filter);
+    if (!dirOrFile.isEmpty()) {
+        const QFileInfo fi(dirOrFile);
+        if (fi.isDir()) {
+            dlg.setDirectory(fi.absoluteFilePath());
+        } else {
+            if (!fi.path().isEmpty() && fi.path() != QLatin1String("."))
+                dlg.setDirectory(fi.path());
+            dlg.selectFile(fi.fileName());
+        }
+    }
+    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance())) {
+        dlg.setStyle(app->style());
+        dlg.setPalette(app->palette());
+    }
+    dlg.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    if (dlg.exec() != QDialog::Accepted)
+        return QString();
+    const QStringList files = dlg.selectedFiles();
+    return files.isEmpty() ? QString() : files.first();
+}
+
+}  // namespace
+
+QString platinumOpenFileName(
+    QWidget *parent,
+    const QString &caption,
+    const QString &dir,
+    const QString &filter)
+{
+    return runPlatinumFileDialog(parent, caption, dir, filter, false);
+}
+
+QString platinumSaveFileName(
+    QWidget *parent,
+    const QString &caption,
+    const QString &dirOrFile,
+    const QString &filter)
+{
+    return runPlatinumFileDialog(parent, caption, dirOrFile, filter, true);
 }
 
 PlatinumDialog::PlatinumDialog(QWidget *parent)
@@ -106,17 +165,31 @@ AboutDialog::AboutDialog(QWidget *parent)
     auto *info = new QVBoxLayout();
     auto *title = new QLabel(ztr("Netzac Navigator"), this);
     title->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
-    auto *sub = new QLabel(
-        ztr("Netzac Navigator (ZacOS 9 / Platinum)\n\n"
-            "Initial idea by Lucas Guimarães. We count on the support of the ZacOS 9 "
-            "community for contributions at:\n"
-            "https://github.com/guimaraeslucas/netzac\n\n"
-            "Special thanks to Adam Lawson (@chromasystemprofessional) for creating "
-            "the incredible ZacOS 9 project."),
-        this);
+    const QString repoUrl = QStringLiteral("https://github.com/guimaraeslucas/netzac");
+    const QString rawAbout = ztr(
+        "Netzac Navigator (ZacOS 9)\n\n"
+        "Developed by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the "
+        "ZacOS 9 community for contributions at:\n"
+        "%1\n\n"
+        "Special thanks to Adam Lawson (@chromasystemprofessional) for creating "
+        "the incredible ZacOS 9 project.");
+    const QString htmlAbout = rawAbout.toHtmlEscaped()
+        .replace(QLatin1Char('\n'), QStringLiteral("<br>"))
+        .arg(QStringLiteral("<a href=\"%1\">%1</a>").arg(repoUrl));
+    auto *sub = new QLabel(htmlAbout, this);
     sub->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    sub->setTextFormat(Qt::RichText);
     sub->setWordWrap(true);
-    sub->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    sub->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    sub->setOpenExternalLinks(false);
+    connect(sub, &QLabel::linkActivated, this, [this](const QString &url) {
+        if (auto *win = qobject_cast<NetzacWindow *>(parentWidget())) {
+            win->newTab(url, true);
+            accept();
+        } else {
+            QDesktopServices::openUrl(QUrl(url));
+        }
+    });
     info->addWidget(title);
     info->addWidget(sub);
     top->addLayout(info, 1);
@@ -210,7 +283,7 @@ void BookmarksDialog::importBookmarks()
 {
     if (!m_bookmarks)
         return;
-    const QString path = QFileDialog::getOpenFileName(
+    const QString path = platinumOpenFileName(
         this,
         ztr("Import Bookmarks (Chrome / Firefox)"),
         QString(),
@@ -260,7 +333,7 @@ void BookmarksDialog::exportBookmarks()
 {
     if (!m_bookmarks)
         return;
-    const QString path = QFileDialog::getSaveFileName(
+    const QString path = platinumSaveFileName(
         this,
         ztr("Export Bookmarks (Chrome / Firefox HTML)"),
         QStringLiteral("netzac-bookmarks.html"),
@@ -293,8 +366,8 @@ PreferencesDialog::PreferencesDialog(
     , m_prefs(prefs)
 {
     setWindowTitle(ztr("Preferences"));
-    setMinimumSize(600, 420);
-    resize(650, 460);
+    setMinimumSize(620, 520);
+    resize(660, 550);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(12, 12, 12, 12);
@@ -430,11 +503,23 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
     m_imagesChk->setChecked(m_prefs.autoloadImages);
     lay->addWidget(m_imagesChk);
 
+    m_jsChk = new QCheckBox(ztr("Enable JavaScript"), page);
+    m_jsChk->setChecked(m_prefs.enableJavaScript);
+    lay->addWidget(m_jsChk);
+
+    m_rememberPasswordsChk = new QCheckBox(ztr("Remember passwords (ZacOS Keychain)"), page);
+    m_rememberPasswordsChk->setChecked(m_prefs.rememberPasswords);
+    m_rememberPasswordsChk->setEnabled(PasswordStorage::isAvailable());
+    lay->addWidget(m_rememberPasswordsChk);
+
     lay->addSpacing(8);
     lay->addWidget(new QLabel(ztr("Default Browser:"), page));
-    auto *defRow = new QHBoxLayout();
     m_defaultBrowserLbl = new QLabel(page);
+    lay->addWidget(m_defaultBrowserLbl);
+
+    auto *defBtnRow = new QHBoxLayout();
     m_setDefaultBrowserBtn = makeDialogButton(ztr("Set as Default Browser"), false, page);
+    m_setDefaultBrowserBtn->setMinimumWidth(240);
     const auto refreshDefaultStatus = [this]() {
         const bool isDef = NetzacPreferences::isDefaultBrowser();
         m_defaultBrowserLbl->setText(
@@ -444,13 +529,61 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
         m_setDefaultBrowserBtn->setEnabled(!isDef);
     };
     refreshDefaultStatus();
-    connect(m_setDefaultBrowserBtn, &QPushButton::clicked, this, [this, refreshDefaultStatus]() {
+    connect(m_setDefaultBrowserBtn, &QPushButton::clicked, this, [refreshDefaultStatus]() {
         NetzacPreferences::setAsDefaultBrowser();
         refreshDefaultStatus();
     });
-    defRow->addWidget(m_defaultBrowserLbl, 1);
-    defRow->addWidget(m_setDefaultBrowserBtn);
-    lay->addLayout(defRow);
+    defBtnRow->addWidget(m_setDefaultBrowserBtn);
+    defBtnRow->addStretch(1);
+    lay->addLayout(defBtnRow);
+
+    lay->addSpacing(10);
+    auto *resetRow = new QHBoxLayout();
+    QPushButton *resetBtn = makeDialogButton(ztr("Reset All Settings..."), false, page);
+    resetBtn->setMinimumWidth(200);
+    connect(resetBtn, &QPushButton::clicked, this, [this]() {
+        PlatinumDialog confirm(this);
+        confirm.setWindowTitle(ztr("Reset All Settings"));
+        confirm.setFixedWidth(400);
+        auto *cLay = new QVBoxLayout(&confirm);
+        cLay->setContentsMargins(12, 12, 12, 12);
+        cLay->setSpacing(10);
+
+        auto *top = new QHBoxLayout();
+        auto *iconLbl = new QLabel(&confirm);
+        iconLbl->setPixmap(makeAlertIcon(QStringLiteral("warning"), 32));
+        iconLbl->setAlignment(Qt::AlignTop);
+        auto *msgLbl = new QLabel(
+            ztr("This will reset all preferences, bookmarks, history, Personal Toolbar, "
+                "and saved Netzac passwords back to their defaults.\n\n"
+                "Do you want to continue?"),
+            &confirm);
+        msgLbl->setWordWrap(true);
+        top->addWidget(iconLbl);
+        top->addWidget(msgLbl, 1);
+        cLay->addLayout(top);
+
+        auto *btnRow = new QHBoxLayout();
+        btnRow->addStretch(1);
+        QPushButton *cancelBtn = makeDialogButton(ztr("Cancel"), true, &confirm);
+        QPushButton *doResetBtn = makeDialogButton(ztr("Reset Everything"), false, &confirm);
+        doResetBtn->setMinimumWidth(140);
+        connect(cancelBtn, &QPushButton::clicked, &confirm, &QDialog::reject);
+        connect(doResetBtn, &QPushButton::clicked, &confirm, &QDialog::accept);
+        btnRow->addWidget(cancelBtn);
+        btnRow->addWidget(doResetBtn);
+        cLay->addLayout(btnRow);
+
+        if (confirm.exec() == QDialog::Accepted) {
+            NetzacPreferences::resetAll();
+            m_prefs = NetzacPreferences::defaults();
+            m_resetRequested = true;
+            accept();
+        }
+    });
+    resetRow->addWidget(resetBtn);
+    resetRow->addStretch(1);
+    lay->addLayout(resetRow);
 
     lay->addStretch(1);
     return page;
@@ -646,8 +779,8 @@ bool editPersonalToolbarItemDialog(
 
     auto *subBtnRow = new QHBoxLayout();
     subBtnRow->setSpacing(4);
-    QPushButton *subAdd = makeDialogButton(ztr("Add..."), false, folderBox);
-    QPushButton *subEdit = makeDialogButton(ztr("Edit..."), false, folderBox);
+    QPushButton *subAdd = makeDialogButton(ztr("Add"), false, folderBox);
+    QPushButton *subEdit = makeDialogButton(ztr("Edit"), false, folderBox);
     QPushButton *subRem = makeDialogButton(ztr("Remove"), false, folderBox);
     QPushButton *subUp = makeDialogButton(ztr("Up"), false, folderBox);
     QPushButton *subDown = makeDialogButton(ztr("Down"), false, folderBox);
@@ -777,8 +910,8 @@ QWidget *PreferencesDialog::buildPersonalToolbarPage()
 
     auto *row1 = new QHBoxLayout();
     row1->setSpacing(4);
-    QPushButton *addBtn = makeDialogButton(ztr("Add..."), false, page);
-    QPushButton *editBtn = makeDialogButton(ztr("Edit..."), false, page);
+    QPushButton *addBtn = makeDialogButton(ztr("Add"), false, page);
+    QPushButton *editBtn = makeDialogButton(ztr("Edit"), false, page);
     QPushButton *remBtn = makeDialogButton(ztr("Remove"), false, page);
     QPushButton *upBtn = makeDialogButton(ztr("Up"), false, page);
     QPushButton *downBtn = makeDialogButton(ztr("Down"), false, page);
@@ -1112,6 +1245,9 @@ QWidget *PreferencesDialog::buildUserAgentPage()
 
 NetzacPreferences PreferencesDialog::preferences() const
 {
+    if (m_resetRequested)
+        return NetzacPreferences::defaults();
+
     NetzacPreferences out = m_prefs;
     const QString home = m_homeEdit->text().trimmed();
     if (!home.isEmpty())
@@ -1119,6 +1255,8 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.startupMode = static_cast<NetzacPreferences::StartupMode>(m_startupPopup->currentData().toInt());
     out.searchEngineId = m_searchPopup->currentData().toString();
     out.autoloadImages = m_imagesChk->isChecked();
+    out.enableJavaScript = m_jsChk->isChecked();
+    out.rememberPasswords = m_rememberPasswordsChk->isChecked();
 
     out.calm.jsDetection = static_cast<CalmJsDetection>(m_calmJsPopup->currentData().toInt());
     out.calm.layoutMode = m_calmLayoutReader->isChecked()

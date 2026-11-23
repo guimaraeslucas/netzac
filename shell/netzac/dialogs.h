@@ -20,6 +20,16 @@ class QStackedWidget;
 class PlatinumPopupButton;
 
 QPushButton *makeDialogButton(const QString &text, bool isDefault = false, QWidget *parent = nullptr);
+QString platinumOpenFileName(
+    QWidget *parent,
+    const QString &caption,
+    const QString &dir = QString(),
+    const QString &filter = QString());
+QString platinumSaveFileName(
+    QWidget *parent,
+    const QString &caption,
+    const QString &dirOrFile = QString(),
+    const QString &filter = QString());
 
 class PlatinumDialog : public QDialog {
     Q_OBJECT
@@ -79,6 +89,7 @@ public:
         QWidget *parent = nullptr);
 
     NetzacPreferences preferences() const;
+    bool didResetAll() const { return m_resetRequested; }
     void selectCategory(int index);
 
 private:
@@ -102,8 +113,11 @@ private:
     PlatinumPopupButton *m_startupPopup = nullptr;
     PlatinumPopupButton *m_searchPopup = nullptr;
     QCheckBox *m_imagesChk = nullptr;
+    QCheckBox *m_jsChk = nullptr;
+    QCheckBox *m_rememberPasswordsChk = nullptr;
     QLabel *m_defaultBrowserLbl = nullptr;
     QPushButton *m_setDefaultBrowserBtn = nullptr;
+    bool m_resetRequested = false;
 
     // Calm Mode
     PlatinumPopupButton *m_calmJsPopup = nullptr;

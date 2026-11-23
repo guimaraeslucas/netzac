@@ -1,3 +1,4 @@
+#include "dialogs.h"
 #include "i18n.h"
 #include "netzacwindow.h"
 #include "platinum.h"
@@ -5,7 +6,6 @@
 
 #include <QApplication>
 #include <QCoreApplication>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QUrl>
 #include <QWebEngineDownloadRequest>
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         [](QWebEngineDownloadRequest *download) {
             if (!download)
                 return;
-            const QString target = QFileDialog::getSaveFileName(
+            const QString target = platinumSaveFileName(
                 QApplication::activeWindow(),
                 ztr("Save File"),
                 download->suggestedFileName());

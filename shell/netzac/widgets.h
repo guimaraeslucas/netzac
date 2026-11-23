@@ -28,6 +28,8 @@ public:
 
     void setHistoryMenuProvider(HistoryMenuProvider provider);
     void setIconName(const QString &iconName);
+    void setShowText(bool show);
+    bool showText() const { return m_showText; }
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -44,6 +46,7 @@ private:
 
     QString m_label;
     bool m_hovered = false;
+    bool m_showText = true;
     QPixmap m_iconPm;
     QPixmap m_disabledPm;
     HistoryMenuProvider m_historyMenuProvider;
@@ -92,6 +95,7 @@ public:
     explicit NetzacThrobber(QWidget *parent = nullptr);
 
     void setLoading(bool loading);
+    void setCompact(bool compact);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -101,6 +105,7 @@ private slots:
 
 private:
     bool m_animating = false;
+    bool m_compact = false;
     int m_frame = 0;
     QTimer m_timer;
 };
