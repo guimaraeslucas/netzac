@@ -14,10 +14,10 @@ die() {
 }
 
 . "./package.conf"
-version=${1:-4.0.8}
+version=${1:-1.0.0}
 case "$version" in
 	[0-9]*) ;;
-	*) die "'$version' must start with a digit, e.g. 4.0.8." ;;
+	*) die "'$version' must start with a digit, e.g. 1.0.0." ;;
 esac
 case "$version" in
 	*[!A-Za-z0-9.+~]*) die "'$version' isn't a Debian version (letters, digits, . + ~)." ;;

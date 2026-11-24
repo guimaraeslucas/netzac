@@ -1,4 +1,6 @@
-# Netzac Navigator for ZacOS 9
+# Netzac Navigator 1.0 for ZacOS 9
+
+<img src="https://g3pix.com.br/libs/software/netzac/6.png">
 
 Native C++17 / Qt 6 WebEngine recreation of classic Navigator 4.0 for Mac OS 7/8,
 styled with ZacOS 9's native Platinum look (`zacos9` Qt style, `ZacOS 9 System` /
@@ -78,5 +80,30 @@ compatible with ZacOS 9 Extras packaging (`package.conf` and `install_tag: 'netz
 ./scripts/install-user.sh
 
 # Build a Debian package (build/packages/zacos9-extra-netzac_<version>_<arch>.deb)
-./scripts/build-deb.sh 4.0.8
+./scripts/build-deb.sh 1.0.0
 ```
+
+## Publishing a Release
+
+The **Release Debian package** GitHub Actions workflow builds
+`zacos9-extra-netzac_<version>_<arch>.deb` on Debian Trixie and attaches it, along with
+a SHA-256 checksum, to the matching GitHub Release.
+
+Publish a release by pushing a version tag:
+
+```sh
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow also runs when a GitHub Release is published, so creating the release from
+the GitHub UI attaches the package too. To build the first release, or to rebuild an
+existing tag, open **Actions → Release Debian package → Run workflow** and enter the
+version without the leading `v` (for example `1.0.0`).
+
+## Screenshots
+<img src="https://g3pix.com.br/libs/software/netzac/1.png" width="200">
+<img src="https://g3pix.com.br/libs/software/netzac/2.png" width="200">
+<img src="https://g3pix.com.br/libs/software/netzac/3.png" width="200">
+<img src="https://g3pix.com.br/libs/software/netzac/4.png" width="200">
+<img src="https://g3pix.com.br/libs/software/netzac/7.png" width="200">
