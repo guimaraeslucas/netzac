@@ -102,8 +102,4 @@ existing tag, open **Actions → Release Debian package → Run workflow** and e
 version without the leading `v` (for example `1.0.0`).
 
 ## Screenshots
-<img src="https://g3pix.com.br/libs/software/netzac/1.png" width="200">
-<img src="https://g3pix.com.br/libs/software/netzac/2.png" width="200">
-<img src="https://g3pix.com.br/libs/software/netzac/3.png" width="200">
-<img src="https://g3pix.com.br/libs/software/netzac/4.png" width="200">
-<img src="https://g3pix.com.br/libs/software/netzac/7.png" width="200">
+<img src="https://g3pix.com.br/libs/software/netzac/3.png" width="200"><img src="https://g3pix.com.br/libs/software/netzac/4.png" width="200"><img src="https://g3pix.com.br/libs/software/netzac/7.png" width="200">
