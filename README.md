@@ -60,7 +60,7 @@ Netzac started as an initial idea by **Lucas Guimarães**. We welcome contributi
 bug reports, and pull requests from the **ZacOS 9** community at:
 <https://github.com/guimaraeslucas/netzac>
 
-Special thanks to **Adam Lawson (`@chromasystemprofessional`)** for creating the
+Special thanks to **Adam Lawson (@chromasystemprofessional)** for creating the
 incredible **ZacOS 9** project.
 
 ## Wayland / Pixman Maximize Freeze Mitigation
