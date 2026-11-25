@@ -23,13 +23,25 @@ concurrency:
 
 jobs:
   build-deb:
-    name: Build and publish .deb
-    runs-on: ubuntu-latest
+    name: Build .deb (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    # A release published from a tag that already got a .deb does not need a rebuild.
-    if: github.event_name != 'release' || !contains(join(github.event.release.assets.*.name, ','), '.deb')
-    env:
-      GH_TOKEN: ${{ github.token }}
+    # A release published from a tag that already got both amd64 and arm64 .deb assets does not need a rebuild.
+    if: >-
+      github.event_name != 'release' ||
+      !contains(join(github.event.release.assets.*.name, ','), '_amd64.deb') ||
+      !contains(join(github.event.release.assets.*.name, ','), '_arm64.deb')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -61,6 +73,7 @@ jobs:
 
       - name: Build Debian package
         env:
+          ARCH: ${{ matrix.arch }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           script=$(cat <<'EOF'
@@ -75,6 +88,7 @@ jobs:
           EOF
           )
           docker run --rm \
+            --platform "linux/$ARCH" \
             -e VERSION \
             -e HOST_UID="$(id -u)" \
             -e HOST_GID="$(id -g)" \
@@ -83,20 +97,25 @@ jobs:
             debian:trixie \
             bash -c "$script"
 
-      - name: Publish release
+      - name: Verify package and generate SHA-256
         env:
-          TAG: ${{ steps.release.outputs.tag }}
+          ARCH: ${{ matrix.arch }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -eu
-          deb=$(find build/packages -maxdepth 1 -type f -name '*.deb' -print -quit)
-          if [ -z "$deb" ]; then
-            echo "::error::The build did not produce a .deb file."
+          deb="build/packages/zacos9-extra-netzac_${VERSION}_${ARCH}.deb"
+          if [ ! -f "$deb" ]; then
+            echo "::error::Expected package '$deb' was not produced."
             exit 1
           fi
           package_version=$(dpkg-deb -f "$deb" Version)
           if [ "$package_version" != "$VERSION" ]; then
             echo "::error::The package version is '$package_version', expected '$VERSION'."
+            exit 1
+          fi
+          package_arch=$(dpkg-deb -f "$deb" Architecture)
+          if [ "$package_arch" != "$ARCH" ]; then
+            echo "::error::The package architecture is '$package_arch', expected '$ARCH'."
             exit 1
           fi
           if ! dpkg-deb -f "$deb" Depends | grep -q 'libqt6'; then
@@ -107,6 +126,45 @@ jobs:
           deb_dir=$(dirname "$deb")
           deb_name=$(basename "$deb")
           (cd "$deb_dir" && sha256sum "$deb_name" > "$deb_name.sha256")
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+          path: |
+            build/packages/zacos9-extra-netzac_${{ steps.release.outputs.version }}_${{ matrix.arch }}.deb
+            build/packages/zacos9-extra-netzac_${{ steps.release.outputs.version }}_${{ matrix.arch }}.deb.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-release:
+    name: Publish release
+    needs: build-deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.build-deb.outputs.tag }}
+      VERSION: ${{ needs.build-deb.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: deb-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release
+        run: |
+          set -eu
+          (cd dist && sha256sum -c \
+            "zacos9-extra-netzac_${VERSION}_amd64.deb.sha256" \
+            "zacos9-extra-netzac_${VERSION}_arm64.deb.sha256")
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading assets."
@@ -121,4 +179,9 @@ jobs:
               --target "$GITHUB_SHA"
           fi
 
-          gh release upload "$TAG" "$deb" "$deb.sha256" --clobber
+          gh release upload "$TAG" \
+            "dist/zacos9-extra-netzac_${VERSION}_amd64.deb" \
+            "dist/zacos9-extra-netzac_${VERSION}_amd64.deb.sha256" \
+            "dist/zacos9-extra-netzac_${VERSION}_arm64.deb" \
+            "dist/zacos9-extra-netzac_${VERSION}_arm64.deb.sha256" \
+            --clobber

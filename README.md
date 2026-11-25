@@ -102,8 +102,9 @@ compatible with ZacOS 9 Extras packaging (`package.conf` and `install_tag: 'netz
 ## Publishing a Release
 
 The **Release Debian package** GitHub Actions workflow builds
-`zacos9-extra-netzac_<version>_<arch>.deb` on Debian Trixie and attaches it, along with
-a SHA-256 checksum, to the matching GitHub Release.
+`zacos9-extra-netzac_<version>_amd64.deb` and `zacos9-extra-netzac_<version>_arm64.deb`
+on Debian Trixie and attaches them, along with SHA-256 checksums, to the matching GitHub
+Release.
 
 Publish a release by pushing a version tag:
 
