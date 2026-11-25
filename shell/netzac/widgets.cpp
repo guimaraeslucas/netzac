@@ -4,6 +4,7 @@
 #include "platinum.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QEnterEvent>
 #include <QEvent>
 #include <QFocusEvent>
@@ -1015,6 +1016,23 @@ void PlatinumTabBar::removeTab(int index)
     update();
 }
 
+void PlatinumTabBar::moveTab(int from, int to)
+{
+    if (from == to || from < 0 || to < 0 || from >= m_tabs.size() || to >= m_tabs.size())
+        return;
+    m_tabs.move(from, to);
+    if (m_currentIndex == from) {
+        m_currentIndex = to;
+    } else if (from < m_currentIndex && to >= m_currentIndex) {
+        --m_currentIndex;
+    } else if (from > m_currentIndex && to <= m_currentIndex) {
+        ++m_currentIndex;
+    }
+    m_hoveredTab = -1;
+    m_hoveredClose = -1;
+    update();
+}
+
 void PlatinumTabBar::setCurrentIndex(int index)
 {
     if (index < 0 || index >= m_tabs.size() || index == m_currentIndex)
@@ -1088,11 +1106,29 @@ QVector<PlatinumTabBar::TabGeometry> PlatinumTabBar::computeTabGeometries(QRect 
     return geoms;
 }
 
+int PlatinumTabBar::insertionIndexAt(const QVector<TabGeometry> &geoms, const QPoint &pos) const
+{
+    for (int i = 0; i < geoms.size(); ++i) {
+        const QRect &r = geoms[i].tabRect;
+        if (m_style == TabStyle::IE45Left) {
+            if (pos.y() < r.center().y())
+                return i;
+        } else if (pos.x() < r.center().x()) {
+            return i;
+        }
+    }
+    return int(geoms.size());
+}
+
 void PlatinumTabBar::mousePressEvent(QMouseEvent *event)
 {
     QRect newTabRect;
     const QVector<TabGeometry> geoms = computeTabGeometries(&newTabRect);
     const QPoint pos = event->pos();
+
+    m_pressTab = -1;
+    m_dragging = false;
+    m_dropIndex = -1;
 
     if (event->button() == Qt::LeftButton && newTabRect.contains(pos)) {
         emit newTabRequested();
@@ -1107,6 +1143,8 @@ void PlatinumTabBar::mousePressEvent(QMouseEvent *event)
                 return;
             }
             if (event->button() == Qt::LeftButton) {
+                m_pressTab = i;
+                m_pressPos = pos;
                 if (i != m_currentIndex) {
                     m_currentIndex = i;
                     update();
@@ -1124,6 +1162,26 @@ void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
     QRect newTabRect;
     const QVector<TabGeometry> geoms = computeTabGeometries(&newTabRect);
     const QPoint pos = event->pos();
+
+    if (m_pressTab >= 0 && (event->buttons() & Qt::LeftButton)) {
+        if (!m_dragging
+            && (pos - m_pressPos).manhattanLength() >= QApplication::startDragDistance()) {
+            m_dragging = true;
+            m_hoveredTab = -1;
+            m_hoveredClose = -1;
+            m_hoveredNewTab = false;
+            setToolTip(QString());
+            setCursor(Qt::ClosedHandCursor);
+        }
+        if (m_dragging) {
+            const int drop = insertionIndexAt(geoms, pos);
+            if (drop != m_dropIndex) {
+                m_dropIndex = drop;
+                update();
+            }
+            return;
+        }
+    }
 
     int hovTab = -1;
     int hovClose = -1;
@@ -1152,6 +1210,45 @@ void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
         update();
     }
     QWidget::mouseMoveEvent(event);
+}
+
+void PlatinumTabBar::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && m_dragging && m_pressTab >= 0) {
+        const int from = m_pressTab;
+        const int drop = m_dropIndex;
+        const QPoint pos = event->pos();
+        const QPoint globalPos = mapToGlobal(pos);
+        const QRect windowRect = window()->frameGeometry();
+        const bool insideWindow = windowRect.contains(globalPos);
+        const bool insideBar = rect().contains(pos);
+
+        m_pressTab = -1;
+        m_dragging = false;
+        m_dropIndex = -1;
+        unsetCursor();
+        update();
+
+        if (!insideWindow) {
+            emit tabDetachRequested(from, globalPos);
+            return;
+        }
+        if (insideBar && drop >= 0) {
+            int to = drop;
+            if (to > from)
+                --to;
+            to = qBound(0, to, int(m_tabs.size()) - 1);
+            if (to != from)
+                emit tabMoveRequested(from, to);
+        }
+        return;
+    }
+
+    m_pressTab = -1;
+    m_dragging = false;
+    m_dropIndex = -1;
+    unsetCursor();
+    QWidget::mouseReleaseEvent(event);
 }
 
 void PlatinumTabBar::leaveEvent(QEvent *event)
@@ -1183,8 +1280,12 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             const QRect &cr = geoms[i].closeRect;
             const bool active = (i == m_currentIndex);
             const bool hovered = (i == m_hoveredTab);
+            const bool dragging = m_dragging && (i == m_pressTab);
 
-            p.fillRect(r, active ? c.highlight : (hovered ? c.midlight : c.button));
+            p.fillRect(
+                r,
+                dragging ? c.mid
+                         : (active ? c.highlight : (hovered ? c.midlight : c.button)));
 
             // Classic left-side folder tab bevel
             p.setPen(c.shadow);
@@ -1235,6 +1336,14 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             }
         }
 
+        if (m_dragging && m_dropIndex >= 0 && !geoms.isEmpty()) {
+            const int y = (m_dropIndex < geoms.size())
+                ? geoms[m_dropIndex].tabRect.top() - 1
+                : geoms.last().tabRect.bottom() + 1;
+            p.setPen(QPen(c.dark, 2));
+            p.drawLine(4, y, width() - 6, y);
+        }
+
         // "+ New Tab" Platinum bevel button
         drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab);
         p.setFont(font());
@@ -1250,8 +1359,12 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             const QRect &cr = geoms[i].closeRect;
             const bool active = (i == m_currentIndex);
             const bool hovered = (i == m_hoveredTab);
+            const bool dragging = m_dragging && (i == m_pressTab);
 
-            p.fillRect(r, active ? c.highlight : (hovered ? c.midlight : c.button));
+            p.fillRect(
+                r,
+                dragging ? c.mid
+                         : (active ? c.highlight : (hovered ? c.midlight : c.button)));
 
             p.setPen(c.shadow);
             p.drawLine(r.left(), r.top() + 1, r.left(), r.bottom());
@@ -1298,6 +1411,14 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
                 p.drawLine(cr.left() + 3, cr.top() + 3, cr.right() - 3, cr.bottom() - 3);
                 p.drawLine(cr.right() - 3, cr.top() + 3, cr.left() + 3, cr.bottom() - 3);
             }
+        }
+
+        if (m_dragging && m_dropIndex >= 0 && !geoms.isEmpty()) {
+            const int x = (m_dropIndex < geoms.size())
+                ? geoms[m_dropIndex].tabRect.left() - 1
+                : geoms.last().tabRect.right() + 1;
+            p.setPen(QPen(c.text, 2));
+            p.drawLine(x, 2, x, height() - 2);
         }
 
         // "+" button

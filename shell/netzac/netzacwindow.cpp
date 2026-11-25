@@ -314,6 +314,8 @@ NetzacWindow::NetzacWindow(
     connect(m_tabBar, &PlatinumTabBar::newTabRequested, this, [this]() {
         newTab(m_prefs.homeUrl, true);
     });
+    connect(m_tabBar, &PlatinumTabBar::tabMoveRequested, this, &NetzacWindow::moveTab);
+    connect(m_tabBar, &PlatinumTabBar::tabDetachRequested, this, &NetzacWindow::detachTab);
 
     buildMenus();
     buildToolbars();
@@ -993,6 +995,100 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     }
 
     return idx;
+}
+
+void NetzacWindow::moveTab(int from, int to)
+{
+    if (from == to || from < 0 || to < 0 || from >= m_tabs.size() || to >= m_tabs.size())
+        return;
+
+    const BrowserTab tab = m_tabs.takeAt(from);
+    m_tabs.insert(to, tab);
+
+    if (m_currentTabIndex == from) {
+        m_currentTabIndex = to;
+    } else if (from < m_currentTabIndex && to >= m_currentTabIndex) {
+        --m_currentTabIndex;
+    } else if (from > m_currentTabIndex && to <= m_currentTabIndex) {
+        ++m_currentTabIndex;
+    }
+    m_tabBar->moveTab(from, to);
+}
+
+void NetzacWindow::detachTab(int index, const QPoint &globalPos)
+{
+    if (index < 0 || index >= m_tabs.size() || m_popupOpts.isPopup)
+        return;
+
+    BrowserTab tab = m_tabs.at(index);
+    disconnect(tab.view, nullptr, this, nullptr);
+    disconnect(tab.page, nullptr, this, nullptr);
+    disconnect(tab.calm, nullptr, this, nullptr);
+
+    m_tabs.removeAt(index);
+    m_tabStack->removeWidget(tab.view);
+    m_tabBar->removeTab(index);
+
+    int next = m_currentTabIndex;
+    if (next == index)
+        next = qMin(index, int(m_tabs.size()) - 1);
+    else if (next > index)
+        --next;
+    if (next < 0 && !m_tabs.isEmpty())
+        next = 0;
+    m_currentTabIndex = -1;
+    if (next >= 0 && next < m_tabs.size())
+        switchToTab(next);
+    else if (m_tabs.isEmpty() && !m_popupOpts.isPopup)
+        newTab(m_prefs.homeUrl, true);
+
+    auto *win = new NetzacWindow(QString(), nullptr, false);
+    win->setAttribute(Qt::WA_DeleteOnClose);
+    win->clearTabsForAdoption();
+    win->adoptTab(tab);
+    win->resize(size());
+    win->move(globalPos - QPoint(60, 16));
+    win->show();
+    win->raise();
+    win->activateWindow();
+}
+
+void NetzacWindow::adoptTab(const BrowserTab &tab)
+{
+    NetzacWebView *view = tab.view;
+    view->setParent(m_tabStack);
+    m_tabStack->addWidget(view);
+    view->setWindowCreator([this, view](QWebEnginePage::WebWindowType type) {
+        return createBrowserWindow(view, type);
+    });
+
+    m_tabs.append(tab);
+    const int idx = int(m_tabs.size()) - 1;
+    m_tabBar->addTab(tab.title);
+    m_tabBar->setTabUrl(idx, tab.currentUrl);
+    m_tabBar->setTabLoading(idx, tab.isLoading);
+
+    connectTabSignals(view, tab.page, tab.calm);
+    connect(tab.page, &NetzacWebPage::credentialSubmitted, this, &NetzacWindow::handleCredentialSubmitted);
+
+    m_currentTabIndex = -1;
+    switchToTab(idx);
+    updateTabBarPlacement();
+}
+
+void NetzacWindow::clearTabsForAdoption()
+{
+    while (!m_tabs.isEmpty()) {
+        BrowserTab tab = m_tabs.takeLast();
+        disconnect(tab.view, nullptr, this, nullptr);
+        disconnect(tab.page, nullptr, this, nullptr);
+        disconnect(tab.calm, nullptr, this, nullptr);
+        m_tabStack->removeWidget(tab.view);
+        tab.view->deleteLater();
+    }
+    while (m_tabBar->count() > 0)
+        m_tabBar->removeTab(m_tabBar->count() - 1);
+    m_currentTabIndex = -1;
 }
 
 void NetzacWindow::closeTab(int index)

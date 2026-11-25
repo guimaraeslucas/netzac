@@ -5,6 +5,7 @@
 #include <QFrame>
 #include <QLabel>
 #include <QPixmap>
+#include <QPoint>
 #include <QPushButton>
 #include <QStringList>
 #include <QTimer>
@@ -313,6 +314,7 @@ public:
 
     int addTab(const QString &title);
     void removeTab(int index);
+    void moveTab(int from, int to);
     void setCurrentIndex(int index);
     int currentIndex() const { return m_currentIndex; }
     int count() const { return int(m_tabs.size()); }
@@ -325,10 +327,13 @@ signals:
     void currentChanged(int index);
     void tabCloseRequested(int index);
     void newTabRequested();
+    void tabMoveRequested(int from, int to);
+    void tabDetachRequested(int index, const QPoint &globalPos);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
 
@@ -345,6 +350,7 @@ private:
     };
 
     QVector<TabGeometry> computeTabGeometries(QRect *outNewTabRect) const;
+    int insertionIndexAt(const QVector<TabGeometry> &geoms, const QPoint &pos) const;
     void updateGeometryConstraints();
 
     TabStyle m_style = TabStyle::IE45Left;
@@ -354,4 +360,9 @@ private:
     int m_hoveredClose = -1;
     bool m_hoveredNewTab = false;
     QPixmap m_pageIcon;
+
+    int m_pressTab = -1;
+    QPoint m_pressPos;
+    bool m_dragging = false;
+    int m_dropIndex = -1;
 };

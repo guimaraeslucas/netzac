@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QPair>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 class QButtonGroup;
@@ -101,7 +102,11 @@ private:
     QWidget *buildCachePage();
     QWidget *buildProxiesPage();
     QWidget *buildUserAgentPage();
+    QWidget *buildAdBlockerPage();
     void updateProxyControlsEnabled();
+    void refreshAdBlockList();
+    void addAdBlockListUrl();
+    void updateAdBlockStatus();
 
     NetzacPreferences m_prefs;
     QListWidget *m_categoryList = nullptr;
@@ -165,4 +170,14 @@ private:
     PlatinumPopupButton *m_uaPresetPopup = nullptr;
     QLineEdit *m_uaEdit = nullptr;
     bool m_syncingUa = false;
+
+    // Ad Blocker
+    QStringList m_adBlockUrls;
+    QCheckBox *m_adBlockChk = nullptr;
+    QListWidget *m_adBlockList = nullptr;
+    QLabel *m_adBlockStatusLbl = nullptr;
+    QPushButton *m_adBlockAddBtn = nullptr;
+    QPushButton *m_adBlockRemoveBtn = nullptr;
+    QPushButton *m_adBlockDefaultsBtn = nullptr;
+    QPushButton *m_adBlockUpdateBtn = nullptr;
 };

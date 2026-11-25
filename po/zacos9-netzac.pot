@@ -1144,3 +1144,71 @@ msgstr ""
 
 msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
 msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable the Netzac Ad Blocker"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac blocks advertisements, trackers and malicious addresses using filter lists such as EasyList. Lists are downloaded from the addresses below and stored locally on this computer."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list addresses:"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Add List..."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove List"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Restore Default Lists"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Update Filter Lists Now"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Filter List"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list address (URL):"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "The address must be a valid http:// or https:// URL."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker is disabled."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Updating filter lists..."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Update failed: %1"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "No filter lists loaded yet."
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 rules loaded. Last update: %2"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Never"
+msgstr ""

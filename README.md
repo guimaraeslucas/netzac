@@ -28,9 +28,22 @@ netzac/
     ├── platinum.h / platinum.cpp
     ├── widgets.h / widgets.cpp
     ├── dialogs.h / dialogs.cpp
+    ├── adblocker.h / adblocker.cpp
     ├── netzacwindow.h / netzacwindow.cpp
     └── main.cpp
 ```
+
+## Tabs and the Netzac Ad Blocker
+
+Tabs can be reordered by clicking and dragging them inside the tab bar. Dragging a
+tab outside the window opens it in a new Netzac window (the page keeps its history).
+
+The Netzac Ad Blocker (Preferences → Ad Blocker) blocks advertisement, tracking and
+malicious requests using EasyList, EasyPrivacy and the Malicious URL (URLHaus)
+domain list by default. Additional filter list URLs can be added; lists are cached
+under `~/.cache/zacos9/netzac/adblock` and refreshed automatically once a day (or
+immediately with **Update Filter Lists Now**). Host/anchor network rules are
+enforced; cosmetic element-hiding rules are not applied.
 
 ## Build Dependencies (Debian Trixie / ZacOS 9)
 

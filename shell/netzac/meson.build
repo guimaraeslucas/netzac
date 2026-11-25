@@ -1,11 +1,12 @@
 moc_files = qt6.compile_moc(
-  headers: ['calmmode.h', 'widgets.h', 'dialogs.h', 'webview.h', 'netzacwindow.h'],
+  headers: ['adblocker.h', 'calmmode.h', 'widgets.h', 'dialogs.h', 'webview.h', 'netzacwindow.h'],
   dependencies: qt6_dep,
 )
 
 executable('zacos9-netzac',
   [
     'main.cpp',
+    'adblocker.cpp',
     'bookmarks.cpp',
     'calmmode.cpp',
     'history.cpp',

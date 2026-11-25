@@ -1140,3 +1140,71 @@ msgstr "%1 のパスワードを ZacOS キーチェーンに保存しました"
 
 msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
 msgstr "Netzac Navigator (ZacOS 9)\n\n開発: Lucas Guimarães - G3Pix (@guimaraeslucas)。ZacOS 9 コミュニティの皆様からのご支援・ご貢献をお待ちしています:\n%1\n\n素晴らしい ZacOS 9 プロジェクトを創設した Adam Lawson (@chromasystemprofessional) に特別な感謝を捧げます。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker"
+msgstr "広告ブロッカー"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable the Netzac Ad Blocker"
+msgstr "Netzac の広告ブロッカーを有効にする"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac blocks advertisements, trackers and malicious addresses using filter lists such as EasyList. Lists are downloaded from the addresses below and stored locally on this computer."
+msgstr "Netzac は EasyList などのフィルターリストを使用して、広告、トラッカー、悪意のあるアドレスをブロックします。リストは以下のアドレスからダウンロードされ、このコンピューターにローカル保存されます。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list addresses:"
+msgstr "フィルターリストのアドレス:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add List..."
+msgstr "リストを追加..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove List"
+msgstr "リストを削除"
+
+#: shell/netzac/dialogs.cpp
+msgid "Restore Default Lists"
+msgstr "既定のリストに戻す"
+
+#: shell/netzac/dialogs.cpp
+msgid "Update Filter Lists Now"
+msgstr "今すぐフィルターリストを更新"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Filter List"
+msgstr "フィルターリストの追加"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list address (URL):"
+msgstr "フィルターリストのアドレス (URL):"
+
+#: shell/netzac/dialogs.cpp
+msgid "The address must be a valid http:// or https:// URL."
+msgstr "アドレスは有効な http:// または https:// の URL である必要があります。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker is disabled."
+msgstr "広告ブロッカーは無効です。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Updating filter lists..."
+msgstr "フィルターリストを更新しています..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Update failed: %1"
+msgstr "更新に失敗しました: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "No filter lists loaded yet."
+msgstr "フィルターリストはまだ読み込まれていません。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 rules loaded. Last update: %2"
+msgstr "%1 件のルールを読み込みました。最終更新: %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Never"
+msgstr "なし"

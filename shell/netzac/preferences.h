@@ -3,6 +3,7 @@
 #include "calmmode.h"
 
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 class QWebEngineProfile;
@@ -99,6 +100,9 @@ struct NetzacPreferences {
     QString userAgentPreset;
     QString userAgent;
 
+    bool adBlockEnabled = false;
+    QStringList adBlockSubscriptions;
+
     static NetzacPreferences defaults();
     static NetzacPreferences load();
     static void resetAll();
@@ -113,6 +117,7 @@ struct NetzacPreferences {
 
     static QVector<PresetEntry> searchEnginePresets();
     static QVector<PresetEntry> userAgentPresets();
+    static QStringList defaultAdBlockSubscriptions();
     static QVector<PersonalToolbarItem> defaultPersonalToolbar();
     static QString defaultChromeUserAgent();
     static QString userAgentForPreset(const QString &presetId);

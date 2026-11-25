@@ -1,5 +1,6 @@
 #include "preferences.h"
 
+#include "adblocker.h"
 #include "bookmarks.h"
 #include "history.h"
 #include "i18n.h"
@@ -58,6 +59,15 @@ QVector<NetzacPreferences::PresetEntry> NetzacPreferences::userAgentPresets()
         {"safari_macos", ztr("Safari (macOS)"), kSafariMacUa},
         {"netzac_mac", ztr("Netzac Navigator"), kNetzacMacUa},
         {"custom", ztr("Custom"), ""},
+    };
+}
+
+QStringList NetzacPreferences::defaultAdBlockSubscriptions()
+{
+    return {
+        QStringLiteral("https://easylist.to/easylist/easylist.txt"),
+        QStringLiteral("https://easylist.to/easylist/easyprivacy.txt"),
+        QStringLiteral("https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-domains.txt"),
     };
 }
 
@@ -120,6 +130,8 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.proxyPort = 8080;
     prefs.userAgentPreset = QStringLiteral("chrome_linux");
     prefs.userAgent = defaultChromeUserAgent();
+    prefs.adBlockEnabled = false;
+    prefs.adBlockSubscriptions = defaultAdBlockSubscriptions();
     return prefs;
 }
 
@@ -238,6 +250,17 @@ NetzacPreferences NetzacPreferences::load()
         const QString presetUa = userAgentForPreset(prefs.userAgentPreset);
         prefs.userAgent = presetUa.isEmpty() ? defaultChromeUserAgent() : presetUa;
     }
+
+    prefs.adBlockEnabled = s.value(QStringLiteral("adblock/enabled"), prefs.adBlockEnabled).toBool();
+    if (s.contains(QStringLiteral("adblock/lists"))) {
+        prefs.adBlockSubscriptions.clear();
+        const QStringList rawLists = s.value(QStringLiteral("adblock/lists")).toStringList();
+        for (const QString &raw : rawLists) {
+            const QString url = raw.trimmed();
+            if (!url.isEmpty() && !prefs.adBlockSubscriptions.contains(url))
+                prefs.adBlockSubscriptions.append(url);
+        }
+    }
     return prefs;
 }
 
@@ -304,6 +327,9 @@ void NetzacPreferences::save() const
 
     s.setValue(QStringLiteral("userAgent/preset"), userAgentPreset);
     s.setValue(QStringLiteral("userAgent/value"), userAgent);
+
+    s.setValue(QStringLiteral("adblock/enabled"), adBlockEnabled);
+    s.setValue(QStringLiteral("adblock/lists"), adBlockSubscriptions);
 }
 
 void NetzacPreferences::resetAll()
@@ -661,6 +687,10 @@ void NetzacPreferences::apply(QWebEngineProfile *profile) const
             return true;
         });
     }
+
+    NetzacAdBlocker *blocker = NetzacAdBlocker::instance();
+    blocker->install(profile);
+    blocker->configure(adBlockEnabled, adBlockSubscriptions);
 }
 
 QString NetzacPreferences::searchUrlFor(const QString &query) const

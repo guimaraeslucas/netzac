@@ -1140,3 +1140,71 @@ msgstr "Password salvata per %1 nel Portachiavi ZacOS"
 
 msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
 msgstr "Netzac Navigator (ZacOS 9)\n\nSviluppato da Lucas Guimarães - G3Pix (@guimaraeslucas). Contiamo sul supporto della comunità ZacOS 9 per contributi su:\n%1\n\nUn ringraziamento speciale ad Adam Lawson (@chromasystemprofessional) per aver creato lo straordinario progetto ZacOS 9."
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker"
+msgstr "Blocco annunci"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable the Netzac Ad Blocker"
+msgstr "Abilita il blocco annunci di Netzac"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac blocks advertisements, trackers and malicious addresses using filter lists such as EasyList. Lists are downloaded from the addresses below and stored locally on this computer."
+msgstr "Netzac blocca pubblicità, tracker e indirizzi malevoli usando liste di filtri come EasyList. Le liste vengono scaricate dagli indirizzi sottostanti e salvate localmente su questo computer."
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list addresses:"
+msgstr "Indirizzi delle liste di filtri:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add List..."
+msgstr "Aggiungi lista..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove List"
+msgstr "Rimuovi lista"
+
+#: shell/netzac/dialogs.cpp
+msgid "Restore Default Lists"
+msgstr "Ripristina le liste predefinite"
+
+#: shell/netzac/dialogs.cpp
+msgid "Update Filter Lists Now"
+msgstr "Aggiorna ora le liste di filtri"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Filter List"
+msgstr "Aggiungi lista di filtri"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list address (URL):"
+msgstr "Indirizzo della lista di filtri (URL):"
+
+#: shell/netzac/dialogs.cpp
+msgid "The address must be a valid http:// or https:// URL."
+msgstr "L'indirizzo deve essere un URL http:// o https:// valido."
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker is disabled."
+msgstr "Il blocco annunci è disattivato."
+
+#: shell/netzac/dialogs.cpp
+msgid "Updating filter lists..."
+msgstr "Aggiornamento delle liste di filtri..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Update failed: %1"
+msgstr "Aggiornamento non riuscito: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "No filter lists loaded yet."
+msgstr "Nessuna lista di filtri ancora caricata."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 rules loaded. Last update: %2"
+msgstr "%1 regole caricate. Ultimo aggiornamento: %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Never"
+msgstr "Mai"

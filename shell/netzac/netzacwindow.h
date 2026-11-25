@@ -6,6 +6,7 @@
 
 #include <QMainWindow>
 #include <QPair>
+#include <QPoint>
 #include <QRect>
 #include <QString>
 #include <QStringList>
@@ -122,6 +123,10 @@ private:
     };
 
     int createTabInternal(const QString &url, bool switchTo, bool loadInitial);
+    void moveTab(int from, int to);
+    void detachTab(int index, const QPoint &globalPos);
+    void adoptTab(const BrowserTab &tab);
+    void clearTabsForAdoption();
     int indexOfView(const NetzacWebView *view) const;
     BrowserTab *currentTab();
     const BrowserTab *currentTab() const;

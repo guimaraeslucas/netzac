@@ -1140,3 +1140,71 @@ msgstr "تم حفظ كلمة المرور لـ %1 في سلسلة مفاتيح Z
 
 msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
 msgstr "Netzac Navigator (ZacOS 9)\n\nتم التطوير بواسطة Lucas Guimarães - G3Pix (@guimaraeslucas). نعتمد على دعم مجتمع ZacOS 9 للمساهمة في:\n%1\n\nشكر خاص لـ Adam Lawson (@chromasystemprofessional) لإنشائه مشروع ZacOS 9 الرائع."
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker"
+msgstr "حاجب الإعلانات"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable the Netzac Ad Blocker"
+msgstr "تفعيل حاجب الإعلانات في Netzac"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac blocks advertisements, trackers and malicious addresses using filter lists such as EasyList. Lists are downloaded from the addresses below and stored locally on this computer."
+msgstr "يحظر Netzac الإعلانات والمتعقبات والعناوين الضارة باستخدام قوائم تصفية مثل EasyList. يتم تنزيل القوائم من العناوين أدناه وتخزينها محليًا على هذا الكمبيوتر."
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list addresses:"
+msgstr "عناوين قوائم التصفية:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add List..."
+msgstr "إضافة قائمة..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove List"
+msgstr "إزالة القائمة"
+
+#: shell/netzac/dialogs.cpp
+msgid "Restore Default Lists"
+msgstr "استعادة القوائم الافتراضية"
+
+#: shell/netzac/dialogs.cpp
+msgid "Update Filter Lists Now"
+msgstr "تحديث قوائم التصفية الآن"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Filter List"
+msgstr "إضافة قائمة تصفية"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list address (URL):"
+msgstr "عنوان قائمة التصفية (URL):"
+
+#: shell/netzac/dialogs.cpp
+msgid "The address must be a valid http:// or https:// URL."
+msgstr "يجب أن يكون العنوان رابطًا صالحًا يبدأ بـ http:// أو https://."
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker is disabled."
+msgstr "حاجب الإعلانات معطّل."
+
+#: shell/netzac/dialogs.cpp
+msgid "Updating filter lists..."
+msgstr "جارٍ تحديث قوائم التصفية..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Update failed: %1"
+msgstr "فشل التحديث: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "No filter lists loaded yet."
+msgstr "لم يتم تحميل أي قوائم تصفية بعد."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 rules loaded. Last update: %2"
+msgstr "تم تحميل %1 قاعدة. آخر تحديث: %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Never"
+msgstr "أبدًا"

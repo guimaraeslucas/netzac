@@ -1,5 +1,6 @@
 #include "dialogs.h"
 
+#include "adblocker.h"
 #include "bookmarks.h"
 #include "i18n.h"
 #include "netzacwindow.h"
@@ -9,6 +10,7 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -25,6 +27,7 @@
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QStackedWidget>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
@@ -393,6 +396,7 @@ PreferencesDialog::PreferencesDialog(
     m_categoryList->addItem(ztr("Cache"));
     m_categoryList->addItem(ztr("Proxies"));
     m_categoryList->addItem(ztr("User Agent"));
+    m_categoryList->addItem(ztr("Ad Blocker"));
     leftCol->addWidget(m_categoryList, 1);
     mainRow->addLayout(leftCol);
 
@@ -418,6 +422,7 @@ PreferencesDialog::PreferencesDialog(
     m_stack->addWidget(buildCachePage());
     m_stack->addWidget(buildProxiesPage());
     m_stack->addWidget(buildUserAgentPage());
+    m_stack->addWidget(buildAdBlockerPage());
     rightCol->addWidget(m_stack, 1);
     mainRow->addLayout(rightCol, 1);
 
@@ -1243,6 +1248,192 @@ QWidget *PreferencesDialog::buildUserAgentPage()
     return page;
 }
 
+QWidget *PreferencesDialog::buildAdBlockerPage()
+{
+    auto *page = new QWidget(this);
+    auto *lay = new QVBoxLayout(page);
+    lay->setContentsMargins(6, 4, 6, 4);
+    lay->setSpacing(8);
+
+    m_adBlockChk = new QCheckBox(ztr("Enable the Netzac Ad Blocker"), page);
+    m_adBlockChk->setChecked(m_prefs.adBlockEnabled);
+    lay->addWidget(m_adBlockChk);
+
+    auto *desc = new QLabel(
+        ztr("Netzac blocks advertisements, trackers and malicious addresses using filter "
+            "lists such as EasyList. Lists are downloaded from the addresses below and "
+            "stored locally on this computer."),
+        page);
+    desc->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    desc->setWordWrap(true);
+    lay->addWidget(desc);
+
+    lay->addSpacing(4);
+    lay->addWidget(new QLabel(ztr("Filter list addresses:"), page));
+
+    m_adBlockUrls = m_prefs.adBlockSubscriptions;
+    m_adBlockList = new QListWidget(page);
+    m_adBlockList->setMinimumHeight(90);
+    lay->addWidget(m_adBlockList, 1);
+    refreshAdBlockList();
+
+    auto *listButtons = new QHBoxLayout();
+    m_adBlockAddBtn = makeDialogButton(ztr("Add List..."), false, page);
+    connect(m_adBlockAddBtn, &QPushButton::clicked, this, &PreferencesDialog::addAdBlockListUrl);
+    m_adBlockRemoveBtn = makeDialogButton(ztr("Remove List"), false, page);
+    connect(m_adBlockRemoveBtn, &QPushButton::clicked, this, [this]() {
+        const int row = m_adBlockList->currentRow();
+        if (row < 0 || row >= m_adBlockUrls.size())
+            return;
+        m_adBlockUrls.removeAt(row);
+        refreshAdBlockList();
+        updateAdBlockStatus();
+    });
+    m_adBlockDefaultsBtn = makeDialogButton(ztr("Restore Default Lists"), false, page);
+    connect(m_adBlockDefaultsBtn, &QPushButton::clicked, this, [this]() {
+        m_adBlockUrls = NetzacPreferences::defaultAdBlockSubscriptions();
+        refreshAdBlockList();
+        updateAdBlockStatus();
+    });
+    listButtons->addWidget(m_adBlockAddBtn);
+    listButtons->addWidget(m_adBlockRemoveBtn);
+    listButtons->addWidget(m_adBlockDefaultsBtn);
+    listButtons->addStretch(1);
+    lay->addLayout(listButtons);
+
+    lay->addSpacing(4);
+    auto *updateRow = new QHBoxLayout();
+    m_adBlockUpdateBtn = makeDialogButton(ztr("Update Filter Lists Now"), false, page);
+    m_adBlockUpdateBtn->setMinimumWidth(190);
+    connect(m_adBlockUpdateBtn, &QPushButton::clicked, this, [this]() {
+        NetzacAdBlocker *blocker = NetzacAdBlocker::instance();
+        blocker->configure(m_adBlockChk->isChecked(), m_adBlockUrls);
+        blocker->refreshLists(true);
+        updateAdBlockStatus();
+    });
+    updateRow->addWidget(m_adBlockUpdateBtn);
+    updateRow->addStretch(1);
+    lay->addLayout(updateRow);
+
+    m_adBlockStatusLbl = new QLabel(page);
+    m_adBlockStatusLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    m_adBlockStatusLbl->setWordWrap(true);
+    lay->addWidget(m_adBlockStatusLbl);
+
+    connect(m_adBlockChk, &QCheckBox::toggled, this, [this](bool enabled) {
+        m_adBlockList->setEnabled(enabled);
+        m_adBlockAddBtn->setEnabled(enabled);
+        m_adBlockRemoveBtn->setEnabled(enabled);
+        m_adBlockDefaultsBtn->setEnabled(enabled);
+        m_adBlockUpdateBtn->setEnabled(enabled);
+        updateAdBlockStatus();
+    });
+
+    const bool enabled = m_adBlockChk->isChecked();
+    m_adBlockList->setEnabled(enabled);
+    m_adBlockAddBtn->setEnabled(enabled);
+    m_adBlockRemoveBtn->setEnabled(enabled);
+    m_adBlockDefaultsBtn->setEnabled(enabled);
+    m_adBlockUpdateBtn->setEnabled(enabled);
+
+    connect(
+        NetzacAdBlocker::instance(),
+        &NetzacAdBlocker::stateChanged,
+        this,
+        &PreferencesDialog::updateAdBlockStatus);
+    updateAdBlockStatus();
+
+    return page;
+}
+
+void PreferencesDialog::refreshAdBlockList()
+{
+    if (!m_adBlockList)
+        return;
+    m_adBlockList->clear();
+    for (const QString &url : m_adBlockUrls)
+        m_adBlockList->addItem(url);
+}
+
+void PreferencesDialog::addAdBlockListUrl()
+{
+    PlatinumDialog dlg(this);
+    dlg.setWindowTitle(ztr("Add Filter List"));
+    dlg.setFixedWidth(420);
+
+    auto *lay = new QVBoxLayout(&dlg);
+    lay->setContentsMargins(12, 12, 12, 12);
+    lay->setSpacing(8);
+    lay->addWidget(new QLabel(ztr("Filter list address (URL):"), &dlg));
+    auto *edit = new QLineEdit(QStringLiteral("https://"), &dlg);
+    edit->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    lay->addWidget(edit);
+
+    auto *row = new QHBoxLayout();
+    row->addStretch(1);
+    QPushButton *cancelBtn = makeDialogButton(ztr("Cancel"), true, &dlg);
+    connect(cancelBtn, &QPushButton::clicked, &dlg, &QDialog::reject);
+    QPushButton *okBtn = makeDialogButton(ztr("OK"), false, &dlg);
+    connect(okBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
+    row->addWidget(cancelBtn);
+    row->addWidget(okBtn);
+    lay->addLayout(row);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const QString text = edit->text().trimmed();
+    const QUrl url(text);
+    const QString scheme = url.scheme().toLower();
+    if (!url.isValid() || url.host().isEmpty()
+        || (scheme != QLatin1String("http") && scheme != QLatin1String("https"))) {
+        PlatinumAlertDialog(
+            ztr("Add Filter List"),
+            ztr("The address must be a valid http:// or https:// URL."),
+            QStringLiteral("warning"),
+            this)
+            .exec();
+        return;
+    }
+
+    if (!m_adBlockUrls.contains(text)) {
+        m_adBlockUrls.append(text);
+        refreshAdBlockList();
+        m_adBlockList->setCurrentRow(m_adBlockUrls.size() - 1);
+    }
+    updateAdBlockStatus();
+}
+
+void PreferencesDialog::updateAdBlockStatus()
+{
+    if (!m_adBlockStatusLbl || !m_adBlockChk)
+        return;
+
+    if (!m_adBlockChk->isChecked()) {
+        m_adBlockStatusLbl->setText(ztr("Ad Blocker is disabled."));
+        return;
+    }
+    if (NetzacAdBlocker::instance()->isUpdating()) {
+        m_adBlockStatusLbl->setText(ztr("Updating filter lists..."));
+        return;
+    }
+    const QString error = NetzacAdBlocker::instance()->lastError();
+    if (!error.isEmpty()) {
+        m_adBlockStatusLbl->setText(ztr("Update failed: %1").arg(error));
+        return;
+    }
+    const int rules = NetzacAdBlocker::instance()->ruleCount();
+    if (rules <= 0) {
+        m_adBlockStatusLbl->setText(ztr("No filter lists loaded yet."));
+        return;
+    }
+    const QDateTime updated = NetzacAdBlocker::instance()->lastUpdate();
+    const QString when = updated.isValid()
+        ? updated.toString(QStringLiteral("yyyy-MM-dd HH:mm"))
+        : ztr("Never");
+    m_adBlockStatusLbl->setText(ztr("%1 rules loaded. Last update: %2").arg(rules).arg(when));
+}
+
 NetzacPreferences PreferencesDialog::preferences() const
 {
     if (m_resetRequested)
@@ -1308,5 +1499,8 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.userAgentPreset = m_uaPresetPopup->currentData().toString();
     const QString ua = m_uaEdit->text().trimmed();
     out.userAgent = ua.isEmpty() ? NetzacPreferences::defaultChromeUserAgent() : ua;
+
+    out.adBlockEnabled = m_adBlockChk->isChecked();
+    out.adBlockSubscriptions = m_adBlockUrls;
     return out;
 }
