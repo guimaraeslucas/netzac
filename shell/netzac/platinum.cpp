@@ -10,6 +10,7 @@
 #include <QSet>
 #include <QStyle>
 #include <QStyleFactory>
+#include <QStyleHints>
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold)
 {
@@ -23,16 +24,36 @@ QFont zacosFont(const QString &preferred, int pixelSize, bool bold)
     } else if (available.contains(QStringLiteral("ZacOS 9 Views"))) {
         font = QFont(QStringLiteral("ZacOS 9 Views"));
     } else {
+#if defined(Q_OS_WIN)
+        // No ZacOS fonts on Windows: Tahoma follows the Platinum metrics much
+        // closer than the generic "Sans Serif" alias.
+        font = available.contains(QStringLiteral("Tahoma"))
+            ? QFont(QStringLiteral("Tahoma"))
+            : QFont(QStringLiteral("Sans Serif"));
+#else
         font = QFont(QStringLiteral("Sans Serif"));
+#endif
     }
     font.setPixelSize(pixelSize);
     font.setBold(bold);
+#if defined(Q_OS_WIN)
+    // Windows substitutes a different font for the ZacOS families, and the
+    // classic no-antialias strategy turns the small pixel sizes into blobs.
+    font.setStyleStrategy(QFont::PreferAntialias);
+#else
     font.setStyleStrategy(QFont::NoAntialias);
+#endif
     return font;
 }
 
 void applyZacos9Theme(QApplication &app)
 {
+#if defined(Q_OS_WIN)
+    // The Platinum look is a light theme: never follow the system dark mode.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
+#endif
     const QStringList keys = QStyleFactory::keys();
     for (const QString &key : keys) {
         if (key.compare(QStringLiteral("zacos9"), Qt::CaseInsensitive) == 0) {

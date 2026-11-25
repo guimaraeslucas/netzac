@@ -1,0 +1,11 @@
+# Meson build directories
+/build/
+/build-windows/
+/dist/
+
+# Windows portable package
+/zacos9-netzac-*.zip
+
+# Local tooling used by scripts/build-windows.ps1
+/.venv/
+aqtinstall.log

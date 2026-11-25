@@ -1,5 +1,5 @@
 # Arabic translations for zacos9-netzac.
-# Copyright (C) 2026 Netzac Navigator Contributors
+# Copyright (C) 2026 Netzac Navigator Team - G3Pix
 # This file is distributed under the same license as the zacos9-netzac package.
 #
 msgid ""
@@ -27,14 +27,6 @@ msgstr "(مجلد فارغ)"
 #: shell/netzac/netzacwindow.cpp
 msgid "(Untitled)"
 msgstr "(بدون عنوان)"
-
-#: shell/netzac/preferences.cpp
-msgid "68k News"
-msgstr "68k News"
-
-#: shell/netzac/preferences.cpp
-msgid "68k.news"
-msgstr "68k.news"
 
 #: shell/netzac/bookmarks.cpp
 msgid "68k.news - Headlines"
@@ -611,6 +603,10 @@ msgstr "شريط العنوان"
 #: shell/netzac/netzacwindow.cpp
 msgid "Location:"
 msgstr "العنوان:"
+
+#: shell/netzac/preferences.cpp
+msgid "Macintosh Repository"
+msgstr "Macintosh Repository"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Mail"

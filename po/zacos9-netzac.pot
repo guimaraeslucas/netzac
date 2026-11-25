@@ -1,5 +1,5 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) 2026 Netzac Navigator Contributors
+# Copyright (C) 2026 Netzac Navigator Team - G3Pix
 # This file is distributed under the same license as the zacos9-netzac package.
 #
 #, fuzzy
@@ -26,14 +26,6 @@ msgstr ""
 
 #: shell/netzac/netzacwindow.cpp
 msgid "(Untitled)"
-msgstr ""
-
-#: shell/netzac/preferences.cpp
-msgid "68k News"
-msgstr ""
-
-#: shell/netzac/preferences.cpp
-msgid "68k.news"
 msgstr ""
 
 #: shell/netzac/bookmarks.cpp
@@ -614,6 +606,10 @@ msgstr ""
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Location:"
+msgstr ""
+
+#: shell/netzac/preferences.cpp
+msgid "Macintosh Repository"
 msgstr ""
 
 #: shell/netzac/netzacwindow.cpp

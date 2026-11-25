@@ -7,6 +7,8 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QIcon>
+#include <QStringList>
 #include <QUrl>
 #include <QWebEngineDownloadRequest>
 #include <QWebEngineProfile>
@@ -27,6 +29,24 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Netzac Navigator"));
     app.setDesktopFileName(QStringLiteral("netzac"));
+    installI18nTranslations(app);
+#if defined(Q_OS_WIN)
+    // Windows has no icon theme: prefer the icon embedded in the executable,
+    // then the files shipped next to it.
+    const QString iconDir = QCoreApplication::applicationDirPath();
+    const QStringList iconCandidates = {
+        QStringLiteral(":/netzac/netzac.ico"),
+        iconDir + QStringLiteral("/netzac.ico"),
+        iconDir + QStringLiteral("/netzac.svg"),
+    };
+    for (const QString &candidate : iconCandidates) {
+        const QIcon icon(candidate);
+        if (!icon.isNull()) {
+            app.setWindowIcon(icon);
+            break;
+        }
+    }
+#endif
     applyZacos9Theme(app);
 
     NetzacPreferences::ensureDesktopEntryRegistered();

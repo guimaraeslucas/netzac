@@ -32,6 +32,14 @@
 #include <QStyleOptionButton>
 #include <QVBoxLayout>
 
+#if defined(Q_OS_WIN)
+// Windows substitutes a different font for "ZacOS 9 Views" whose glyphs render
+// tighter/smaller than on X11, so navigation labels get extra points there.
+static constexpr int kNavLabelSize = 9;
+#else
+static constexpr int kNavLabelSize = 7;
+#endif
+
 PlatinumNavButton::PlatinumNavButton(const QString &label, const QString &iconName, QWidget *parent)
     : QPushButton(parent)
     , m_label(label)
@@ -44,7 +52,7 @@ PlatinumNavButton::PlatinumNavButton(const QString &label, const QString &iconNa
 
     setFixedSize(54, 44);
     setFocusPolicy(Qt::NoFocus);
-    setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 7));
+    setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), kNavLabelSize));
 }
 
 void PlatinumNavButton::setShowText(bool show)

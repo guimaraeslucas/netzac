@@ -86,12 +86,12 @@ QVector<NetzacPreferences::PersonalToolbarItem> NetzacPreferences::defaultPerson
         {ztr("Home"), QStringLiteral("about:netzac"), QStringLiteral("home"), false, {}},
         {ztr("FrogFind"), QStringLiteral("https://frogfind.com"), QStringLiteral("search"), false, {}},
         {ztr("Wiby"), QStringLiteral("https://wiby.me"), QStringLiteral("guide"), false, {}},
-        {ztr("68k News"), QStringLiteral("http://68k.news"), QStringLiteral("page"), false, {}},
+        {ztr("Macintosh Repository"), QStringLiteral("https://www.macintoshrepository.org/"), QStringLiteral("page"), false, {}},
         {ztr("The Old Net"), QStringLiteral("https://theoldnet.com"), QStringLiteral("page"), false, {}},
         {ztr("Internet"), QString(), QStringLiteral("folder"), true, {
             {ztr("FrogFind!"), QStringLiteral("https://frogfind.com")},
             {ztr("Wiby"), QStringLiteral("https://wiby.me")},
-            {ztr("68k.news"), QStringLiteral("http://68k.news")},
+            {ztr("Macintosh Repository"), QStringLiteral("https://www.macintoshrepository.org/")},
             {ztr("NPR Text"), QStringLiteral("https://text.npr.org")},
             {ztr("CNN Lite"), QStringLiteral("https://lite.cnn.com")},
             {ztr("Wikipedia"), QStringLiteral("https://en.wikipedia.org")},
@@ -392,6 +392,11 @@ void NetzacPreferences::saveLastTabs(const QStringList &urls, int activeIndex)
 
 void NetzacPreferences::ensureDesktopEntryRegistered()
 {
+#if defined(Q_OS_WIN)
+    // Windows uses its own shell/registry integration; there is nothing to
+    // register here and no xdg-* helpers to run.
+    return;
+#else
     QString userApps = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);
     if (userApps.isEmpty())
         userApps = QDir::homePath() + QStringLiteral("/.local/share/applications");
@@ -432,10 +437,14 @@ void NetzacPreferences::ensureDesktopEntryRegistered()
 
     if (QDir(userApps).exists())
         QProcess::execute(QStringLiteral("update-desktop-database"), {userApps});
+#endif
 }
 
 bool NetzacPreferences::isDefaultBrowser()
 {
+#if defined(Q_OS_WIN)
+    return false;
+#else
     QProcess proc;
     proc.start(QStringLiteral("xdg-settings"), {QStringLiteral("get"), QStringLiteral("default-web-browser")});
     if (proc.waitForFinished(2000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
@@ -452,10 +461,14 @@ bool NetzacPreferences::isDefaultBrowser()
             return true;
     }
     return false;
+#endif
 }
 
 bool NetzacPreferences::setAsDefaultBrowser()
 {
+#if defined(Q_OS_WIN)
+    return false;
+#else
     ensureDesktopEntryRegistered();
 
     bool ok = false;
@@ -491,6 +504,7 @@ bool NetzacPreferences::setAsDefaultBrowser()
         QProcess::execute(QStringLiteral("update-desktop-database"), {userApps});
 
     return ok || isDefaultBrowser();
+#endif
 }
 
 bool PasswordStorage::isAvailable()

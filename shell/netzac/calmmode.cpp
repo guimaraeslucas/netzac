@@ -750,7 +750,7 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
 
   let removedCount = 0;
   let usedReaderFocus = false;
-
+)CALM_JS" R"CALM_JS(
   // Firefox Reader View / Chrome-style main article extraction via Mozilla Readability.
   if (LAYOUT_MODE === 1) {
     const loadReadability = () => {
@@ -923,7 +923,7 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
             }
           }
         }
-
+)CALM_JS" R"CALM_JS(
         // Remove small link-only clutter boxes (related links, share lists, tag pills).
         const boxCandidates = contentNode.querySelectorAll("div, section, ul, ol");
         for (let i = boxCandidates.length - 1; i >= 0; --i) {
@@ -1129,7 +1129,7 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
         ++removedCount;
       }
     }
-
+)CALM_JS" R"CALM_JS(
     // Neutralize negative margins in inline styles to prevent overlapping blocks.
     const inlineMarginEls = document.body.querySelectorAll("[style]");
     for (let i = 0; i < inlineMarginEls.length; ++i) {

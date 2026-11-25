@@ -4,6 +4,13 @@ project('zacos9-netzac', 'cpp',
   meson_version: '>=1.0',
   default_options: ['cpp_std=c++17', 'warning_level=2'])
 
+# Human-facing product metadata. On Windows these become the VERSIONINFO of the
+# executable (Properties > Details), so they live here as a single source.
+product_name = 'Netzac Navigator'
+product_description = 'Netzac web browser'
+product_company = 'G3Pix Ltda'
+product_copyright = 'Copyright (C) 2026 Lucas Guimarães (@guimaraeslucas)'
+
 textdomain = get_option('textdomain')
 localedir = get_option('prefix') / get_option('localedir')
 
