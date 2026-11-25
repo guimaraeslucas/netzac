@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/netzac">
+  <file alias="Readability.js">third_party/Readability.js</file>
+</qresource>
+</RCC>

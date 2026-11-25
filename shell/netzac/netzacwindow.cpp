@@ -795,10 +795,11 @@ void NetzacWindow::buildToolbars()
 
     m_btnCalm = new PlatinumNavButton(ztr("Calm"), QStringLiteral("calm"));
     m_btnCalm->setCheckable(true);
-    m_btnCalm->setToolTip(ztr("Toggle Calm reading mode (configure filters in Edit > Preferences > Calm Mode)"));
+    m_btnCalm->setToolTip(ztr("Toggle Calm mode (hold to choose Calm Mode or Reader Mode)"));
     connect(m_btnCalm, &QPushButton::toggled, this, [this](bool enabled) {
         if (auto *c = calmController()) c->setEnabled(enabled);
     });
+    m_btnCalm->setHistoryMenuProvider([this](QMenu &menu) { buildCalmModeMenu(menu); });
 
     navLay->addWidget(m_btnBack);
     navLay->addWidget(m_btnForward);
@@ -1949,6 +1950,44 @@ void NetzacWindow::buildNavHistoryMenu(QMenu &menu, bool back)
             act->setToolTip(item.url().toString());
             connect(act, &QAction::triggered, this, [hist, item]() { hist->goToItem(item); });
         }
+    }
+}
+
+void NetzacWindow::buildCalmModeMenu(QMenu &menu)
+{
+    auto *group = new QActionGroup(&menu);
+    group->setExclusive(true);
+
+    QAction *calmAct = menu.addAction(ztr("Calm Mode"));
+    calmAct->setCheckable(true);
+    calmAct->setChecked(m_prefs.calm.layoutMode == CalmLayoutMode::CleanPage);
+    group->addAction(calmAct);
+    connect(calmAct, &QAction::triggered, this, [this]() {
+        selectCalmLayoutMode(CalmLayoutMode::CleanPage);
+    });
+
+    QAction *readerAct = menu.addAction(ztr("Reader Mode"));
+    readerAct->setCheckable(true);
+    readerAct->setChecked(m_prefs.calm.layoutMode == CalmLayoutMode::ReaderFocus);
+    group->addAction(readerAct);
+    connect(readerAct, &QAction::triggered, this, [this]() {
+        selectCalmLayoutMode(CalmLayoutMode::ReaderFocus);
+    });
+}
+
+void NetzacWindow::selectCalmLayoutMode(CalmLayoutMode mode)
+{
+    if (m_prefs.calm.layoutMode != mode) {
+        m_prefs.calm.layoutMode = mode;
+        m_prefs.save();
+        for (BrowserTab &tab : m_tabs) {
+            if (tab.calm)
+                tab.calm->setConfig(m_prefs.calm);
+        }
+    }
+    if (CalmModeController *c = calmController()) {
+        if (!c->isEnabled())
+            c->setEnabled(true);
     }
 }
 

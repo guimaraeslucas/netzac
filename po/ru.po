@@ -856,6 +856,10 @@ msgstr "Быстрые ссылки"
 msgid "Quit"
 msgstr "Выход"
 
+#: shell/netzac/netzacwindow.cpp
+msgid "Reader Mode"
+msgstr "Режим чтения"
+
 #: shell/netzac/dialogs.cpp
 msgid "Reading Layout:"
 msgstr "Макет чтения:"
@@ -1009,8 +1013,8 @@ msgid "The Old Net"
 msgstr "The Old Net"
 
 #: shell/netzac/netzacwindow.cpp
-msgid "Toggle Calm reading mode (configure filters in Edit > Preferences > Calm Mode)"
-msgstr "Переключить спокойный режим (Правка > Настройки > Спокойный режим)"
+msgid "Toggle Calm mode (hold to choose Calm Mode or Reader Mode)"
+msgstr "Переключить спокойный режим (удерживайте для выбора между спокойным режимом и режимом чтения)"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Top Tabs (Below Personal Toolbar)"

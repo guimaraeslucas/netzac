@@ -153,6 +153,8 @@ private:
     void updateNavStates();
     void loadBuiltinAbout(BrowserTab *tab, const QString &aboutUrl);
     void buildNavHistoryMenu(QMenu &menu, bool back);
+    void buildCalmModeMenu(QMenu &menu);
+    void selectCalmLayoutMode(CalmLayoutMode mode);
     void applyNavToolbarCompact(bool showText);
     void handleCredentialSubmitted(const QString &host, const QString &username, const QString &password);
     void installPasswordHelpers(NetzacWebPage *page, const QUrl &url);

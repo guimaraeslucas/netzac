@@ -77,6 +77,7 @@ public:
     static constexpr const char *kDocumentMarkerAttr = "netzacCalm";
 
     static QString buildCalmCss(const CalmConfig &config);
+    static QString buildReaderCss(const CalmConfig &config);
     static QString buildApplyScript(const CalmConfig &config);
     static QString buildRevertScript();
 };

@@ -3,6 +3,11 @@ moc_files = qt6.compile_moc(
   dependencies: qt6_dep,
 )
 
+res_files = qt6.compile_resources(
+  name: 'netzac_resources',
+  sources: 'netzac.qrc',
+)
+
 executable('zacos9-netzac',
   [
     'main.cpp',
@@ -17,6 +22,7 @@ executable('zacos9-netzac',
     'webview.cpp',
     'netzacwindow.cpp',
     moc_files,
+    res_files,
   ],
   dependencies: [qt6_dep],
   cpp_args: [

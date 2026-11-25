@@ -2,12 +2,24 @@
 
 #include "webview.h"
 
+#include <QFile>
 #include <QPointer>
 #include <QVariant>
 #include <QVariantMap>
 #include <QWebEngineScript>
 
 namespace {
+
+QString loadReadabilitySource()
+{
+    static const QString cached = []() {
+        QFile f(QStringLiteral(":/netzac/Readability.js"));
+        if (!f.open(QIODevice::ReadOnly))
+            return QString();
+        return QString::fromUtf8(f.readAll());
+    }();
+    return cached;
+}
 
 int clampMaxImageWidth(int maxWidth)
 {
@@ -322,10 +334,252 @@ table caption {
     return css;
 }
 
+QString CalmDomInjector::buildReaderCss(const CalmConfig &config)
+{
+    const int capped = clampMaxImageWidth(config.maxImageWidth);
+    QString css = QString::fromUtf8(R"CALM_READER_CSS(
+html, body {
+  background-color: #f6f4ee !important;
+  color: #1f2328 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+#netzac-calm-reader {
+  display: block !important;
+  max-width: 720px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 36px 28px 64px 28px !important;
+  box-sizing: border-box !important;
+  font-family: Georgia, 'Liberation Serif', 'Nimbus Roman', serif !important;
+  font-size: 18px !important;
+  line-height: 1.72 !important;
+  color: #1f2328 !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+#netzac-calm-reader * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.netzac-calm-reader-header {
+  display: block !important;
+  margin: 0 0 1.25em 0 !important;
+}
+.netzac-calm-reader-site {
+  font-family: 'ZacOS 9 Views', 'DejaVu Sans', sans-serif !important;
+  font-size: 0.78em !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #5b626c !important;
+  margin: 0 0 0.45em 0 !important;
+}
+.netzac-calm-reader-header h1 {
+  font-size: 1.95em !important;
+  line-height: 1.22 !important;
+  font-weight: 700 !important;
+  color: #14171c !important;
+  margin: 0 0 0.45em 0 !important;
+}
+.netzac-calm-reader-meta {
+  font-family: 'ZacOS 9 Views', 'DejaVu Sans', sans-serif !important;
+  font-size: 0.88em !important;
+  line-height: 1.45 !important;
+  color: #555c66 !important;
+  margin: 0 0 1.1em 0 !important;
+}
+.netzac-calm-reader-header hr {
+  border: 0 !important;
+  border-top: 1px solid #d2ccc0 !important;
+  margin: 0 0 1.6em 0 !important;
+}
+.netzac-calm-reader-content {
+  display: block !important;
+}
+.netzac-calm-reader-content p {
+  margin: 0 0 1.15em 0 !important;
+}
+.netzac-calm-reader-content h1,
+.netzac-calm-reader-content h2,
+.netzac-calm-reader-content h3,
+.netzac-calm-reader-content h4,
+.netzac-calm-reader-content h5,
+.netzac-calm-reader-content h6 {
+  color: #14171c !important;
+  line-height: 1.3 !important;
+  font-weight: 700 !important;
+  margin: 1.55em 0 0.55em 0 !important;
+}
+.netzac-calm-reader-content h2 { font-size: 1.45em !important; }
+.netzac-calm-reader-content h3 { font-size: 1.22em !important; }
+.netzac-calm-reader-content h4 { font-size: 1.08em !important; }
+.netzac-calm-reader-content a {
+  color: #1b4f9c !important;
+  text-decoration: underline !important;
+}
+.netzac-calm-reader-content a:visited {
+  color: #5b317d !important;
+}
+.netzac-calm-reader-content ul,
+.netzac-calm-reader-content ol {
+  margin: 0 0 1.15em 0 !important;
+  padding-left: 1.65em !important;
+}
+.netzac-calm-reader-content li {
+  margin: 0.3em 0 !important;
+}
+.netzac-calm-reader-content dl {
+  margin: 0 0 1.15em 0 !important;
+}
+.netzac-calm-reader-content dt {
+  font-weight: 700 !important;
+  margin-top: 0.6em !important;
+}
+.netzac-calm-reader-content dd {
+  margin: 0.2em 0 0.6em 1.5em !important;
+}
+.netzac-calm-reader-content blockquote {
+  margin: 1.25em 0 !important;
+  padding: 8px 16px !important;
+  border-left: 3px solid #9d9689 !important;
+  background-color: #efece3 !important;
+  color: #2b3036 !important;
+}
+.netzac-calm-reader-content blockquote p:last-child {
+  margin-bottom: 0 !important;
+}
+.netzac-calm-reader-content pre,
+.netzac-calm-reader-content code,
+.netzac-calm-reader-content kbd,
+.netzac-calm-reader-content samp {
+  font-family: 'Nimbus Mono PS', 'Liberation Mono', monospace !important;
+  background-color: #edeae0 !important;
+  color: #1f2328 !important;
+  border-radius: 2px !important;
+}
+.netzac-calm-reader-content code {
+  padding: 1px 4px !important;
+  font-size: 0.88em !important;
+}
+.netzac-calm-reader-content pre {
+  padding: 12px 14px !important;
+  overflow-x: auto !important;
+  border: 1px solid #d5d0c4 !important;
+  white-space: pre !important;
+  line-height: 1.45 !important;
+  margin: 1.2em 0 !important;
+}
+.netzac-calm-reader-content pre code {
+  padding: 0 !important;
+  background: transparent !important;
+  font-size: 0.88em !important;
+}
+.netzac-calm-reader-content hr {
+  border: 0 !important;
+  border-top: 1px solid #d2ccc0 !important;
+  margin: 1.6em 0 !important;
+}
+.netzac-calm-reader-content figure {
+  margin: 1.4em 0 !important;
+  padding: 0 !important;
+}
+.netzac-calm-reader-content figcaption {
+  font-size: 0.88em !important;
+  color: #555c66 !important;
+  margin-top: 0.45em !important;
+  line-height: 1.45 !important;
+}
+.netzac-calm-reader-content img,
+.netzac-calm-reader-content picture {
+  display: block !important;
+  max-width: min(100%, __MAX_IMG_WIDTH__px) !important;
+  height: auto !important;
+  margin: 1.2em auto !important;
+  border-radius: 2px !important;
+}
+.netzac-calm-reader-content figure img,
+.netzac-calm-reader-content picture img {
+  margin: 0 auto !important;
+}
+.netzac-calm-reader-content svg {
+  max-width: min(100%, __MAX_IMG_WIDTH__px) !important;
+  height: auto !important;
+}
+)CALM_READER_CSS");
+
+    if (config.removeIframes) {
+        css.append(QStringLiteral("#netzac-calm-reader iframe { display: none !important; }\n"));
+    } else {
+        css.append(QStringLiteral("#netzac-calm-reader iframe { max-width: 100% !important; }\n"));
+    }
+
+    if (config.removeVideos) {
+        css.append(QStringLiteral("#netzac-calm-reader video { display: none !important; }\n"));
+    } else {
+        css.append(QStringLiteral(
+            "#netzac-calm-reader video { display: block !important; max-width: min(100%, __MAX_IMG_WIDTH__px) !important; height: auto !important; margin: 1.2em auto !important; }\n"));
+    }
+
+    if (config.normalizeTables) {
+        css.append(QString::fromUtf8(R"CALM_READER_TBL(
+#netzac-calm-reader table {
+  width: auto !important;
+  max-width: 100% !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  margin: 1.2em 0 !important;
+  font-size: 0.92em !important;
+  line-height: 1.45 !important;
+}
+#netzac-calm-reader table th,
+#netzac-calm-reader table td {
+  border: 1px solid #c5c0b5 !important;
+  padding: 6px 10px !important;
+  text-align: left !important;
+  vertical-align: top !important;
+  overflow-wrap: break-word !important;
+}
+#netzac-calm-reader table th {
+  background-color: #eae6dc !important;
+  color: #14171c !important;
+  font-weight: 600 !important;
+}
+#netzac-calm-reader table caption {
+  text-align: left !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.4em !important;
+}
+#netzac-calm-reader .netzac-calm-table-wrap {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  margin: 1.2em 0 !important;
+}
+#netzac-calm-reader .netzac-calm-table-wrap > table {
+  margin: 0 !important;
+}
+)CALM_READER_TBL"));
+    }
+
+    css.replace(QStringLiteral("__MAX_IMG_WIDTH__"), QString::number(capped));
+    return css;
+}
+
 QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
 {
     const int capped = clampMaxImageWidth(config.maxImageWidth);
     const QString quotedCss = jsQuote(buildCalmCss(config));
+    const QString quotedReaderCss = jsQuote(buildReaderCss(config));
+    const QString readabilitySrc = (config.layoutMode == CalmLayoutMode::ReaderFocus)
+        ? loadReadabilitySource()
+        : QString();
 
     QString script = QString::fromUtf8(R"CALM_JS(
 (() => {
@@ -339,6 +593,7 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
   const NORMALIZE_TABLES = __NORMALIZE_TABLES__;
   const MAX_IMG_WIDTH = __MAX_IMG_WIDTH__;
   const CALM_CSS = __CALM_CSS__;
+  const READER_CSS = __READER_CSS__;
 
   if (!document.documentElement || !document.body) {
     return { status: "error", removed: 0, imagesCapped: 0, tablesNormalized: 0, readerFocus: false };
@@ -422,7 +677,7 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
     return { status: "skipped-webapp", removed: 0, imagesCapped: 0, tablesNormalized: 0, readerFocus: false };
   }
 
-  // Rescue lazy-loaded images before stripping scripts or restructuring DOM.
+  // Rescue lazy-loaded images before extracting or stripping DOM.
   const lazyAttrs = ["data-src", "data-lazy-src", "data-original", "data-src-medium", "data-url"];
   for (let i = 0; i < document.images.length; ++i) {
     const img = document.images[i];
@@ -437,341 +692,463 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
         }
       }
     }
-    const lazySrcset = (img.getAttribute("data-srcset") || "").trim();
+    const lazySrcset = (img.getAttribute("data-srcset") || img.getAttribute("data-lazy-srcset") || "").trim();
     if (!img.getAttribute("srcset") && lazySrcset) {
       img.setAttribute("srcset", lazySrcset);
     }
   }
 
+  const NON_VISUAL_TAGS = new Set([
+    "STYLE", "LINK", "META", "TITLE", "NOSCRIPT", "TEMPLATE",
+    "DATALIST", "SOURCE", "TRACK", "PARAM", "AREA", "BR", "WBR", "SCRIPT"
+  ]);
+  const SEMANTIC_PROTECTED_TAGS = new Set(["BODY", "MAIN", "ARTICLE", "SECTION"]);
+  const DISTRACTION_RE = /(?:^|[\s_-])(?:ad|ads|advert|advertisement|adsense|adserver|doubleclick|dfp|taboola|outbrain|mgid|teads|publicidade|publi|anuncio|anuncios|patrocinado|patrocinio|propaganda|sponsored|sponsor|promo|promotion|gdpr|paywall|popup|modal|cookie(?:banner|notice|consent|bar|popup|modal|overlay|wall)|cookies?(?=$|[\s_-](?:banner|notice|consent|bar|popup|modal|overlay|wall|policy|box|msg|message))|consent(?:[-_]?(?:banner|modal|popup|bar))?|newsletter(?:[-_]?(?:signup|box|banner|modal))?|glb[-_]?ad|cn[-_]?ad|floating[-_]?player|sticky[-_]?(?:banner|ad|footer|bar)|ad[-_]?(?:slot|unit|box|banner|container|wrapper|feedback)|banner[-_]?ad|sponsored[-_]?(?:post|content|block|link))(?=$|[\s_-])/i;
+
+  const isHiddenElement = (el) => {
+    if (el.hasAttribute("hidden") || el.getAttribute("aria-hidden") === "true") {
+      return true;
+    }
+    if (el.style) {
+      if (el.style.display === "none" || el.style.visibility === "hidden") {
+        return true;
+      }
+    }
+    const cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+    if (cs && (cs.display === "none" || cs.visibility === "hidden")) {
+      return true;
+    }
+    return false;
+  };
+
+  const isDistractionContainer = (el, tag) => {
+    if (tag === "DIALOG") {
+      return true;
+    }
+    if (tag === "INS" && typeof el.className === "string" && /\badsbygoogle\b/i.test(el.className)) {
+      return true;
+    }
+    if (el.hasAttribute("data-ad") || el.hasAttribute("data-ad-slot")
+        || el.hasAttribute("data-ad-client") || el.hasAttribute("data-sponsored")) {
+      return true;
+    }
+    if (el.getAttribute("aria-modal") === "true") {
+      return true;
+    }
+    const role = (el.getAttribute("role") || "").trim().toLowerCase();
+    if (role === "dialog" || role === "alertdialog") {
+      return true;
+    }
+    const testId = el.getAttribute("data-testid") || "";
+    if (testId && DISTRACTION_RE.test(testId)) {
+      return true;
+    }
+    const idStr = el.id || "";
+    const clsStr = typeof el.className === "string" ? el.className : (el.getAttribute("class") || "");
+    return (idStr && DISTRACTION_RE.test(idStr)) || (clsStr && DISTRACTION_RE.test(clsStr));
+  };
+
   let removedCount = 0;
+  let usedReaderFocus = false;
 
-  if (REMOVE_SCRIPTS) {
-    const scriptNodes = document.querySelectorAll("script, link[rel='preload'][as='script'], link[rel='modulepreload']");
-    for (let i = 0; i < scriptNodes.length; ++i) {
-      scriptNodes[i].remove();
-      ++removedCount;
-    }
-  }
-
-  if (REMOVE_VIDEOS) {
-    const videos = document.querySelectorAll("video");
-    for (let i = 0; i < videos.length; ++i) {
-      const v = videos[i];
-      try {
-        v.pause();
-        v.muted = true;
-      } catch (e) {}
-      v.removeAttribute("src");
-      v.removeAttribute("autoplay");
-      const sources = v.querySelectorAll("source");
-      for (let j = 0; j < sources.length; ++j) {
-        sources[j].remove();
-      }
-      try {
-        v.load();
-      } catch (e) {}
-      v.remove();
-      ++removedCount;
-    }
-  }
-
-  // Batched read phase over document.body (skipping doomed subtrees via explicit stack).
-  if (REMOVE_IFRAMES || REMOVE_ADS) {
-    const NON_VISUAL_TAGS = new Set([
-      "STYLE", "LINK", "META", "TITLE", "NOSCRIPT", "TEMPLATE",
-      "DATALIST", "SOURCE", "TRACK", "PARAM", "AREA", "BR", "WBR", "SCRIPT"
-    ]);
-    const SEMANTIC_PROTECTED_TAGS = new Set(["BODY", "MAIN", "ARTICLE", "SECTION"]);
-    const DISTRACTION_RE = /(?:^|[\s_-])(?:ad|ads|advert|advertisement|adsense|adserver|doubleclick|dfp|taboola|outbrain|mgid|teads|publicidade|publi|anuncio|anuncios|patrocinado|patrocinio|propaganda|sponsored|sponsor|promo|promotion|gdpr|paywall|popup|modal|cookie(?:banner|notice|consent|bar|popup|modal|overlay|wall)|cookies?(?=$|[\s_-](?:banner|notice|consent|bar|popup|modal|overlay|wall|policy|box|msg|message))|consent(?:[-_]?(?:banner|modal|popup|bar))?|newsletter(?:[-_]?(?:signup|box|banner|modal))?|glb[-_]?ad|cn[-_]?ad|floating[-_]?player|sticky[-_]?(?:banner|ad|footer|bar)|ad[-_]?(?:slot|unit|box|banner|container|wrapper|feedback)|banner[-_]?ad|sponsored[-_]?(?:post|content|block|link))(?=$|[\s_-])/i;
-
-    const isHiddenElement = (el) => {
-      if (el.hasAttribute("hidden") || el.getAttribute("aria-hidden") === "true") {
-        return true;
-      }
-      if (el.style) {
-        if (el.style.display === "none" || el.style.visibility === "hidden") {
-          return true;
-        }
-      }
-      const cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
-      if (cs && (cs.display === "none" || cs.visibility === "hidden")) {
-        return true;
-      }
-      return false;
+  // Firefox Reader View / Chrome-style main article extraction via Mozilla Readability.
+  if (LAYOUT_MODE === 1) {
+    const loadReadability = () => {
+      const module = undefined;
+      const exports = undefined;
+      __READABILITY_SRC__
+      return typeof Readability === "function" ? Readability : null;
     };
 
-    const isDistractionContainer = (el, tag) => {
-      if (tag === "DIALOG") {
-        return true;
+    const ReadabilityCtor = loadReadability();
+    if (ReadabilityCtor) {
+      // Mark computed-hidden elements on the live DOM before cloning so Readability ignores hidden drawers/menus.
+      const markedHidden = [];
+      const markStack = [];
+      const liveBodyChildren = document.body.children;
+      for (let i = liveBodyChildren.length - 1; i >= 0; --i) {
+        markStack.push(liveBodyChildren[i]);
       }
-      if (tag === "INS" && typeof el.className === "string" && /\badsbygoogle\b/i.test(el.className)) {
-        return true;
-      }
-      if (el.hasAttribute("data-ad") || el.hasAttribute("data-ad-slot")
-          || el.hasAttribute("data-ad-client") || el.hasAttribute("data-sponsored")) {
-        return true;
-      }
-      if (el.getAttribute("aria-modal") === "true") {
-        return true;
-      }
-      const role = (el.getAttribute("role") || "").trim().toLowerCase();
-      if (role === "dialog" || role === "alertdialog") {
-        return true;
-      }
-      const testId = el.getAttribute("data-testid") || "";
-      if (testId && DISTRACTION_RE.test(testId)) {
-        return true;
-      }
-      const idStr = el.id || "";
-      const clsStr = typeof el.className === "string" ? el.className : (el.getAttribute("class") || "");
-      return (idStr && DISTRACTION_RE.test(idStr)) || (clsStr && DISTRACTION_RE.test(clsStr));
-    };
-
-    const toRemove = [];
-    const stack = [];
-    const bodyChildren = document.body.children;
-    for (let i = bodyChildren.length - 1; i >= 0; --i) {
-      stack.push(bodyChildren[i]);
-    }
-
-    while (stack.length > 0) {
-      const el = stack.pop();
-      const tag = el.tagName ? el.tagName.toUpperCase() : "";
-      if (!tag || NON_VISUAL_TAGS.has(tag)) {
-        continue;
-      }
-
-      if (REMOVE_IFRAMES && tag === "IFRAME") {
-        toRemove.push(el);
-        continue;
-      }
-
-      if (REMOVE_ADS) {
-        const protectsFromHeuristics = SEMANTIC_PROTECTED_TAGS.has(tag)
-          || (el.querySelector && el.querySelector("main, article") !== null);
+      while (markStack.length > 0) {
+        const el = markStack.pop();
+        const tag = el.tagName ? el.tagName.toUpperCase() : "";
+        if (!tag || NON_VISUAL_TAGS.has(tag)) continue;
         const protectsHidden = (tag === "MAIN" || tag === "ARTICLE" || tag === "BODY")
           || (el.querySelector && el.querySelector("main, article") !== null);
-
-        if ((!protectsHidden && isHiddenElement(el))
-            || (!protectsFromHeuristics && isDistractionContainer(el, tag))) {
-          toRemove.push(el);
+        if (!protectsHidden && isHiddenElement(el)) {
+          el.setAttribute("data-netzac-calm-hidden", "1");
+          markedHidden.push(el);
           continue;
         }
-      }
-
-      const children = el.children;
-      for (let i = children.length - 1; i >= 0; --i) {
-        stack.push(children[i]);
-      }
-    }
-
-    for (let i = 0; i < toRemove.length; ++i) {
-      toRemove[i].remove();
-      ++removedCount;
-    }
-  }
-
-  // Optional Firefox Reader-style main text extraction.
-  let usedReaderFocus = false;
-  if (LAYOUT_MODE === 1) {
-    const POSITIVE_RE = /(?:^|[\s_-])(?:article|content|story|post|entry|materia|noticia|body[-_]?text|read|text)(?=$|[\s_-])/i;
-    const NEGATIVE_RE = /(?:^|[\s_-])(?:nav|menu|sidebar|footer|header|comment|coment|related|relacionad|share|social|breadcrumb|trending|mais[-_]?lid|leia[-_]?tambem|veja[-_]?tambem|widget|author[-_]?bio)(?=$|[\s_-])/i;
-    const CLUTTER_RE = /(?:^|[\s_-])(?:share|social|related|relacionad|comment|comentar|newsletter|subscribe|assine|breadcrumb|sidebar|trending|mais[-_]?lid|leia[-_]?tambem|veja[-_]?tambem|author[-_]?bio|tags|tag[-_]?list|outbrain|taboola)(?=$|[\s_-])/i;
-
-    const getIdCls = (el) => {
-      const idStr = el.id || "";
-      const clsStr = typeof el.className === "string" ? el.className : (el.getAttribute("class") || "");
-      return idStr + " " + clsStr;
-    };
-
-    const scoreCandidate = (el) => {
-      const ps = el.querySelectorAll("p");
-      if (ps.length === 0) return null;
-      let pChars = 0;
-      let pCount = 0;
-      let commaCount = 0;
-      for (let i = 0; i < ps.length; ++i) {
-        const txt = (ps[i].textContent || "").replace(/\s+/g, " ").trim();
-        if (txt.length >= 25) {
-          pChars += txt.length;
-          ++pCount;
-          const punct = txt.match(/[,.;:!?]/g);
-          commaCount += punct ? punct.length : 0;
-        }
-      }
-      if (pChars < 200) return null;
-
-      const totalChars = Math.max(1, (el.textContent || "").replace(/\s+/g, " ").trim().length);
-      let linkChars = 0;
-      const links = el.querySelectorAll("a");
-      for (let i = 0; i < links.length; ++i) {
-        linkChars += (links[i].textContent || "").trim().length;
-      }
-      const linkDensity = linkChars / totalChars;
-      if (linkDensity >= 0.6) return null;
-
-      const tag = el.tagName ? el.tagName.toUpperCase() : "";
-      let score = pChars + commaCount * 10 + pCount * 15;
-      if (tag === "ARTICLE") score += 120;
-      else if (tag === "MAIN" || (el.getAttribute("role") || "").toLowerCase() === "main") score += 80;
-      else if (tag === "SECTION") score += 20;
-
-      const tokens = getIdCls(el);
-      if (POSITIVE_RE.test(tokens)) score += 50;
-      if (NEGATIVE_RE.test(tokens)) score -= 80;
-      score *= (1.0 - linkDensity * 0.7);
-      return { el, score, pChars, linkDensity };
-    };
-
-    const rawCandidates = document.querySelectorAll("article, main, [role='main'], section, div");
-    let best = null;
-    for (let i = 0; i < rawCandidates.length; ++i) {
-      const stats = scoreCandidate(rawCandidates[i]);
-      if (!stats) continue;
-      if (!best || stats.score > best.score + 1
-          || (Math.abs(stats.score - best.score) <= 1 && best.el.contains(stats.el))) {
-        best = stats;
-      }
-    }
-
-    if (best) {
-      const innerArticles = best.el.querySelectorAll("article");
-      for (let i = 0; i < innerArticles.length; ++i) {
-        const sub = scoreCandidate(innerArticles[i]);
-        if (sub && sub.pChars >= best.pChars * 0.65 && sub.linkDensity <= best.linkDensity + 0.05) {
-          best = sub;
+        const ch = el.children;
+        for (let i = ch.length - 1; i >= 0; --i) {
+          markStack.push(ch[i]);
         }
       }
 
-      const extractTitle = () => {
-        const selectors = ["article h1", "main h1", "h1"];
-        for (let i = 0; i < selectors.length; ++i) {
-          const h = document.querySelector(selectors[i]);
-          const t = h ? (h.textContent || "").replace(/\s+/g, " ").trim() : "";
-          if (t.length >= 8) return t;
-        }
-        const og = document.querySelector('meta[property="og:title"]');
-        const ogText = og ? (og.getAttribute("content") || "").trim() : "";
-        if (ogText) return ogText;
-        return (document.title || "").trim();
-      };
+      const docClone = document.cloneNode(true);
 
-      const extractMeta = () => {
-        const parts = [];
-        const authorMeta = document.querySelector('meta[name="author"]');
-        const authorEl = document.querySelector('[rel="author"], .byline, .author');
-        const author = (authorMeta ? (authorMeta.getAttribute("content") || "") : (authorEl ? authorEl.textContent : ""))
-          .replace(/\s+/g, " ").trim();
-        if (author && author.length <= 120) {
-          parts.push(author);
-        }
-        const timeEl = document.querySelector("time[datetime], time");
-        const timeStr = timeEl ? (timeEl.textContent || "").replace(/\s+/g, " ").trim() : "";
-        if (timeStr && timeStr.length <= 60 && parts.indexOf(timeStr) === -1) {
-          parts.push(timeStr);
-        }
-        return parts.join(" — ");
-      };
-
-      const clone = best.el.cloneNode(true);
-      const structuralStripSelectors = ["nav", "aside", "footer", "form", "button", "input", "select", "textarea", "noscript"];
-      if (REMOVE_SCRIPTS) structuralStripSelectors.push("script");
-      if (REMOVE_IFRAMES) structuralStripSelectors.push("iframe");
-      if (REMOVE_VIDEOS) structuralStripSelectors.push("video");
-      const stripNodes = clone.querySelectorAll(structuralStripSelectors.join(", "));
-      for (let i = 0; i < stripNodes.length; ++i) {
-        stripNodes[i].remove();
-        ++removedCount;
+      for (let i = 0; i < markedHidden.length; ++i) {
+        markedHidden[i].removeAttribute("data-netzac-calm-hidden");
       }
 
-      const clutterCandidates = clone.querySelectorAll("div, section, ul, header");
-      for (let i = 0; i < clutterCandidates.length; ++i) {
-        const c = clutterCandidates[i];
-        if (!c.isConnected && !clone.contains(c)) continue;
-        if (CLUTTER_RE.test(getIdCls(c))) {
-          let cPChars = 0;
-          const cps = c.querySelectorAll("p");
-          for (let j = 0; j < cps.length; ++j) {
-            cPChars += (cps[j].textContent || "").trim().length;
+      if (docClone.head && document.baseURI && /^https?:/i.test(document.baseURI)
+          && !docClone.querySelector("base[href]")) {
+        const baseEl = docClone.createElement("base");
+        baseEl.setAttribute("href", document.baseURI);
+        docClone.head.insertBefore(baseEl, docClone.head.firstChild);
+      }
+
+      const hiddenInClone = docClone.querySelectorAll('[data-netzac-calm-hidden="1"]');
+      for (let i = 0; i < hiddenInClone.length; ++i) {
+        hiddenInClone[i].remove();
+      }
+
+      if (REMOVE_IFRAMES && docClone.body) {
+        const cloneIframes = docClone.body.querySelectorAll("iframe");
+        for (let i = 0; i < cloneIframes.length; ++i) {
+          cloneIframes[i].remove();
+        }
+      }
+      if (REMOVE_VIDEOS && docClone.body) {
+        const cloneVideos = docClone.body.querySelectorAll("video");
+        for (let i = 0; i < cloneVideos.length; ++i) {
+          cloneVideos[i].remove();
+        }
+      }
+      if (REMOVE_ADS && docClone.body) {
+        const cloneToRemove = [];
+        const cloneStack = [];
+        const cloneChildren = docClone.body.children;
+        for (let i = cloneChildren.length - 1; i >= 0; --i) {
+          cloneStack.push(cloneChildren[i]);
+        }
+        while (cloneStack.length > 0) {
+          const el = cloneStack.pop();
+          const tag = el.tagName ? el.tagName.toUpperCase() : "";
+          if (!tag || NON_VISUAL_TAGS.has(tag)) continue;
+          const protectsFromHeuristics = SEMANTIC_PROTECTED_TAGS.has(tag)
+            || (el.querySelector && el.querySelector("main, article") !== null);
+          if (!protectsFromHeuristics && isDistractionContainer(el, tag)) {
+            cloneToRemove.push(el);
+            continue;
           }
-          if (cPChars < 600) {
-            c.remove();
+          const ch = el.children;
+          for (let i = ch.length - 1; i >= 0; --i) {
+            cloneStack.push(ch[i]);
+          }
+        }
+        for (let i = 0; i < cloneToRemove.length; ++i) {
+          cloneToRemove[i].remove();
+        }
+      }
+
+      let article = null;
+      try {
+        article = new ReadabilityCtor(docClone, {
+          charThreshold: 200,
+          keepClasses: false,
+          serializer: (el) => el
+        }).parse();
+      } catch (e) {
+        article = null;
+      }
+
+      const articleText = article && article.textContent
+        ? article.textContent.replace(/\s+/g, " ").trim()
+        : "";
+
+      if (article && article.content && articleText.length >= 160) {
+        const contentNode = document.importNode(article.content, true);
+
+        const stripSelectors = [
+          "script", "style", "noscript", "form", "button", "input",
+          "select", "textarea", "nav", "aside", "footer", "dialog",
+          "[aria-modal='true']"
+        ];
+        if (REMOVE_IFRAMES) stripSelectors.push("iframe");
+        if (REMOVE_VIDEOS) stripSelectors.push("video");
+        const stripNodes = contentNode.querySelectorAll(stripSelectors.join(", "));
+        for (let i = 0; i < stripNodes.length; ++i) {
+          stripNodes[i].remove();
+          ++removedCount;
+        }
+
+        // Remove UI/icon SVGs so small navigation/share glyphs don't scale up as illustrations.
+        const svgs = contentNode.querySelectorAll("svg");
+        for (let i = 0; i < svgs.length; ++i) {
+          const svg = svgs[i];
+          const w = parseFloat(svg.getAttribute("width") || "0");
+          const h = parseFloat(svg.getAttribute("height") || "0");
+          const isHiddenSvg = svg.getAttribute("aria-hidden") === "true";
+          const inControl = svg.closest("a, button") !== null;
+          const isSmallExplicit = (w > 0 && w <= 64) || (h > 0 && h <= 64);
+          const isLikelyIcon = !svg.querySelector("text") && !(w > 80);
+          if (isHiddenSvg || inControl || isSmallExplicit || isLikelyIcon) {
+            svg.remove();
             ++removedCount;
           }
         }
-      }
 
-      const styledNodes = clone.querySelectorAll("[style]");
-      const stripProps = [
-        "width", "min-width", "max-width", "height", "min-height",
-        "position", "top", "left", "right", "bottom", "float",
-        "background", "background-color", "background-image", "color",
-        "margin", "padding", "font-size", "overflow"
-      ];
-      for (let i = 0; i < styledNodes.length; ++i) {
-        const sn = styledNodes[i];
-        if (sn.tagName === "IMG") continue;
-        for (let j = 0; j < stripProps.length; ++j) {
-          sn.style.removeProperty(stripProps[j]);
+        // Strip leftover inline styles, site classes, and non-heading IDs inside extracted article.
+        const allNodes = contentNode.querySelectorAll("*");
+        for (let i = 0; i < allNodes.length; ++i) {
+          const el = allNodes[i];
+          if (el.hasAttribute("style")) {
+            el.removeAttribute("style");
+          }
+          const cls = el.getAttribute("class");
+          if (cls && cls.indexOf("netzac-calm-") === -1) {
+            el.removeAttribute("class");
+          }
+          const tag = el.tagName ? el.tagName.toUpperCase() : "";
+          if (el.hasAttribute("id") && !/^H[1-6]$/.test(tag)) {
+            el.removeAttribute("id");
+          }
         }
-      }
 
-      const titleText = extractTitle();
-      const metaText = extractMeta();
-      const readerRoot = document.createElement("article");
-      readerRoot.id = "netzac-calm-reader";
+        const titleText = (article.title || document.title || "").replace(/\s+/g, " ").trim();
 
-      const cloneH1 = clone.querySelector("h1");
-      const cloneH1Text = cloneH1 ? (cloneH1.textContent || "").replace(/\s+/g, " ").trim() : "";
-      const hasMatchingH1 = cloneH1Text && titleText
-        && cloneH1Text.toLowerCase() === titleText.toLowerCase();
-
-      if ((!hasMatchingH1 && titleText) || metaText) {
-        const hdr = document.createElement("header");
-        hdr.className = "netzac-calm-reader-header";
-        if (!hasMatchingH1 && titleText) {
-          const h1 = document.createElement("h1");
-          h1.textContent = titleText;
-          hdr.appendChild(h1);
+        // Remove duplicate leading H1/H2 that repeats the header title.
+        if (titleText) {
+          const normTitle = titleText.toLowerCase();
+          const headings = contentNode.querySelectorAll("h1, h2");
+          for (let i = 0; i < headings.length && i < 2; ++i) {
+            const h = headings[i];
+            const hText = (h.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+            if (hText === normTitle) {
+              h.remove();
+              ++removedCount;
+              break;
+            }
+          }
         }
-        if (metaText) {
-          const metaDiv = document.createElement("div");
-          metaDiv.className = "netzac-calm-reader-meta";
-          metaDiv.textContent = metaText;
-          hdr.appendChild(metaDiv);
+
+        // Remove small link-only clutter boxes (related links, share lists, tag pills).
+        const boxCandidates = contentNode.querySelectorAll("div, section, ul, ol");
+        for (let i = boxCandidates.length - 1; i >= 0; --i) {
+          const box = boxCandidates[i];
+          if (!box.parentNode) continue;
+          const boxText = (box.textContent || "").replace(/\s+/g, " ").trim();
+          if (!boxText || boxText.length >= 300) continue;
+          let hasLongParagraph = false;
+          const ps = box.querySelectorAll("p");
+          for (let j = 0; j < ps.length; ++j) {
+            if ((ps[j].textContent || "").replace(/\s+/g, " ").trim().length >= 80) {
+              hasLongParagraph = true;
+              break;
+            }
+          }
+          if (hasLongParagraph) continue;
+          const links = box.querySelectorAll("a");
+          if (links.length < 3) continue;
+          let linkChars = 0;
+          for (let j = 0; j < links.length; ++j) {
+            linkChars += (links[j].textContent || "").replace(/\s+/g, " ").trim().length;
+          }
+          if (linkChars / boxText.length >= 0.85) {
+            box.remove();
+            ++removedCount;
+          }
         }
-        hdr.appendChild(document.createElement("hr"));
-        readerRoot.appendChild(hdr);
+
+        // Bottom-up prune empty wrapper nodes left after cleaning.
+        const pruneNodes = contentNode.querySelectorAll("div, section, p, span, figure, header, ul, ol");
+        for (let i = pruneNodes.length - 1; i >= 0; --i) {
+          const n = pruneNodes[i];
+          if (!n.parentNode) continue;
+          const hasText = (n.textContent || "").replace(/\s+/g, "").length > 0;
+          const hasMedia = n.querySelector("img, picture, svg, table, pre, hr, iframe, video") !== null;
+          if (!hasText && !hasMedia) {
+            n.remove();
+          }
+        }
+
+        const readerRoot = document.createElement("article");
+        readerRoot.id = "netzac-calm-reader";
+        if (article.dir) readerRoot.setAttribute("dir", article.dir);
+        if (article.lang) readerRoot.setAttribute("lang", article.lang);
+
+        const metaParts = [];
+        const byline = (article.byline || "").replace(/\s+/g, " ").trim();
+        if (byline && byline.length <= 160) {
+          metaParts.push(byline);
+        }
+        if (article.publishedTime) {
+          const rawPub = String(article.publishedTime).trim();
+          let pubStr = rawPub;
+          const parsedDate = new Date(rawPub);
+          if (!Number.isNaN(parsedDate.getTime())) {
+            try {
+              pubStr = parsedDate.toLocaleDateString();
+            } catch (e) {
+              pubStr = rawPub;
+            }
+          }
+          if (pubStr && metaParts.indexOf(pubStr) === -1) {
+            metaParts.push(pubStr);
+          }
+        }
+
+        const siteName = (article.siteName || "").replace(/\s+/g, " ").trim();
+        if (titleText || siteName || metaParts.length > 0) {
+          const hdr = document.createElement("header");
+          hdr.className = "netzac-calm-reader-header";
+          if (siteName) {
+            const siteEl = document.createElement("div");
+            siteEl.className = "netzac-calm-reader-site";
+            siteEl.textContent = siteName;
+            hdr.appendChild(siteEl);
+          }
+          if (titleText) {
+            const h1 = document.createElement("h1");
+            h1.textContent = titleText;
+            hdr.appendChild(h1);
+          }
+          if (metaParts.length > 0) {
+            const metaDiv = document.createElement("div");
+            metaDiv.className = "netzac-calm-reader-meta";
+            metaDiv.textContent = metaParts.join(" — ");
+            hdr.appendChild(metaDiv);
+          }
+          hdr.appendChild(document.createElement("hr"));
+          readerRoot.appendChild(hdr);
+        }
+
+        const contentDiv = document.createElement("div");
+        contentDiv.className = "netzac-calm-reader-content";
+        contentDiv.appendChild(contentNode);
+        readerRoot.appendChild(contentDiv);
+
+        // Remove/disable all original page stylesheets so site CSS never mixes with Reader View.
+        const oldStyles = document.querySelectorAll('link[rel~="stylesheet"], style');
+        for (let i = 0; i < oldStyles.length; ++i) {
+          const st = oldStyles[i];
+          if (st.id === STYLE_ID) continue;
+          if (st.tagName === "LINK") {
+            st.disabled = true;
+          }
+          st.remove();
+          ++removedCount;
+        }
+        document.documentElement.removeAttribute("style");
+        document.documentElement.removeAttribute("class");
+        document.body.removeAttribute("style");
+        document.body.removeAttribute("class");
+
+        if (REMOVE_SCRIPTS) {
+          const scriptNodes = document.querySelectorAll("script, link[rel='preload'][as='script'], link[rel='modulepreload']");
+          for (let i = 0; i < scriptNodes.length; ++i) {
+            scriptNodes[i].remove();
+            ++removedCount;
+          }
+        }
+
+        removedCount += Math.max(0, document.body.children.length);
+        document.body.replaceChildren(readerRoot);
+        usedReaderFocus = true;
+        window.scrollTo(0, 0);
       }
-
-      const contentDiv = document.createElement("div");
-      contentDiv.className = "netzac-calm-reader-content";
-      contentDiv.appendChild(clone);
-      readerRoot.appendChild(contentDiv);
-
-      document.body.replaceChildren(readerRoot);
-      usedReaderFocus = true;
     }
   }
 
-  // Neutralize negative margins in inline styles to prevent overlapping blocks.
-  const inlineMarginEls = document.body.querySelectorAll("[style]");
-  for (let i = 0; i < inlineMarginEls.length; ++i) {
-    const el = inlineMarginEls[i];
-    const st = el.style;
-    if (!st) continue;
-    for (const prop of ["margin-top", "margin-right", "margin-bottom", "margin-left"]) {
-      const val = parseFloat(st.getPropertyValue(prop));
-      if (Number.isFinite(val) && val < 0) {
-        st.removeProperty(prop);
+  // CleanPage pipeline (used when CleanPage is selected or ReaderFocus falls back on non-article pages).
+  if (!usedReaderFocus) {
+    if (REMOVE_SCRIPTS) {
+      const scriptNodes = document.querySelectorAll("script, link[rel='preload'][as='script'], link[rel='modulepreload']");
+      for (let i = 0; i < scriptNodes.length; ++i) {
+        scriptNodes[i].remove();
+        ++removedCount;
+      }
+    }
+
+    if (REMOVE_VIDEOS) {
+      const videos = document.querySelectorAll("video");
+      for (let i = 0; i < videos.length; ++i) {
+        const v = videos[i];
+        try {
+          v.pause();
+          v.muted = true;
+        } catch (e) {}
+        v.removeAttribute("src");
+        v.removeAttribute("autoplay");
+        const sources = v.querySelectorAll("source");
+        for (let j = 0; j < sources.length; ++j) {
+          sources[j].remove();
+        }
+        try {
+          v.load();
+        } catch (e) {}
+        v.remove();
+        ++removedCount;
+      }
+    }
+
+    // Batched read phase over document.body (skipping doomed subtrees via explicit stack).
+    if (REMOVE_IFRAMES || REMOVE_ADS) {
+      const toRemove = [];
+      const stack = [];
+      const bodyChildren = document.body.children;
+      for (let i = bodyChildren.length - 1; i >= 0; --i) {
+        stack.push(bodyChildren[i]);
+      }
+
+      while (stack.length > 0) {
+        const el = stack.pop();
+        const tag = el.tagName ? el.tagName.toUpperCase() : "";
+        if (!tag || NON_VISUAL_TAGS.has(tag)) {
+          continue;
+        }
+
+        if (REMOVE_IFRAMES && tag === "IFRAME") {
+          toRemove.push(el);
+          continue;
+        }
+
+        if (REMOVE_ADS) {
+          const protectsFromHeuristics = SEMANTIC_PROTECTED_TAGS.has(tag)
+            || (el.querySelector && el.querySelector("main, article") !== null);
+          const protectsHidden = (tag === "MAIN" || tag === "ARTICLE" || tag === "BODY")
+            || (el.querySelector && el.querySelector("main, article") !== null);
+
+          if ((!protectsHidden && isHiddenElement(el))
+              || (!protectsFromHeuristics && isDistractionContainer(el, tag))) {
+            toRemove.push(el);
+            continue;
+          }
+        }
+
+        const children = el.children;
+        for (let i = children.length - 1; i >= 0; --i) {
+          stack.push(children[i]);
+        }
+      }
+
+      for (let i = 0; i < toRemove.length; ++i) {
+        toRemove[i].remove();
+        ++removedCount;
+      }
+    }
+
+    // Neutralize negative margins in inline styles to prevent overlapping blocks.
+    const inlineMarginEls = document.body.querySelectorAll("[style]");
+    for (let i = 0; i < inlineMarginEls.length; ++i) {
+      const el = inlineMarginEls[i];
+      const st = el.style;
+      if (!st) continue;
+      for (const prop of ["margin-top", "margin-right", "margin-bottom", "margin-left"]) {
+        const val = parseFloat(st.getPropertyValue(prop));
+        if (Number.isFinite(val) && val < 0) {
+          st.removeProperty(prop);
+        }
       }
     }
   }
 
-  // Inject modular Calm CSS and mark document as processed.
+  // Inject modular Calm/Reader CSS and mark document as processed.
   const styleEl = document.createElement("style");
   styleEl.id = STYLE_ID;
-  styleEl.textContent = CALM_CSS;
+  styleEl.textContent = usedReaderFocus ? READER_CSS : CALM_CSS;
   (document.head || document.documentElement).appendChild(styleEl);
   document.documentElement.dataset.netzacCalm = "1";
 
@@ -885,6 +1262,8 @@ QString CalmDomInjector::buildApplyScript(const CalmConfig &config)
     script.replace(QStringLiteral("__NORMALIZE_TABLES__"), jsBool(config.normalizeTables));
     script.replace(QStringLiteral("__MAX_IMG_WIDTH__"), QString::number(capped));
     script.replace(QStringLiteral("__CALM_CSS__"), quotedCss);
+    script.replace(QStringLiteral("__READER_CSS__"), quotedReaderCss);
+    script.replace(QStringLiteral("__READABILITY_SRC__"), readabilitySrc);
     return script;
 }
 
