@@ -16,6 +16,10 @@
 
 class QAction;
 class QCloseEvent;
+class QDragEnterEvent;
+class QDragLeaveEvent;
+class QDragMoveEvent;
+class QDropEvent;
 class QHBoxLayout;
 class QLabel;
 class QLineEdit;
@@ -74,6 +78,10 @@ public slots:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dragLeaveEvent(QDragLeaveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
 
 private slots:
     void populateGoMenu();
@@ -123,9 +131,11 @@ private:
     };
 
     int createTabInternal(const QString &url, bool switchTo, bool loadInitial);
+    bool canAcceptDroppedTabs() const;
     void moveTab(int from, int to);
     void detachTab(int index, const QPoint &globalPos);
-    void adoptTab(const BrowserTab &tab);
+    void transferTabTo(int index, PlatinumTabBar *targetBar, int targetInsertIndex);
+    void adoptTab(const BrowserTab &tab, int insertIndex = -1);
     void clearTabsForAdoption();
     int indexOfView(const NetzacWebView *view) const;
     BrowserTab *currentTab();

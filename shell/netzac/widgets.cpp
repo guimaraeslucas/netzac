@@ -5,17 +5,27 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCoreApplication>
+#include <QCursor>
+#include <QDrag>
+#include <QDragEnterEvent>
+#include <QDragLeaveEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QEnterEvent>
 #include <QEvent>
 #include <QFocusEvent>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QKeyEvent>
 #include <QLineEdit>
 #include <QLinearGradient>
 #include <QMenu>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPointer>
 #include <QPolygon>
 #include <QSizePolicy>
 #include <QStyle>
@@ -958,11 +968,62 @@ void ElidingStatusLabel::paintEvent(QPaintEvent * /*event*/)
     p.drawText(rect(), Qt::AlignVCenter | Qt::AlignLeft, elided);
 }
 
+namespace {
+
+struct ActiveTabDragSession {
+    QPointer<PlatinumTabBar> sourceBar;
+    int sourceIndex = -1;
+    QPointer<PlatinumTabBar> targetBar;
+    int targetInsertIndex = -1;
+    bool dropped = false;
+    bool cancelled = false;
+};
+
+ActiveTabDragSession g_activeTabDrag;
+
+class TabDragCancelFilter : public QObject {
+public:
+    explicit TabDragCancelFilter(QObject *parent = nullptr)
+        : QObject(parent)
+    {
+    }
+
+protected:
+    bool eventFilter(QObject * /*watched*/, QEvent *event) override
+    {
+        if (event && event->type() == QEvent::KeyPress) {
+            auto *ke = static_cast<QKeyEvent *>(event);
+            if (ke->key() == Qt::Key_Escape)
+                g_activeTabDrag.cancelled = true;
+        }
+        return false;
+    }
+};
+
+bool hasOtherVisibleTabBar(const PlatinumTabBar *self)
+{
+    if (!self)
+        return false;
+    QWidget *ownWin = self->window();
+    for (QWidget *top : QApplication::topLevelWidgets()) {
+        if (!top || top == ownWin || !top->isVisible())
+            continue;
+        for (PlatinumTabBar *bar : top->findChildren<PlatinumTabBar *>()) {
+            if (bar && bar != self && bar->isVisible())
+                return true;
+        }
+    }
+    return false;
+}
+
+}  // namespace
+
 PlatinumTabBar::PlatinumTabBar(QWidget *parent)
     : QWidget(parent)
     , m_pageIcon(makeMiniIcon(QStringLiteral("page"), 12))
 {
     setMouseTracking(true);
+    setAcceptDrops(true);
     setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 11));
     updateGeometryConstraints();
 }
@@ -991,10 +1052,19 @@ void PlatinumTabBar::updateGeometryConstraints()
 
 int PlatinumTabBar::addTab(const QString &title)
 {
-    m_tabs.append(TabItem{title.isEmpty() ? ztr("Untitled") : title, QString(), false});
-    const int idx = int(m_tabs.size()) - 1;
+    return insertTab(int(m_tabs.size()), title);
+}
+
+int PlatinumTabBar::insertTab(int index, const QString &title)
+{
+    const int idx = qBound(0, index, int(m_tabs.size()));
+    m_tabs.insert(idx, TabItem{title.isEmpty() ? ztr("Untitled") : title, QString(), false});
     if (m_currentIndex < 0)
         m_currentIndex = idx;
+    else if (m_currentIndex >= idx)
+        ++m_currentIndex;
+    m_hoveredTab = -1;
+    m_hoveredClose = -1;
     update();
     return idx;
 }
@@ -1157,6 +1227,134 @@ void PlatinumTabBar::mousePressEvent(QMouseEvent *event)
     QWidget::mousePressEvent(event);
 }
 
+PlatinumTabBar *PlatinumTabBar::activeDragSource()
+{
+    return g_activeTabDrag.sourceBar.data();
+}
+
+bool PlatinumTabBar::isTabDragMime(const QMimeData *mime)
+{
+    if (!mime || !g_activeTabDrag.sourceBar)
+        return false;
+    const QString format = QString::fromLatin1(kTabMimeType);
+    return mime->hasFormat(format)
+        && mime->data(format) == QByteArray::number(QCoreApplication::applicationPid());
+}
+
+int PlatinumTabBar::dropIndexForPos(const QPoint &pos) const
+{
+    return insertionIndexAt(computeTabGeometries(nullptr), pos);
+}
+
+void PlatinumTabBar::setExternalDropIndex(int index)
+{
+    if (m_externalDropIndex == index)
+        return;
+    m_externalDropIndex = index;
+    update();
+}
+
+void PlatinumTabBar::clearExternalDropIndex()
+{
+    if (m_externalDropIndex < 0)
+        return;
+    m_externalDropIndex = -1;
+    update();
+}
+
+bool PlatinumTabBar::acceptExternalDrop(const QPoint &pos)
+{
+    clearExternalDropIndex();
+    if (!g_activeTabDrag.sourceBar || g_activeTabDrag.sourceIndex < 0)
+        return false;
+    g_activeTabDrag.targetBar = this;
+    g_activeTabDrag.targetInsertIndex = dropIndexForPos(pos);
+    g_activeTabDrag.dropped = true;
+    return true;
+}
+
+void PlatinumTabBar::startTabDrag(int from)
+{
+    if (from < 0 || from >= m_tabs.size())
+        return;
+
+    const QVector<TabGeometry> geoms = computeTabGeometries(nullptr);
+    QPixmap dragPixmap;
+    QPoint dragHotspot(16, 12);
+    if (from < geoms.size() && !geoms[from].tabRect.isEmpty()) {
+        const QRect tabRect = geoms[from].tabRect;
+        const bool wasDragging = m_dragging;
+        m_dragging = false;
+        dragPixmap = grab(tabRect);
+        m_dragging = wasDragging;
+        const QPoint localHot = m_pressPos - tabRect.topLeft();
+        dragHotspot = QPoint(
+            qBound(0, localHot.x(), qMax(0, tabRect.width() - 1)),
+            qBound(0, localHot.y(), qMax(0, tabRect.height() - 1)));
+    }
+
+    m_dragging = true;
+    m_dropIndex = -1;
+    update();
+
+    g_activeTabDrag = ActiveTabDragSession{};
+    g_activeTabDrag.sourceBar = this;
+    g_activeTabDrag.sourceIndex = from;
+
+    auto *mimeData = new QMimeData();
+    mimeData->setData(
+        QString::fromLatin1(kTabMimeType),
+        QByteArray::number(QCoreApplication::applicationPid()));
+
+    auto *drag = new QDrag(this);
+    drag->setMimeData(mimeData);
+    if (!dragPixmap.isNull()) {
+        drag->setPixmap(dragPixmap);
+        drag->setHotSpot(dragHotspot);
+    }
+
+    TabDragCancelFilter cancelFilter;
+    qApp->installEventFilter(&cancelFilter);
+    unsetCursor();
+
+    const QPointer<PlatinumTabBar> self(this);
+    drag->exec(Qt::MoveAction);
+    qApp->removeEventFilter(&cancelFilter);
+
+    const ActiveTabDragSession result = g_activeTabDrag;
+    g_activeTabDrag = ActiveTabDragSession{};
+
+    if (!self)
+        return;
+
+    m_pressTab = -1;
+    m_dragging = false;
+    m_dropIndex = -1;
+    m_externalDropIndex = -1;
+    unsetCursor();
+    update();
+
+    if (result.cancelled || from < 0 || from >= m_tabs.size())
+        return;
+
+    if (result.dropped && result.targetBar) {
+        if (result.targetBar == this) {
+            int to = result.targetInsertIndex;
+            if (to > from)
+                --to;
+            to = qBound(0, to, int(m_tabs.size()) - 1);
+            if (to != from)
+                emit tabMoveRequested(from, to);
+        } else {
+            emit tabTransferRequested(from, result.targetBar.data(), result.targetInsertIndex);
+        }
+        return;
+    }
+
+    if (m_tabs.size() > 1)
+        emit tabDetachRequested(from, QCursor::pos());
+}
+
 void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
 {
     QRect newTabRect;
@@ -1164,6 +1362,11 @@ void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
     const QPoint pos = event->pos();
 
     if (m_pressTab >= 0 && (event->buttons() & Qt::LeftButton)) {
+        const bool canReorder = (m_tabs.size() > 1);
+        const bool canDragOut = (m_tabs.size() > 1) || hasOtherVisibleTabBar(this);
+        if (!canReorder && !canDragOut)
+            return;
+
         if (!m_dragging
             && (pos - m_pressPos).manhattanLength() >= QApplication::startDragDistance()) {
             m_dragging = true;
@@ -1174,6 +1377,19 @@ void PlatinumTabBar::mouseMoveEvent(QMouseEvent *event)
             setCursor(Qt::ClosedHandCursor);
         }
         if (m_dragging) {
+            if (!canReorder) {
+                startTabDrag(m_pressTab);
+                return;
+            }
+
+            const QRect reorderBounds = (m_style == TabStyle::ChromeTop)
+                ? QRect(-16, -24, qMin(width() + 32, newTabRect.right() + 64), height() + 48)
+                : QRect(-24, -16, width() + 48, qMin(height() + 32, newTabRect.bottom() + 64));
+            if (canDragOut && !reorderBounds.contains(pos)) {
+                startTabDrag(m_pressTab);
+                return;
+            }
+
             const int drop = insertionIndexAt(geoms, pos);
             if (drop != m_dropIndex) {
                 m_dropIndex = drop;
@@ -1218,9 +1434,6 @@ void PlatinumTabBar::mouseReleaseEvent(QMouseEvent *event)
         const int from = m_pressTab;
         const int drop = m_dropIndex;
         const QPoint pos = event->pos();
-        const QPoint globalPos = mapToGlobal(pos);
-        const QRect windowRect = window()->frameGeometry();
-        const bool insideWindow = windowRect.contains(globalPos);
         const bool insideBar = rect().contains(pos);
 
         m_pressTab = -1;
@@ -1229,11 +1442,7 @@ void PlatinumTabBar::mouseReleaseEvent(QMouseEvent *event)
         unsetCursor();
         update();
 
-        if (!insideWindow) {
-            emit tabDetachRequested(from, globalPos);
-            return;
-        }
-        if (insideBar && drop >= 0) {
+        if (insideBar && drop >= 0 && m_tabs.size() > 1) {
             int to = drop;
             if (to > from)
                 --to;
@@ -1249,6 +1458,50 @@ void PlatinumTabBar::mouseReleaseEvent(QMouseEvent *event)
     m_dropIndex = -1;
     unsetCursor();
     QWidget::mouseReleaseEvent(event);
+}
+
+void PlatinumTabBar::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (!isTabDragMime(event->mimeData())) {
+        event->ignore();
+        return;
+    }
+    setExternalDropIndex(dropIndexForPos(event->position().toPoint()));
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void PlatinumTabBar::dragMoveEvent(QDragMoveEvent *event)
+{
+    if (!isTabDragMime(event->mimeData())) {
+        clearExternalDropIndex();
+        event->ignore();
+        return;
+    }
+    setExternalDropIndex(dropIndexForPos(event->position().toPoint()));
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void PlatinumTabBar::dragLeaveEvent(QDragLeaveEvent *event)
+{
+    clearExternalDropIndex();
+    QWidget::dragLeaveEvent(event);
+}
+
+void PlatinumTabBar::dropEvent(QDropEvent *event)
+{
+    if (!isTabDragMime(event->mimeData())) {
+        clearExternalDropIndex();
+        event->ignore();
+        return;
+    }
+    if (acceptExternalDrop(event->position().toPoint())) {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+    } else {
+        event->ignore();
+    }
 }
 
 void PlatinumTabBar::leaveEvent(QEvent *event)
@@ -1336,9 +1589,12 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             }
         }
 
-        if (m_dragging && m_dropIndex >= 0 && !geoms.isEmpty()) {
-            const int y = (m_dropIndex < geoms.size())
-                ? geoms[m_dropIndex].tabRect.top() - 1
+        const int indicatorIndex = (m_externalDropIndex >= 0)
+            ? m_externalDropIndex
+            : (m_dragging ? m_dropIndex : -1);
+        if (indicatorIndex >= 0 && !geoms.isEmpty()) {
+            const int y = (indicatorIndex < geoms.size())
+                ? geoms[indicatorIndex].tabRect.top() - 1
                 : geoms.last().tabRect.bottom() + 1;
             p.setPen(QPen(c.dark, 2));
             p.drawLine(4, y, width() - 6, y);
@@ -1413,9 +1669,12 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
             }
         }
 
-        if (m_dragging && m_dropIndex >= 0 && !geoms.isEmpty()) {
-            const int x = (m_dropIndex < geoms.size())
-                ? geoms[m_dropIndex].tabRect.left() - 1
+        const int indicatorIndex = (m_externalDropIndex >= 0)
+            ? m_externalDropIndex
+            : (m_dragging ? m_dropIndex : -1);
+        if (indicatorIndex >= 0 && !geoms.isEmpty()) {
+            const int x = (indicatorIndex < geoms.size())
+                ? geoms[indicatorIndex].tabRect.left() - 1
                 : geoms.last().tabRect.right() + 1;
             p.setPen(QPen(c.text, 2));
             p.drawLine(x, 2, x, height() - 2);

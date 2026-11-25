@@ -14,6 +14,10 @@
 #include <QCloseEvent>
 #include <QColor>
 #include <QDateTime>
+#include <QDragEnterEvent>
+#include <QDragLeaveEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QFile>
 #include <QFont>
 #include <QHBoxLayout>
@@ -293,6 +297,7 @@ NetzacWindow::NetzacWindow(
     , m_popupOpts(popupOpts)
 {
     setWindowTitle(ztr("Netzac"));
+    setAcceptDrops(true);
     setMinimumSize(m_popupOpts.isPopup ? QSize(240, 180) : QSize(640, 400));
     resize(m_popupOpts.isPopup ? QSize(780, 560) : QSize(1024, 768));
 
@@ -316,6 +321,7 @@ NetzacWindow::NetzacWindow(
     });
     connect(m_tabBar, &PlatinumTabBar::tabMoveRequested, this, &NetzacWindow::moveTab);
     connect(m_tabBar, &PlatinumTabBar::tabDetachRequested, this, &NetzacWindow::detachTab);
+    connect(m_tabBar, &PlatinumTabBar::tabTransferRequested, this, &NetzacWindow::transferTabTo);
 
     buildMenus();
     buildToolbars();
@@ -394,7 +400,7 @@ int NetzacWindow::indexOfView(const NetzacWebView *view) const
 void NetzacWindow::closeEvent(QCloseEvent *event)
 {
     HistoryStorage::save(m_history);
-    if (!m_popupOpts.isPopup) {
+    if (!m_popupOpts.isPopup && !m_tabs.isEmpty()) {
         QStringList tabUrls;
         tabUrls.reserve(m_tabs.size());
         for (const BrowserTab &tab : m_tabs)
@@ -402,6 +408,70 @@ void NetzacWindow::closeEvent(QCloseEvent *event)
         NetzacPreferences::saveLastTabs(tabUrls, m_currentTabIndex);
     }
     QMainWindow::closeEvent(event);
+}
+
+bool NetzacWindow::canAcceptDroppedTabs() const
+{
+    return !m_popupOpts.isPopup
+        && !m_popupOpts.hideToolbar
+        && m_tabBar
+        && m_tabBar->isVisible();
+}
+
+void NetzacWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (!canAcceptDroppedTabs()
+        || !PlatinumTabBar::isTabDragMime(event->mimeData())
+        || PlatinumTabBar::activeDragSource() == m_tabBar) {
+        event->ignore();
+        return;
+    }
+    const QPoint barPos = m_tabBar->mapFrom(this, event->position().toPoint());
+    m_tabBar->setExternalDropIndex(m_tabBar->dropIndexForPos(barPos));
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void NetzacWindow::dragMoveEvent(QDragMoveEvent *event)
+{
+    if (!canAcceptDroppedTabs()
+        || !PlatinumTabBar::isTabDragMime(event->mimeData())
+        || PlatinumTabBar::activeDragSource() == m_tabBar) {
+        if (m_tabBar)
+            m_tabBar->clearExternalDropIndex();
+        event->ignore();
+        return;
+    }
+    const QPoint barPos = m_tabBar->mapFrom(this, event->position().toPoint());
+    m_tabBar->setExternalDropIndex(m_tabBar->dropIndexForPos(barPos));
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void NetzacWindow::dragLeaveEvent(QDragLeaveEvent *event)
+{
+    if (m_tabBar)
+        m_tabBar->clearExternalDropIndex();
+    QMainWindow::dragLeaveEvent(event);
+}
+
+void NetzacWindow::dropEvent(QDropEvent *event)
+{
+    if (!canAcceptDroppedTabs()
+        || !PlatinumTabBar::isTabDragMime(event->mimeData())
+        || PlatinumTabBar::activeDragSource() == m_tabBar) {
+        if (m_tabBar)
+            m_tabBar->clearExternalDropIndex();
+        event->ignore();
+        return;
+    }
+    const QPoint barPos = m_tabBar->mapFrom(this, event->position().toPoint());
+    if (m_tabBar->acceptExternalDrop(barPos)) {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+    } else {
+        event->ignore();
+    }
 }
 
 QAction *NetzacWindow::addMenuAction(QMenu *menu, const QString &text, const QKeySequence &shortcut)
@@ -1017,7 +1087,7 @@ void NetzacWindow::moveTab(int from, int to)
 
 void NetzacWindow::detachTab(int index, const QPoint &globalPos)
 {
-    if (index < 0 || index >= m_tabs.size() || m_popupOpts.isPopup)
+    if (index < 0 || index >= m_tabs.size() || m_tabs.size() <= 1 || m_popupOpts.isPopup)
         return;
 
     BrowserTab tab = m_tabs.at(index);
@@ -1039,8 +1109,6 @@ void NetzacWindow::detachTab(int index, const QPoint &globalPos)
     m_currentTabIndex = -1;
     if (next >= 0 && next < m_tabs.size())
         switchToTab(next);
-    else if (m_tabs.isEmpty() && !m_popupOpts.isPopup)
-        newTab(m_prefs.homeUrl, true);
 
     auto *win = new NetzacWindow(QString(), nullptr, false);
     win->setAttribute(Qt::WA_DeleteOnClose);
@@ -1053,7 +1121,48 @@ void NetzacWindow::detachTab(int index, const QPoint &globalPos)
     win->activateWindow();
 }
 
-void NetzacWindow::adoptTab(const BrowserTab &tab)
+void NetzacWindow::transferTabTo(int index, PlatinumTabBar *targetBar, int targetInsertIndex)
+{
+    if (index < 0 || index >= m_tabs.size() || m_popupOpts.isPopup || !targetBar)
+        return;
+
+    auto *targetWin = qobject_cast<NetzacWindow *>(targetBar->window());
+    if (!targetWin || targetWin == this || !targetWin->canAcceptDroppedTabs())
+        return;
+
+    BrowserTab tab = m_tabs.at(index);
+    disconnect(tab.view, nullptr, this, nullptr);
+    disconnect(tab.page, nullptr, this, nullptr);
+    disconnect(tab.calm, nullptr, this, nullptr);
+
+    m_tabs.removeAt(index);
+    m_tabStack->removeWidget(tab.view);
+    m_tabBar->removeTab(index);
+
+    const bool emptyAfterTransfer = m_tabs.isEmpty();
+    if (!emptyAfterTransfer) {
+        int next = m_currentTabIndex;
+        if (next == index)
+            next = qMin(index, int(m_tabs.size()) - 1);
+        else if (next > index)
+            --next;
+        if (next < 0)
+            next = 0;
+        m_currentTabIndex = -1;
+        switchToTab(next);
+    } else {
+        m_currentTabIndex = -1;
+    }
+
+    targetWin->adoptTab(tab, targetInsertIndex);
+    targetWin->raise();
+    targetWin->activateWindow();
+
+    if (emptyAfterTransfer)
+        close();
+}
+
+void NetzacWindow::adoptTab(const BrowserTab &tab, int insertIndex)
 {
     NetzacWebView *view = tab.view;
     view->setParent(m_tabStack);
@@ -1062,9 +1171,11 @@ void NetzacWindow::adoptTab(const BrowserTab &tab)
         return createBrowserWindow(view, type);
     });
 
-    m_tabs.append(tab);
-    const int idx = int(m_tabs.size()) - 1;
-    m_tabBar->addTab(tab.title);
+    const int idx = (insertIndex < 0)
+        ? int(m_tabs.size())
+        : qBound(0, insertIndex, int(m_tabs.size()));
+    m_tabs.insert(idx, tab);
+    m_tabBar->insertTab(idx, tab.title);
     m_tabBar->setTabUrl(idx, tab.currentUrl);
     m_tabBar->setTabLoading(idx, tab.isLoading);
 

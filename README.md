@@ -35,8 +35,10 @@ netzac/
 
 ## Tabs and the Netzac Ad Blocker
 
-Tabs can be reordered by clicking and dragging them inside the tab bar. Dragging a
-tab outside the window opens it in a new Netzac window (the page keeps its history).
+Tabs can be reordered by clicking and dragging them inside the tab bar. When multiple
+tabs are open, dragging a tab outside the window detaches it into a new Netzac window
+(the page keeps its history), and dragging a tab onto another Netzac window's tab bar
+or toolbar merges it into that window.
 
 The Netzac Ad Blocker (Preferences → Ad Blocker) blocks advertisement, tracking and
 malicious requests using EasyList, EasyPrivacy and the Malicious URL (URLHaus)

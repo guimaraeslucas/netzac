@@ -13,9 +13,14 @@
 #include <QVector>
 #include <QWidget>
 
+class QDragEnterEvent;
+class QDragLeaveEvent;
+class QDragMoveEvent;
+class QDropEvent;
 class QEnterEvent;
 class QLineEdit;
 class QMenu;
+class QMimeData;
 class QMouseEvent;
 class QPaintEvent;
 
@@ -307,12 +312,15 @@ public:
         ChromeTop,
     };
 
+    static constexpr const char *kTabMimeType = "application/x-zacos9-netzac-tab";
+
     explicit PlatinumTabBar(QWidget *parent = nullptr);
 
     void setTabStyle(TabStyle style);
     TabStyle tabStyle() const { return m_style; }
 
     int addTab(const QString &title);
+    int insertTab(int index, const QString &title);
     void removeTab(int index);
     void moveTab(int from, int to);
     void setCurrentIndex(int index);
@@ -323,17 +331,29 @@ public:
     void setTabUrl(int index, const QString &url);
     void setTabLoading(int index, bool loading);
 
+    static PlatinumTabBar *activeDragSource();
+    static bool isTabDragMime(const QMimeData *mime);
+    int dropIndexForPos(const QPoint &pos) const;
+    void setExternalDropIndex(int index);
+    void clearExternalDropIndex();
+    bool acceptExternalDrop(const QPoint &pos);
+
 signals:
     void currentChanged(int index);
     void tabCloseRequested(int index);
     void newTabRequested();
     void tabMoveRequested(int from, int to);
     void tabDetachRequested(int index, const QPoint &globalPos);
+    void tabTransferRequested(int index, PlatinumTabBar *targetBar, int targetInsertIndex);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dragLeaveEvent(QDragLeaveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
 
@@ -352,6 +372,7 @@ private:
     QVector<TabGeometry> computeTabGeometries(QRect *outNewTabRect) const;
     int insertionIndexAt(const QVector<TabGeometry> &geoms, const QPoint &pos) const;
     void updateGeometryConstraints();
+    void startTabDrag(int from);
 
     TabStyle m_style = TabStyle::IE45Left;
     QVector<TabItem> m_tabs;
@@ -365,4 +386,5 @@ private:
     QPoint m_pressPos;
     bool m_dragging = false;
     int m_dropIndex = -1;
+    int m_externalDropIndex = -1;
 };
