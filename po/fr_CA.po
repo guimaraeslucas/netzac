@@ -1208,3 +1208,103 @@ msgstr "%1 règles chargées. Dernière mise à jour : %2"
 #: shell/netzac/dialogs.cpp
 msgid "Never"
 msgstr "Jamais"
+
+#: shell/netzac/dialogs.cpp
+msgid "Unknown"
+msgstr "Inconnu"
+
+#: shell/netzac/dialogs.cpp
+msgid "File Download"
+msgstr "Téléchargement de fichier"
+
+#: shell/netzac/dialogs.cpp
+msgid "From: %1"
+msgstr "De : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Size: %1"
+msgstr "Taille : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to folder:"
+msgstr "Enregistrer dans le dossier :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Browse..."
+msgstr "Parcourir..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to system temporary folder"
+msgstr "Enregistrer dans le dossier temporaire du système"
+
+#: shell/netzac/dialogs.cpp
+msgid "Downloaded:"
+msgstr "Téléchargé :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Transfer rate:"
+msgstr "Taux de transfert :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Time elapsed:"
+msgstr "Temps écoulé :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Estimated time left:"
+msgstr "Temps restant estimé :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open file after download completes"
+msgstr "Ouvrir le fichier une fois le téléchargement terminé"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open File"
+msgstr "Ouvrir le fichier"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open Folder"
+msgstr "Ouvrir le dossier"
+
+#: shell/netzac/dialogs.cpp
+msgid "Start Download"
+msgstr "Démarrer le téléchargement"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download was interrupted."
+msgstr "Le téléchargement a été interrompu."
+
+#: shell/netzac/dialogs.cpp
+msgid "Saving to: %1"
+msgstr "Enregistrement dans : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Calculating..."
+msgstr "Calcul en cours..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Download cancelled."
+msgstr "Téléchargement annulé."
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Complete - %1"
+msgstr "Téléchargement terminé - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Failed - %1"
+msgstr "Échec du téléchargement - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disable GPU hardware acceleration (compatibility mode, restart required)"
+msgstr "Désactiver l'accélération matérielle GPU (mode de compatibilité, redémarrage requis)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable only on incompatible virtual machines or drivers. Keeping GPU acceleration enabled provides faster web rendering."
+msgstr "À activer uniquement sur les machines virtuelles ou pilotes incompatibles. Garder l'accélération GPU activée offre un rendu web plus rapide."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "The GPU hardware acceleration setting will take effect after restarting Netzac."
+msgstr "Le paramètre d'accélération matérielle GPU prendra effet après le redémarrage de Netzac."
+
+#: shell/netzac/preferences.cpp
+msgid "Chrome (Windows)"
+msgstr "Chrome (Windows)"

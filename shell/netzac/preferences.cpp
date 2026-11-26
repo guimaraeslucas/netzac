@@ -25,6 +25,8 @@ namespace {
 
 constexpr const char *kChromeLinuxUa =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) NetZacNavigator/1.0 Chrome/200.0.0.0 Safari/900.36";
+constexpr const char *kChromeWindowsUa =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) NetZacNavigator/1.0 Chrome/200.0.0.0 Safari/900.36";
 constexpr const char *kFirefoxLinuxUa =
     "Mozilla/5.0 (X11; Linux x86_64; rv:200.0) Gecko/20100101 NetZacNavigator/1.0 Firefox/200.0";
 constexpr const char *kSafariMacUa =
@@ -55,6 +57,7 @@ QVector<NetzacPreferences::PresetEntry> NetzacPreferences::userAgentPresets()
 {
     return {
         {"chrome_linux", ztr("Chrome (Linux) — Default"), kChromeLinuxUa},
+        {"chrome_windows", ztr("Chrome (Windows)"), kChromeWindowsUa},
         {"firefox_linux", ztr("Firefox (Linux)"), kFirefoxLinuxUa},
         {"safari_macos", ztr("Safari (macOS)"), kSafariMacUa},
         {"netzac_mac", ztr("Netzac Navigator"), kNetzacMacUa},
@@ -115,6 +118,7 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.enableJavaScript = true;
     prefs.rememberPasswords = true;
     prefs.showNavButtonText = true;
+    prefs.disableGpuAcceleration = false;
     prefs.calm = CalmConfig();
     prefs.personalToolbar = defaultPersonalToolbar();
     prefs.mailUrl.clear();
@@ -167,6 +171,7 @@ NetzacPreferences NetzacPreferences::load()
     prefs.enableJavaScript = s.value(QStringLiteral("navigator/enableJavaScript"), prefs.enableJavaScript).toBool();
     prefs.rememberPasswords = s.value(QStringLiteral("navigator/rememberPasswords"), prefs.rememberPasswords).toBool();
     prefs.showNavButtonText = s.value(QStringLiteral("navigator/showNavButtonText"), prefs.showNavButtonText).toBool();
+    prefs.disableGpuAcceleration = s.value(QStringLiteral("navigator/disableGpuAcceleration"), prefs.disableGpuAcceleration).toBool();
 
     const int calmJsVal = qBound(0, s.value(QStringLiteral("calm/jsDetection"), int(prefs.calm.jsDetection)).toInt(), 2);
     prefs.calm.jsDetection = static_cast<CalmJsDetection>(calmJsVal);
@@ -279,6 +284,7 @@ void NetzacPreferences::save() const
     s.setValue(QStringLiteral("navigator/enableJavaScript"), enableJavaScript);
     s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
     s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
+    s.setValue(QStringLiteral("navigator/disableGpuAcceleration"), disableGpuAcceleration);
 
     s.setValue(QStringLiteral("calm/jsDetection"), int(calm.jsDetection));
     s.setValue(QStringLiteral("calm/layoutMode"), int(calm.layoutMode));
@@ -330,6 +336,12 @@ void NetzacPreferences::save() const
 
     s.setValue(QStringLiteral("adblock/enabled"), adBlockEnabled);
     s.setValue(QStringLiteral("adblock/lists"), adBlockSubscriptions);
+}
+
+bool NetzacPreferences::isGpuAccelerationDisabled()
+{
+    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+    return s.value(QStringLiteral("navigator/disableGpuAcceleration"), false).toBool();
 }
 
 void NetzacPreferences::resetAll()

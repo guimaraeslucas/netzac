@@ -1,0 +1,9 @@
+# Missing features
+
+[ ] Support to copy via javascript
+[ ] Disable ZacOS css scrollbars option7
+[x] Download dialog
+
+# Bugs
+
+[/] Sometimes when resizing, the WM breaks or the Webengine stops working - probably fixed

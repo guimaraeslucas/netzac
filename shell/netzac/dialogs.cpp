@@ -12,8 +12,11 @@
 #include <QCheckBox>
 #include <QDateTime>
 #include <QDesktopServices>
+#include <QDir>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFontMetrics>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -22,14 +25,17 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPainter>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSizePolicy>
 #include <QSpinBox>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWebEngineCookieStore>
+#include <QWebEngineDownloadRequest>
 #include <QWebEngineProfile>
 
 QPushButton *makeDialogButton(const QString &text, bool isDefault, QWidget *parent)
@@ -516,6 +522,15 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
     m_rememberPasswordsChk->setChecked(m_prefs.rememberPasswords);
     m_rememberPasswordsChk->setEnabled(PasswordStorage::isAvailable());
     lay->addWidget(m_rememberPasswordsChk);
+
+    m_disableGpuChk = new QCheckBox(
+        ztr("Disable GPU hardware acceleration (compatibility mode, restart required)"),
+        page);
+    m_disableGpuChk->setChecked(m_prefs.disableGpuAcceleration);
+    m_disableGpuChk->setToolTip(
+        ztr("Enable only on incompatible virtual machines or drivers. "
+            "Keeping GPU acceleration enabled provides faster web rendering."));
+    lay->addWidget(m_disableGpuChk);
 
     lay->addSpacing(8);
     lay->addWidget(new QLabel(ztr("Default Browser:"), page));
@@ -1448,6 +1463,7 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.autoloadImages = m_imagesChk->isChecked();
     out.enableJavaScript = m_jsChk->isChecked();
     out.rememberPasswords = m_rememberPasswordsChk->isChecked();
+    out.disableGpuAcceleration = m_disableGpuChk->isChecked();
 
     out.calm.jsDetection = static_cast<CalmJsDetection>(m_calmJsPopup->currentData().toInt());
     out.calm.layoutMode = m_calmLayoutReader->isChecked()
@@ -1503,4 +1519,621 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.adBlockEnabled = m_adBlockChk->isChecked();
     out.adBlockSubscriptions = m_adBlockUrls;
     return out;
+}
+
+namespace {
+
+QString formatByteSize(qint64 bytes)
+{
+    if (bytes < 0)
+        return ztr("Unknown");
+    if (bytes < 1024)
+        return QStringLiteral("%1 B").arg(bytes);
+    const double kb = double(bytes) / 1024.0;
+    if (kb < 1024.0)
+        return QStringLiteral("%1 KB").arg(kb, 0, 'f', 1);
+    const double mb = kb / 1024.0;
+    if (mb < 1024.0)
+        return QStringLiteral("%1 MB").arg(mb, 0, 'f', 1);
+    const double gb = mb / 1024.0;
+    return QStringLiteral("%1 GB").arg(gb, 0, 'f', 2);
+}
+
+QString formatDownloadTime(qint64 totalSeconds)
+{
+    if (totalSeconds < 0)
+        return ztr("Unknown");
+    const qint64 hrs = totalSeconds / 3600;
+    const qint64 mins = (totalSeconds % 3600) / 60;
+    const qint64 secs = totalSeconds % 60;
+    if (hrs > 0) {
+        return QStringLiteral("%1:%2:%3")
+            .arg(hrs, 2, 10, QLatin1Char('0'))
+            .arg(mins, 2, 10, QLatin1Char('0'))
+            .arg(secs, 2, 10, QLatin1Char('0'));
+    }
+    return QStringLiteral("%1:%2")
+        .arg(mins, 2, 10, QLatin1Char('0'))
+        .arg(secs, 2, 10, QLatin1Char('0'));
+}
+
+bool moveFileWithFallback(const QString &src, const QString &dst)
+{
+    if (src == dst)
+        return true;
+    QDir().mkpath(QFileInfo(dst).absolutePath());
+    if (QFile::exists(dst))
+        QFile::remove(dst);
+    if (QFile::rename(src, dst))
+        return true;
+    if (QFile::copy(src, dst)) {
+        QFile::remove(src);
+        return true;
+    }
+    return false;
+}
+
+} // namespace
+
+class DownloadGlobeWidget : public QWidget {
+public:
+    explicit DownloadGlobeWidget(QWidget *parent = nullptr)
+        : QWidget(parent)
+    {
+        setFixedSize(136, 44);
+        m_timer.setInterval(55);
+        connect(&m_timer, &QTimer::timeout, this, [this]() {
+            m_frame = (m_frame + 1) % 24;
+            update();
+        });
+    }
+
+    void setAnimating(bool animating)
+    {
+        if (m_animating == animating)
+            return;
+        m_animating = animating;
+        if (m_animating)
+            m_timer.start();
+        else
+            m_timer.stop();
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent * /*event*/) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, false);
+
+        // 1. Classic retro Earth globe on the left
+        const QRect globeRect(4, 6, 32, 32);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(QStringLiteral("#2060b0")));
+        p.drawEllipse(globeRect);
+
+        p.save();
+        p.setClipRegion(QRegion(globeRect, QRegion::Ellipse));
+        // Continents
+        p.setBrush(QColor(QStringLiteral("#46a24a")));
+        p.drawPolygon(QPolygon({
+            QPoint(10, 11), QPoint(19, 10), QPoint(22, 16),
+            QPoint(17, 21), QPoint(12, 19)
+        }));
+        p.drawPolygon(QPolygon({
+            QPoint(23, 20), QPoint(33, 18), QPoint(35, 29),
+            QPoint(26, 33), QPoint(22, 26)
+        }));
+        p.drawPolygon(QPolygon({
+            QPoint(6, 24), QPoint(14, 25), QPoint(15, 34),
+            QPoint(7, 34)
+        }));
+        // Latitude / longitude grid lines
+        p.setPen(QColor(QStringLiteral("#7ab8e8")));
+        p.drawLine(globeRect.left(), globeRect.center().y(), globeRect.right(), globeRect.center().y());
+        p.drawArc(globeRect.adjusted(6, 0, -6, 0), 0, 360 * 16);
+        p.restore();
+
+        // Globe highlight & outline
+        p.setPen(QColor(QStringLiteral("#a8dcff")));
+        p.drawArc(globeRect.adjusted(2, 2, -2, -2), 100 * 16, 70 * 16);
+        p.setPen(QColor(QStringLiteral("#000000")));
+        p.setBrush(Qt::NoBrush);
+        p.drawEllipse(globeRect);
+
+        // 2. Classic yellow/Platinum folder on the right
+        const int fx = width() - 36;
+        const int fy = 12;
+        p.setPen(QColor(QStringLiteral("#000000")));
+        p.setBrush(QColor(QStringLiteral("#e5bc42")));
+        p.drawPolygon(QPolygon({
+            QPoint(fx, fy), QPoint(fx + 11, fy), QPoint(fx + 14, fy + 4),
+            QPoint(fx + 30, fy + 4), QPoint(fx + 30, fy + 26), QPoint(fx, fy + 26)
+        }));
+        p.setBrush(QColor(QStringLiteral("#f7dc7a")));
+        p.drawRect(fx + 2, fy + 8, 28, 18);
+        p.setPen(QColor(QStringLiteral("#fff4bd")));
+        p.drawLine(fx + 3, fy + 9, fx + 29, fy + 9);
+
+        // 3. Animated flying document from globe to folder
+        if (m_animating) {
+            const qreal t = qreal(m_frame) / 23.0;
+            const int docX = int(38 + t * (fx - 52));
+            const int arcLift = int(10.0 * (4.0 * t * (1.0 - t)));
+            const int docY = 16 - arcLift;
+
+            // Motion trail dots
+            p.setPen(QColor(QStringLiteral("#4080c0")));
+            for (int d = 1; d <= 3; ++d) {
+                const qreal td = qMax<qreal>(0.0, t - d * 0.12);
+                if (td > 0.0) {
+                    const int tx = int(38 + td * (fx - 52));
+                    const int ty = 22 - int(10.0 * (4.0 * td * (1.0 - td)));
+                    p.drawPoint(tx, ty);
+                    p.drawPoint(tx + 1, ty);
+                }
+            }
+
+            // Document page with folded corner
+            const QRect doc(docX, docY, 12, 15);
+            p.setPen(QColor(QStringLiteral("#000000")));
+            p.setBrush(QColor(QStringLiteral("#ffffff")));
+            p.drawRect(doc);
+            p.setPen(QColor(QStringLiteral("#8899aa")));
+            p.drawLine(doc.left() + 3, doc.top() + 5, doc.right() - 2, doc.top() + 5);
+            p.drawLine(doc.left() + 3, doc.top() + 8, doc.right() - 2, doc.top() + 8);
+            p.drawLine(doc.left() + 3, doc.top() + 11, doc.right() - 4, doc.top() + 11);
+        }
+    }
+
+private:
+    QTimer m_timer;
+    int m_frame = 0;
+    bool m_animating = false;
+};
+
+DownloadDialog::DownloadDialog(QWebEngineDownloadRequest *download, QWidget *parent)
+    : PlatinumDialog(parent)
+    , m_download(download)
+{
+    setModal(false);
+    setAttribute(Qt::WA_DeleteOnClose, true);
+    setAttribute(Qt::WA_QuitOnClose, false);
+    setWindowTitle(ztr("File Download"));
+    setMinimumWidth(480);
+
+    m_suggestedName = download ? download->suggestedFileName().trimmed() : QString();
+    if (m_suggestedName.isEmpty())
+        m_suggestedName = QStringLiteral("download");
+
+    QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (defaultDir.isEmpty())
+        defaultDir = QDir::homePath();
+    const QString defaultFilePath = QDir(defaultDir).filePath(m_suggestedName);
+    const QString tempFilePath = QDir(QDir::tempPath()).filePath(m_suggestedName);
+
+    auto *rootLay = new QVBoxLayout(this);
+    rootLay->setContentsMargins(14, 14, 14, 12);
+    rootLay->setSpacing(10);
+
+    // Header: animated globe-to-folder icon + file metadata
+    auto *headerLay = new QHBoxLayout();
+    headerLay->setSpacing(12);
+
+    m_globeAnim = new DownloadGlobeWidget(this);
+    headerLay->addWidget(m_globeAnim, 0, Qt::AlignVCenter);
+
+    auto *metaLay = new QVBoxLayout();
+    metaLay->setSpacing(3);
+
+    m_fileNameLbl = new QLabel(m_suggestedName, this);
+    QFont boldFont = zacosFont(QStringLiteral("ZacOS 9 System"), 12);
+    boldFont.setBold(true);
+    m_fileNameLbl->setFont(boldFont);
+    metaLay->addWidget(m_fileNameLbl);
+
+    const QString rawUrl = download ? download->url().toString(QUrl::RemoveUserInfo) : QString();
+    const QFontMetrics fm(font());
+    const QString elidedUrl = fm.elidedText(rawUrl, Qt::ElideMiddle, 290);
+    m_sourceUrlLbl = new QLabel(ztr("From: %1").arg(elidedUrl), this);
+    m_sourceUrlLbl->setToolTip(rawUrl);
+    metaLay->addWidget(m_sourceUrlLbl);
+
+    const qint64 initialTotal = download ? download->totalBytes() : -1;
+    const QString sizeText = initialTotal > 0 ? formatByteSize(initialTotal) : ztr("Unknown");
+    m_sizeInfoLbl = new QLabel(ztr("Size: %1").arg(sizeText), this);
+    metaLay->addWidget(m_sizeInfoLbl);
+
+    headerLay->addLayout(metaLay, 1);
+    rootLay->addLayout(headerLay);
+
+    // Progress bar & IE-style stats (visible immediately)
+    m_progressBox = new QWidget(this);
+    auto *progLay = new QVBoxLayout(m_progressBox);
+    progLay->setContentsMargins(0, 0, 0, 0);
+    progLay->setSpacing(6);
+
+    m_savingToLbl = new QLabel(this);
+    m_savingToLbl->setWordWrap(false);
+    m_savingToLbl->setVisible(false);
+    progLay->addWidget(m_savingToLbl);
+
+    m_progressBar = new PlatinumProgressBar(m_progressBox);
+    m_progressBar->setMinimumSize(280, 16);
+    m_progressBar->setMaximumSize(QWIDGETSIZE_MAX, 16);
+    m_progressBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(0);
+    progLay->addWidget(m_progressBar);
+
+    auto *statsGrid = new QGridLayout();
+    statsGrid->setHorizontalSpacing(12);
+    statsGrid->setVerticalSpacing(3);
+    statsGrid->setColumnStretch(1, 1);
+
+    m_downloadedLbl = new QLabel(
+        initialTotal > 0 ? QStringLiteral("0 B / %1 (0%)").arg(formatByteSize(initialTotal)) : QStringLiteral("0 B"),
+        m_progressBox);
+    m_rateLbl = new QLabel(QStringLiteral("0 B/s"), m_progressBox);
+    m_elapsedLbl = new QLabel(formatDownloadTime(0), m_progressBox);
+    m_remainingLbl = new QLabel(QStringLiteral("—"), m_progressBox);
+
+    statsGrid->addWidget(new QLabel(ztr("Downloaded:"), m_progressBox), 0, 0);
+    statsGrid->addWidget(m_downloadedLbl, 0, 1);
+    statsGrid->addWidget(new QLabel(ztr("Transfer rate:"), m_progressBox), 1, 0);
+    statsGrid->addWidget(m_rateLbl, 1, 1);
+    statsGrid->addWidget(new QLabel(ztr("Time elapsed:"), m_progressBox), 2, 0);
+    statsGrid->addWidget(m_elapsedLbl, 2, 1);
+    statsGrid->addWidget(new QLabel(ztr("Estimated time left:"), m_progressBox), 3, 0);
+    statsGrid->addWidget(m_remainingLbl, 3, 1);
+    progLay->addLayout(statsGrid);
+
+    rootLay->addWidget(m_progressBox);
+
+    auto *sep = new QFrame(this);
+    sep->setFrameShape(QFrame::HLine);
+    sep->setFrameShadow(QFrame::Sunken);
+    rootLay->addWidget(sep);
+
+    // Destination selection
+    m_promptBox = new QWidget(this);
+    auto *promptLay = new QVBoxLayout(m_promptBox);
+    promptLay->setContentsMargins(0, 0, 0, 0);
+    promptLay->setSpacing(6);
+
+    m_saveCustomRadio = new QRadioButton(ztr("Save to folder:"), m_promptBox);
+    m_saveCustomRadio->setChecked(true);
+    promptLay->addWidget(m_saveCustomRadio);
+
+    auto *customRow = new QHBoxLayout();
+    customRow->setContentsMargins(20, 0, 0, 0);
+    customRow->setSpacing(6);
+    m_customPathEdit = new QLineEdit(defaultFilePath, m_promptBox);
+    m_customPathEdit->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    customRow->addWidget(m_customPathEdit, 1);
+
+    m_browseBtn = makeDialogButton(ztr("Browse..."), false, m_promptBox);
+    connect(m_browseBtn, &QPushButton::clicked, this, &DownloadDialog::browseDestination);
+    customRow->addWidget(m_browseBtn);
+    promptLay->addLayout(customRow);
+
+    m_saveTempRadio = new QRadioButton(ztr("Save to system temporary folder"), m_promptBox);
+    promptLay->addWidget(m_saveTempRadio);
+
+    m_tempPathLbl = new QLabel(fm.elidedText(tempFilePath, Qt::ElideMiddle, 400), m_promptBox);
+    m_tempPathLbl->setToolTip(tempFilePath);
+    m_tempPathLbl->setContentsMargins(20, 0, 0, 0);
+    m_tempPathLbl->setEnabled(false);
+    promptLay->addWidget(m_tempPathLbl);
+
+    auto *destGroup = new QButtonGroup(this);
+    destGroup->addButton(m_saveCustomRadio);
+    destGroup->addButton(m_saveTempRadio);
+
+    connect(m_saveCustomRadio, &QRadioButton::toggled, this, [this](bool checked) {
+        m_customPathEdit->setEnabled(checked);
+        m_browseBtn->setEnabled(checked);
+        m_tempPathLbl->setEnabled(!checked);
+        if (!checked && !m_userToggledOpen) {
+            m_openAutoToggled = true;
+            m_openAfterChk->setChecked(true);
+            m_openAutoToggled = false;
+        } else if (checked && !m_userToggledOpen) {
+            m_openAutoToggled = true;
+            m_openAfterChk->setChecked(false);
+            m_openAutoToggled = false;
+        }
+    });
+
+    rootLay->addWidget(m_promptBox);
+
+    // Shared option: open after download completes
+    m_openAfterChk = new QCheckBox(ztr("Open file after download completes"), this);
+    connect(m_openAfterChk, &QCheckBox::toggled, this, [this](bool) {
+        if (!m_openAutoToggled)
+            m_userToggledOpen = true;
+    });
+    rootLay->addWidget(m_openAfterChk);
+
+    // Buttons row
+    auto *btnRow = new QHBoxLayout();
+    btnRow->addStretch(1);
+
+    m_openFileBtn = makeDialogButton(ztr("Open File"), false, this);
+    m_openFileBtn->setVisible(false);
+    connect(m_openFileBtn, &QPushButton::clicked, this, &DownloadDialog::openDownloadedFile);
+    btnRow->addWidget(m_openFileBtn);
+
+    m_openFolderBtn = makeDialogButton(ztr("Open Folder"), false, this);
+    m_openFolderBtn->setVisible(false);
+    connect(m_openFolderBtn, &QPushButton::clicked, this, &DownloadDialog::openContainingFolder);
+    btnRow->addWidget(m_openFolderBtn);
+
+    m_startBtn = makeDialogButton(ztr("Start Download"), true, this);
+    connect(m_startBtn, &QPushButton::clicked, this, &DownloadDialog::startDownload);
+    btnRow->addWidget(m_startBtn);
+
+    m_cancelCloseBtn = makeDialogButton(ztr("Cancel"), false, this);
+    connect(m_cancelCloseBtn, &QPushButton::clicked, this, &DownloadDialog::reject);
+    btnRow->addWidget(m_cancelCloseBtn);
+
+    rootLay->addLayout(btnRow);
+
+    m_tickTimer.setInterval(250);
+    connect(&m_tickTimer, &QTimer::timeout, this, &DownloadDialog::updateProgress);
+
+    if (m_download) {
+        // Qt WebEngine requires accept() or cancel() synchronously inside downloadRequested.
+        // Accept into a temporary staging directory and immediately pause so no transfer
+        // proceeds until the user clicks Start Download.
+        const QString stageDir = m_stagingDir.isValid() ? m_stagingDir.path() : QDir::tempPath();
+        m_stagingPath = QDir(stageDir).filePath(m_suggestedName);
+        m_download->setDownloadDirectory(stageDir);
+        m_download->setDownloadFileName(m_suggestedName);
+        m_download->accept();
+        m_download->pause();
+
+        connect(m_download, &QWebEngineDownloadRequest::totalBytesChanged, this, [this]() {
+            if (!m_download)
+                return;
+            const qint64 total = m_download->totalBytes();
+            m_sizeInfoLbl->setText(ztr("Size: %1").arg(total > 0 ? formatByteSize(total) : ztr("Unknown")));
+            if (m_userConfirmed)
+                updateProgress();
+            else
+                m_downloadedLbl->setText(total > 0 ? QStringLiteral("0 B / %1 (0%)").arg(formatByteSize(total)) : QStringLiteral("0 B"));
+        });
+        connect(m_download, &QWebEngineDownloadRequest::receivedBytesChanged, this, &DownloadDialog::updateProgress);
+        connect(m_download, &QWebEngineDownloadRequest::stateChanged, this, &DownloadDialog::updateProgress);
+        connect(m_download, &QWebEngineDownloadRequest::isFinishedChanged, this, &DownloadDialog::updateProgress);
+        connect(m_download, &QObject::destroyed, this, [this]() {
+            m_tickTimer.stop();
+            if (!m_downloadDone && !m_finished) {
+                m_downloadDone = true;
+                m_downloadSuccess = false;
+                m_downloadError = ztr("Download was interrupted.");
+                finishDownloadUi(false, m_downloadError);
+            }
+        });
+    }
+
+    adjustSize();
+}
+
+DownloadDialog::~DownloadDialog()
+{
+    m_tickTimer.stop();
+    if (m_download && !m_download->isFinished())
+        m_download->cancel();
+}
+
+void DownloadDialog::reject()
+{
+    m_tickTimer.stop();
+    if (m_download && !m_download->isFinished())
+        m_download->cancel();
+    PlatinumDialog::reject();
+}
+
+void DownloadDialog::browseDestination()
+{
+    const QString initial = m_customPathEdit->text().trimmed().isEmpty()
+        ? m_suggestedName
+        : m_customPathEdit->text().trimmed();
+    const QString picked = platinumSaveFileName(this, ztr("Save File"), initial);
+    if (!picked.isEmpty()) {
+        m_saveCustomRadio->setChecked(true);
+        m_customPathEdit->setText(picked);
+    }
+}
+
+QString DownloadDialog::resolvedTargetPath() const
+{
+    if (m_saveTempRadio->isChecked())
+        return QDir(QDir::tempPath()).filePath(m_suggestedName);
+    const QString path = m_customPathEdit->text().trimmed();
+    if (path.isEmpty()) {
+        QString dlDir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+        if (dlDir.isEmpty())
+            dlDir = QDir::homePath();
+        return QDir(dlDir).filePath(m_suggestedName);
+    }
+    const QFileInfo fi(path);
+    if (fi.isDir())
+        return QDir(fi.absoluteFilePath()).filePath(m_suggestedName);
+    return fi.absoluteFilePath();
+}
+
+void DownloadDialog::startDownload()
+{
+    if (m_userConfirmed)
+        return;
+
+    m_userConfirmed = true;
+    m_targetPath = resolvedTargetPath();
+
+    m_promptBox->setVisible(false);
+    m_startBtn->setVisible(false);
+
+    const QFontMetrics fm(font());
+    const QString elidedDest = fm.elidedText(m_targetPath, Qt::ElideMiddle, 380);
+    m_savingToLbl->setText(ztr("Saving to: %1").arg(elidedDest));
+    m_savingToLbl->setToolTip(m_targetPath);
+    m_savingToLbl->setVisible(true);
+
+    m_elapsed.start();
+    m_tickTimer.start();
+    if (m_globeAnim)
+        m_globeAnim->setAnimating(true);
+
+    if (m_download && m_download->isPaused())
+        m_download->resume();
+
+    updateProgress();
+    finalizeIfReady();
+    adjustSize();
+}
+
+void DownloadDialog::updateProgress()
+{
+    if (m_finished || m_downloadDone || !m_download)
+        return;
+
+    const QString actualStage = QDir(m_download->downloadDirectory()).filePath(m_download->downloadFileName());
+    if (!actualStage.isEmpty())
+        m_stagingPath = actualStage;
+
+    const auto st = m_download->state();
+    if (!m_userConfirmed) {
+        if (st == QWebEngineDownloadRequest::DownloadCompleted) {
+            m_downloadDone = true;
+            m_downloadSuccess = true;
+        } else if (st == QWebEngineDownloadRequest::DownloadInterrupted) {
+            m_downloadDone = true;
+            m_downloadSuccess = false;
+            m_downloadError = m_download->interruptReasonString();
+            finishDownloadUi(false, m_downloadError);
+        } else if (st == QWebEngineDownloadRequest::DownloadCancelled) {
+            m_downloadDone = true;
+            m_downloadSuccess = false;
+            m_downloadError = ztr("Download cancelled.");
+            finishDownloadUi(false, m_downloadError);
+        }
+        return;
+    }
+
+    const qint64 received = m_download->receivedBytes();
+    const qint64 total = m_download->totalBytes();
+    const qint64 elapsedMs = qMax<qint64>(1, m_elapsed.elapsed());
+    const qint64 elapsedSecs = elapsedMs / 1000;
+    const double bytesPerSec = (double(received) * 1000.0) / double(elapsedMs);
+
+    if (total > 0) {
+        const int pct = int(qBound(qint64(0), (received * 100) / total, qint64(100)));
+        m_progressBar->setIndeterminate(false);
+        m_progressBar->setValue(pct);
+        m_downloadedLbl->setText(
+            QStringLiteral("%1 / %2 (%3%)")
+                .arg(formatByteSize(received), formatByteSize(total))
+                .arg(pct));
+        setWindowTitle(QStringLiteral("%1% - %2").arg(pct).arg(m_suggestedName));
+
+        if (bytesPerSec > 1.0 && received < total) {
+            const qint64 remSecs = qint64(double(total - received) / bytesPerSec);
+            m_remainingLbl->setText(formatDownloadTime(remSecs));
+        } else if (received >= total) {
+            m_remainingLbl->setText(formatDownloadTime(0));
+        } else {
+            m_remainingLbl->setText(ztr("Calculating..."));
+        }
+    } else {
+        m_progressBar->setIndeterminate(true);
+        m_downloadedLbl->setText(formatByteSize(received));
+        m_remainingLbl->setText(ztr("Unknown"));
+        setWindowTitle(m_suggestedName);
+    }
+
+    m_rateLbl->setText(QStringLiteral("%1/s").arg(formatByteSize(qint64(bytesPerSec))));
+    m_elapsedLbl->setText(formatDownloadTime(elapsedSecs));
+
+    if (st == QWebEngineDownloadRequest::DownloadCompleted) {
+        m_downloadDone = true;
+        m_downloadSuccess = true;
+        m_tickTimer.stop();
+        m_progressBar->setIndeterminate(false);
+        m_progressBar->setValue(100);
+        m_remainingLbl->setText(formatDownloadTime(0));
+        finalizeIfReady();
+    } else if (st == QWebEngineDownloadRequest::DownloadInterrupted) {
+        m_downloadDone = true;
+        m_downloadSuccess = false;
+        m_downloadError = m_download->interruptReasonString();
+        finishDownloadUi(false, m_downloadError);
+    } else if (st == QWebEngineDownloadRequest::DownloadCancelled) {
+        m_downloadDone = true;
+        m_downloadSuccess = false;
+        m_downloadError = ztr("Download cancelled.");
+        finishDownloadUi(false, m_downloadError);
+    }
+}
+
+void DownloadDialog::finalizeIfReady()
+{
+    if (!m_userConfirmed || !m_downloadDone || m_finished)
+        return;
+
+    if (m_downloadSuccess) {
+        if (!moveFileWithFallback(m_stagingPath, m_targetPath)) {
+            // Fallback to staging path if moving failed
+            m_targetPath = m_stagingPath;
+        }
+        finishDownloadUi(true);
+    } else {
+        finishDownloadUi(false, m_downloadError);
+    }
+}
+
+void DownloadDialog::finishDownloadUi(bool success, const QString &errorText)
+{
+    if (m_finished)
+        return;
+    m_finished = true;
+    m_tickTimer.stop();
+    if (m_globeAnim)
+        m_globeAnim->setAnimating(false);
+
+    m_progressBar->setIndeterminate(false);
+    if (success) {
+        m_progressBar->setValue(100);
+        m_remainingLbl->setText(formatDownloadTime(0));
+        setWindowTitle(ztr("Download Complete - %1").arg(m_suggestedName));
+        m_openFileBtn->setVisible(true);
+        m_openFolderBtn->setVisible(true);
+    } else {
+        setWindowTitle(ztr("Download Failed - %1").arg(m_suggestedName));
+        if (!errorText.isEmpty())
+            m_remainingLbl->setText(errorText);
+    }
+
+    m_promptBox->setVisible(false);
+    m_startBtn->setVisible(false);
+    m_openAfterChk->setEnabled(false);
+    m_cancelCloseBtn->setText(ztr("Close"));
+    m_cancelCloseBtn->setDefault(true);
+    m_cancelCloseBtn->setAutoDefault(true);
+
+    if (success && m_openAfterChk->isChecked() && !m_targetPath.isEmpty())
+        openDownloadedFile();
+}
+
+void DownloadDialog::openDownloadedFile()
+{
+    if (!m_targetPath.isEmpty())
+        QDesktopServices::openUrl(QUrl::fromLocalFile(m_targetPath));
+}
+
+void DownloadDialog::openContainingFolder()
+{
+    if (!m_targetPath.isEmpty())
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(m_targetPath).absolutePath()));
 }

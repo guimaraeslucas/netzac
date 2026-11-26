@@ -21,6 +21,12 @@ netzac/
 │   ├── meson.build
 │   ├── LINGUAS
 │   ├── zacos9-netzac.pot
+│   ├── ar.po
+│   ├── es.po
+│   ├── fr_CA.po
+│   ├── it.po
+│   ├── ja.po
+│   ├── ru.po
 │   └── pt.po
 └── shell/netzac/
     ├── meson.build
@@ -50,7 +56,7 @@ enforced; cosmetic element-hiding rules are not applied.
 ## Build Dependencies (Debian Trixie / ZacOS 9)
 
 ```sh
-sudo apt install meson ninja-build pkg-config gettext qt6-base-dev qt6-webengine-dev
+sudo apt install meson ninja-build pkg-config gettext qt6-base-dev qt6-webengine-dev -y
 ```
 
 ## Building & Running Standalone
@@ -78,14 +84,11 @@ bug reports, and pull requests from the **ZacOS 9** community at:
 Special thanks to **Adam Lawson (@chromasystemprofessional)** for creating the
 incredible **ZacOS 9** project.
 
-## Wayland / Pixman Maximize Freeze Mitigation
+## Wayland, NVIDIA & Pixman Resize / Freeze Mitigation
 
-Under `zacos9-session`, when `WLR_RENDERER=pixman` is active (software compositor on VMs
-or non-3D GPUs), Chromium's default GPU compositing inside `QWebEngineView` can stall on
-maximize/resize. `main.cpp` sets `Qt::AA_ShareOpenGLContexts` and, when
-`WLR_RENDERER=pixman` is detected, defaults `QT_QUICK_BACKEND=software` and
-`QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --disable-gpu-compositing` (unless already set
-in the environment).
+- **Software compositor (`WLR_RENDERER=pixman`)**: Under `zacos9-session`, when `WLR_RENDERER=pixman` is active (software compositor on VMs or non-3D GPUs), Chromium's default GPU compositing inside `QWebEngineView` can stall on maximize/resize. `main.cpp` sets `Qt::AA_ShareOpenGLContexts` and, when `WLR_RENDERER=pixman` is detected, defaults `QT_QUICK_BACKEND=software` and `QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --disable-gpu-compositing` (unless already set in the environment).
+- **NVIDIA proprietary driver on Wayland (`wlroots` + `egl-wayland`)**: When embedding `QWebEngineView` inside `QMainWindow`, Qt promotes the entire client surface from `QWaylandShmBackingStore` to `QOpenGLCompositorBackingStore` / `QWaylandEglWindow` (`wl_egl_window`). On NVIDIA's `egl-wayland` + `wlroots` GL/EGL path, shrinking or restoring a maximized window can trigger a buffer stride/pitch desync that leaves the client area diagonally sheared/ghosted while the compositor-drawn title bar remains intact. When Wayland, an active XWayland `DISPLAY`, and the NVIDIA driver are detected—and `QT_QPA_PLATFORM` permits `xcb` (such as the `wayland;xcb` session default)—`main.cpp` automatically selects `QT_QPA_PLATFORM=xcb` (XWayland) so full GPU-accelerated web rendering stays enabled without resize shearing. Passing `-platform wayland` or setting `QT_QPA_PLATFORM=wayland` explicitly preserves native Wayland.
+- **Incompatible VMs / Drivers**: You can toggle **Edit → Preferences → Navigator → Disable GPU hardware acceleration (compatibility mode, restart required)** to switch Qt Quick and Chromium to software rendering when GPU acceleration is incompatible. Keeping it unchecked provides the fastest web page rendering.
 
 ## Standalone & ZacOS 9 Extras Packaging
 

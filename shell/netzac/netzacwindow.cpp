@@ -2385,11 +2385,20 @@ void NetzacWindow::showHistoryDialog()
 void NetzacWindow::openPreferences()
 {
     const BrowserTab *cur = currentTab();
+    const bool prevDisableGpu = m_prefs.disableGpuAcceleration;
     PreferencesDialog dlg(m_prefs, cur ? cur->currentUrl : QString(), this);
     if (dlg.exec() == QDialog::Accepted) {
         m_prefs = dlg.preferences();
         m_prefs.save();
         m_prefs.apply(netzacProfile());
+        if (m_prefs.disableGpuAcceleration != prevDisableGpu) {
+            PlatinumAlertDialog alert(
+                ztr("Preferences"),
+                ztr("The GPU hardware acceleration setting will take effect after restarting Netzac."),
+                QStringLiteral("info"),
+                this);
+            alert.exec();
+        }
         if (dlg.didResetAll()) {
             m_bookmarks = BookmarkStorage::load();
             m_history = HistoryStorage::load();

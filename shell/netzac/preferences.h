@@ -79,6 +79,7 @@ struct NetzacPreferences {
     bool enableJavaScript = true;
     bool rememberPasswords = true;
     bool showNavButtonText = true;
+    bool disableGpuAcceleration = false;
     CalmConfig calm;
 
     QVector<PersonalToolbarItem> personalToolbar;
@@ -105,6 +106,7 @@ struct NetzacPreferences {
 
     static NetzacPreferences defaults();
     static NetzacPreferences load();
+    static bool isGpuAccelerationDisabled();
     static void resetAll();
     void save() const;
     static void saveLastUrl(const QString &url);

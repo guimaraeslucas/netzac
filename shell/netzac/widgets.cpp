@@ -37,7 +37,7 @@
 // tighter/smaller than on X11, so navigation labels get extra points there.
 static constexpr int kNavLabelSize = 9;
 #else
-static constexpr int kNavLabelSize = 7;
+static constexpr int kNavLabelSize = 8;
 #endif
 
 PlatinumNavButton::PlatinumNavButton(const QString &label, const QString &iconName, QWidget *parent)
@@ -589,12 +589,20 @@ void PlatinumLocationBar::openDropdown()
         return;
 
     QMenu menu(this);
-    menu.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    const QFont menuFont = zacosFont(QStringLiteral("ZacOS 9 System"), 12);
+    menu.setFont(menuFont);
+    const int maxMenuWidth = qMax(width(), 200);
     menu.setMinimumWidth(width());
+    menu.setMaximumWidth(maxMenuWidth);
+    const QFontMetrics fm(menuFont);
+    const int maxTextWidth = qMax(80, maxMenuWidth - 48);
     const int limit = qMin(m_urls.size(), 20);
     for (int i = 0; i < limit; ++i) {
         const QString &url = m_urls.at(i);
-        QAction *act = menu.addAction(url);
+        const QString label = fm.elidedText(url, Qt::ElideMiddle, maxTextWidth);
+        QAction *act = menu.addAction(label);
+        if (label != url)
+            act->setToolTip(url);
         connect(act, &QAction::triggered, this, [this, url]() { pickUrl(url); });
     }
     menu.exec(mapToGlobal(QPoint(0, height())));

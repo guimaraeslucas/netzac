@@ -1208,3 +1208,103 @@ msgstr "Загружено правил: %1. Последнее обновлен
 #: shell/netzac/dialogs.cpp
 msgid "Never"
 msgstr "Никогда"
+
+#: shell/netzac/dialogs.cpp
+msgid "Unknown"
+msgstr "Неизвестно"
+
+#: shell/netzac/dialogs.cpp
+msgid "File Download"
+msgstr "Загрузка файла"
+
+#: shell/netzac/dialogs.cpp
+msgid "From: %1"
+msgstr "Откуда: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Size: %1"
+msgstr "Размер: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to folder:"
+msgstr "Сохранить в папку:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Browse..."
+msgstr "Обзор..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to system temporary folder"
+msgstr "Сохранить во временную папку системы"
+
+#: shell/netzac/dialogs.cpp
+msgid "Downloaded:"
+msgstr "Загружено:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Transfer rate:"
+msgstr "Скорость передачи:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Time elapsed:"
+msgstr "Прошло времени:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Estimated time left:"
+msgstr "Осталось примерно:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open file after download completes"
+msgstr "Открыть файл после завершения загрузки"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open File"
+msgstr "Открыть файл"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open Folder"
+msgstr "Открыть папку"
+
+#: shell/netzac/dialogs.cpp
+msgid "Start Download"
+msgstr "Начать загрузку"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download was interrupted."
+msgstr "Загрузка была прервана."
+
+#: shell/netzac/dialogs.cpp
+msgid "Saving to: %1"
+msgstr "Сохранение в: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Calculating..."
+msgstr "Вычисление..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Download cancelled."
+msgstr "Загрузка отменена."
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Complete - %1"
+msgstr "Загрузка завершена - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Failed - %1"
+msgstr "Ошибка загрузки - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disable GPU hardware acceleration (compatibility mode, restart required)"
+msgstr "Отключить аппаратное ускорение GPU (режим совместимости, требуется перезапуск)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable only on incompatible virtual machines or drivers. Keeping GPU acceleration enabled provides faster web rendering."
+msgstr "Включайте только на несовместимых виртуальных машинах или драйверах. Включённое ускорение GPU обеспечивает более быструю отрисовку веб-страниц."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "The GPU hardware acceleration setting will take effect after restarting Netzac."
+msgstr "Настройка аппаратного ускорения GPU вступит в силу после перезапуска Netzac."
+
+#: shell/netzac/preferences.cpp
+msgid "Chrome (Windows)"
+msgstr "Chrome (Windows)"

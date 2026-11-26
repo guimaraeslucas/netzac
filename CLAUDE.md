@@ -1,0 +1,1 @@
+Please read and follow the project directives in AGENTS.md

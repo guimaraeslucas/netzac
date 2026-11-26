@@ -3,9 +3,13 @@
 #include "preferences.h"
 
 #include <QDialog>
+#include <QElapsedTimer>
 #include <QPair>
+#include <QPointer>
 #include <QString>
 #include <QStringList>
+#include <QTemporaryDir>
+#include <QTimer>
 #include <QVector>
 
 class QButtonGroup;
@@ -17,8 +21,11 @@ class QPushButton;
 class QRadioButton;
 class QSpinBox;
 class QStackedWidget;
+class QWebEngineDownloadRequest;
 
+class DownloadGlobeWidget;
 class PlatinumPopupButton;
+class PlatinumProgressBar;
 
 QPushButton *makeDialogButton(const QString &text, bool isDefault = false, QWidget *parent = nullptr);
 QString platinumOpenFileName(
@@ -120,6 +127,7 @@ private:
     QCheckBox *m_imagesChk = nullptr;
     QCheckBox *m_jsChk = nullptr;
     QCheckBox *m_rememberPasswordsChk = nullptr;
+    QCheckBox *m_disableGpuChk = nullptr;
     QLabel *m_defaultBrowserLbl = nullptr;
     QPushButton *m_setDefaultBrowserBtn = nullptr;
     bool m_resetRequested = false;
@@ -180,4 +188,70 @@ private:
     QPushButton *m_adBlockRemoveBtn = nullptr;
     QPushButton *m_adBlockDefaultsBtn = nullptr;
     QPushButton *m_adBlockUpdateBtn = nullptr;
+};
+
+class DownloadDialog : public PlatinumDialog {
+    Q_OBJECT
+
+public:
+    explicit DownloadDialog(QWebEngineDownloadRequest *download, QWidget *parent = nullptr);
+    ~DownloadDialog() override;
+
+public slots:
+    void reject() override;
+
+private slots:
+    void browseDestination();
+    void startDownload();
+    void updateProgress();
+    void openDownloadedFile();
+    void openContainingFolder();
+
+private:
+    QString resolvedTargetPath() const;
+    void finalizeIfReady();
+    void finishDownloadUi(bool success, const QString &errorText = QString());
+
+    QPointer<QWebEngineDownloadRequest> m_download;
+    QTemporaryDir m_stagingDir;
+    QString m_stagingPath;
+    QString m_suggestedName;
+    QString m_targetPath;
+    bool m_userConfirmed = false;
+    bool m_downloadDone = false;
+    bool m_downloadSuccess = false;
+    QString m_downloadError;
+    bool m_finished = false;
+    bool m_openAutoToggled = false;
+    bool m_userToggledOpen = false;
+
+    QElapsedTimer m_elapsed;
+    QTimer m_tickTimer;
+
+    DownloadGlobeWidget *m_globeAnim = nullptr;
+    QLabel *m_fileNameLbl = nullptr;
+    QLabel *m_sourceUrlLbl = nullptr;
+    QLabel *m_sizeInfoLbl = nullptr;
+
+    QWidget *m_promptBox = nullptr;
+    QRadioButton *m_saveCustomRadio = nullptr;
+    QRadioButton *m_saveTempRadio = nullptr;
+    QLineEdit *m_customPathEdit = nullptr;
+    QPushButton *m_browseBtn = nullptr;
+    QLabel *m_tempPathLbl = nullptr;
+
+    QWidget *m_progressBox = nullptr;
+    QLabel *m_savingToLbl = nullptr;
+    PlatinumProgressBar *m_progressBar = nullptr;
+    QLabel *m_downloadedLbl = nullptr;
+    QLabel *m_rateLbl = nullptr;
+    QLabel *m_elapsedLbl = nullptr;
+    QLabel *m_remainingLbl = nullptr;
+
+    QCheckBox *m_openAfterChk = nullptr;
+
+    QPushButton *m_startBtn = nullptr;
+    QPushButton *m_openFileBtn = nullptr;
+    QPushButton *m_openFolderBtn = nullptr;
+    QPushButton *m_cancelCloseBtn = nullptr;
 };

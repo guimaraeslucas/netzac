@@ -5,6 +5,8 @@
 #include "preferences.h"
 
 #include <QApplication>
+#include <QByteArray>
+#include <QByteArrayList>
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QIcon>
@@ -13,17 +15,75 @@
 #include <QWebEngineDownloadRequest>
 #include <QWebEngineProfile>
 
+namespace {
+
+bool hasCliPlatformArg(int argc, char *argv[])
+{
+    for (int i = 1; i < argc; ++i) {
+        const QByteArray arg(argv[i]);
+        if (arg == "-platform" || arg == "--platform" || arg.startsWith("-platform="))
+            return true;
+    }
+    return false;
+}
+
+bool hasNvidiaProprietaryDriver()
+{
+#if defined(Q_OS_LINUX)
+    return QFileInfo::exists(QStringLiteral("/proc/driver/nvidia/version"))
+        || QFileInfo::exists(QStringLiteral("/sys/module/nvidia"));
+#else
+    return false;
+#endif
+}
+
+void appendChromiumFlagsIfMissing(const QByteArrayList &flags)
+{
+    QByteArray current = qgetenv("QTWEBENGINE_CHROMIUM_FLAGS").trimmed();
+    for (const QByteArray &flag : flags) {
+        if (!current.contains(flag)) {
+            if (!current.isEmpty())
+                current.append(' ');
+            current.append(flag);
+        }
+    }
+    qputenv("QTWEBENGINE_CHROMIUM_FLAGS", current);
+}
+
+}  // namespace
+
 int main(int argc, char *argv[])
 {
     initI18n();
 
     // Prevent WebEngine context-sharing and Wayland/pixman maximize/resize freezes.
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-    if (qEnvironmentVariable("WLR_RENDERER") == QLatin1String("pixman")) {
+
+    const bool isPixman = (qEnvironmentVariable("WLR_RENDERER") == QLatin1String("pixman"));
+    const bool disableGpu = NetzacPreferences::isGpuAccelerationDisabled();
+
+    // Under Wayland with the proprietary NVIDIA driver (GL/EGL path), embedding
+    // QWebEngineView promotes QMainWindow to QOpenGLCompositorBackingStore /
+    // QWaylandEglWindow, which hits egl-wayland/wlroots resize stride shearing.
+    // Prefer XWayland (xcb) when QT_QPA_PLATFORM permits it (e.g. "wayland;xcb")
+    // so full GPU web rendering stays active without resize corruption.
+    if (!isPixman && !disableGpu && !hasCliPlatformArg(argc, argv)
+        && !qEnvironmentVariable("WAYLAND_DISPLAY").isEmpty()
+        && !qEnvironmentVariable("DISPLAY").isEmpty()
+        && hasNvidiaProprietaryDriver()) {
+        const QString qpa = qEnvironmentVariable("QT_QPA_PLATFORM").trimmed().toLower();
+        if (qpa.isEmpty() || qpa.contains(QLatin1String("xcb")))
+            qputenv("QT_QPA_PLATFORM", "xcb");
+    }
+
+    if (isPixman || disableGpu) {
         if (!qEnvironmentVariableIsSet("QT_QUICK_BACKEND"))
             qputenv("QT_QUICK_BACKEND", "software");
-        if (!qEnvironmentVariableIsSet("QTWEBENGINE_CHROMIUM_FLAGS"))
+        if (disableGpu) {
+            appendChromiumFlagsIfMissing({"--disable-gpu", "--disable-gpu-compositing"});
+        } else if (!qEnvironmentVariableIsSet("QTWEBENGINE_CHROMIUM_FLAGS")) {
             qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu --disable-gpu-compositing");
+        }
     }
 
     QApplication app(argc, argv);
@@ -59,18 +119,10 @@ int main(int argc, char *argv[])
         [](QWebEngineDownloadRequest *download) {
             if (!download)
                 return;
-            const QString target = platinumSaveFileName(
-                QApplication::activeWindow(),
-                ztr("Save File"),
-                download->suggestedFileName());
-            if (target.isEmpty()) {
-                download->cancel();
-                return;
-            }
-            const QFileInfo fi(target);
-            download->setDownloadDirectory(fi.absolutePath());
-            download->setDownloadFileName(fi.fileName());
-            download->accept();
+            auto *dlg = new DownloadDialog(download);
+            dlg->show();
+            dlg->raise();
+            dlg->activateWindow();
         });
 
     QString initialUrl;
