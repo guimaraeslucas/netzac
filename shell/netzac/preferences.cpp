@@ -22,6 +22,17 @@
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
 
+#if defined(Q_OS_WIN)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <wincred.h>
+#endif
+
 namespace {
 
 constexpr const char *kChromeLinuxUa =
@@ -589,9 +600,48 @@ bool NetzacPreferences::setAsDefaultBrowser()
 #endif
 }
 
+namespace {
+
+QStringList passwordCandidateHosts(const QString &host)
+{
+    const QString clean = host.trimmed().toLower();
+    if (clean.isEmpty())
+        return {};
+    QStringList hosts{clean};
+    if (clean.startsWith(QLatin1String("www.")) && clean.size() > 4)
+        hosts.append(clean.mid(4));
+    else if (!clean.startsWith(QLatin1String("www.")))
+        hosts.append(QStringLiteral("www.") + clean);
+    return hosts;
+}
+
+#if !defined(Q_OS_WIN)
+QString lookupSecretForUser(const QString &host, const QString &username)
+{
+    QProcess proc;
+    proc.start(
+        QStringLiteral("secret-tool"),
+        {
+            QStringLiteral("lookup"),
+            QStringLiteral("application"), QStringLiteral("netzac"),
+            QStringLiteral("origin"), host,
+            QStringLiteral("username"), username,
+        });
+    if (!proc.waitForFinished(2500) || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+        return QString();
+    return QString::fromUtf8(proc.readAllStandardOutput());
+}
+#endif
+
+}  // namespace
+
 bool PasswordStorage::isAvailable()
 {
+#if defined(Q_OS_WIN)
+    return true;
+#else
     return !QStandardPaths::findExecutable(QStringLiteral("secret-tool")).isEmpty();
+#endif
 }
 
 bool PasswordStorage::saveCredential(const QString &host, const QString &username, const QString &password)
@@ -601,6 +651,21 @@ bool PasswordStorage::saveCredential(const QString &host, const QString &usernam
     if (cleanHost.isEmpty() || cleanUser.isEmpty() || password.isEmpty() || !isAvailable())
         return false;
 
+#if defined(Q_OS_WIN)
+    const QString target = QStringLiteral("Netzac/%1/%2").arg(cleanHost, cleanUser);
+    std::wstring wTarget = target.toStdWString();
+    std::wstring wUser = cleanUser.toStdWString();
+    const QByteArray utf8Pass = password.toUtf8();
+
+    CREDENTIALW cred{};
+    cred.Type = CRED_TYPE_GENERIC;
+    cred.TargetName = wTarget.data();
+    cred.CredentialBlobSize = DWORD(utf8Pass.size());
+    cred.CredentialBlob = reinterpret_cast<LPBYTE>(const_cast<char *>(utf8Pass.constData()));
+    cred.Persist = CRED_PERSIST_LOCAL_MACHINE;
+    cred.UserName = wUser.data();
+    return CredWriteW(&cred, 0) == TRUE;
+#else
     QProcess proc;
     proc.start(
         QStringLiteral("secret-tool"),
@@ -616,54 +681,151 @@ bool PasswordStorage::saveCredential(const QString &host, const QString &usernam
     proc.write(password.toUtf8());
     proc.closeWriteChannel();
     return proc.waitForFinished(3000) && proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0;
+#endif
+}
+
+QVector<PasswordStorage::Credential> PasswordStorage::lookupCredentials(const QString &host)
+{
+    QVector<Credential> results;
+    const QStringList candidates = passwordCandidateHosts(host);
+    if (candidates.isEmpty() || !isAvailable())
+        return results;
+
+    const auto appendUnique = [&results](const QString &user, const QString &pass) {
+        if (user.isEmpty() || pass.isEmpty())
+            return;
+        for (const Credential &existing : results) {
+            if (existing.username == user && existing.password == pass)
+                return;
+        }
+        results.append({user, pass});
+    };
+
+#if defined(Q_OS_WIN)
+    for (const QString &candidate : candidates) {
+        const QString filter = QStringLiteral("Netzac/%1/*").arg(candidate);
+        std::wstring wFilter = filter.toStdWString();
+        DWORD count = 0;
+        PCREDENTIALW *creds = nullptr;
+        if (!CredEnumerateW(wFilter.c_str(), 0, &count, &creds) || !creds)
+            continue;
+        for (DWORD i = 0; i < count; ++i) {
+            const CREDENTIALW *c = creds[i];
+            if (!c)
+                continue;
+            QString user = c->UserName ? QString::fromWCharArray(c->UserName).trimmed() : QString();
+            if (user.isEmpty() && c->TargetName) {
+                const QString t = QString::fromWCharArray(c->TargetName);
+                const int slash = t.lastIndexOf(QLatin1Char('/'));
+                if (slash >= 0)
+                    user = t.mid(slash + 1).trimmed();
+            }
+            const QString pass = (c->CredentialBlob && c->CredentialBlobSize > 0)
+                ? QString::fromUtf8(reinterpret_cast<const char *>(c->CredentialBlob), int(c->CredentialBlobSize))
+                : QString();
+            appendUnique(user, pass);
+        }
+        CredFree(creds);
+    }
+#else
+    for (const QString &candidate : candidates) {
+        auto runSearch = [&candidate](bool withUnlock, QString *outText, QString *errText) {
+            QProcess proc;
+            QStringList args{QStringLiteral("search"), QStringLiteral("--all")};
+            if (withUnlock)
+                args << QStringLiteral("--unlock");
+            args << QStringLiteral("application") << QStringLiteral("netzac")
+                 << QStringLiteral("origin") << candidate;
+            proc.start(QStringLiteral("secret-tool"), args);
+            if (!proc.waitForFinished(2500) || proc.exitStatus() != QProcess::NormalExit)
+                return false;
+            *outText = QString::fromUtf8(proc.readAllStandardOutput());
+            *errText = QString::fromUtf8(proc.readAllStandardError());
+            if (outText->isEmpty() && proc.exitCode() == 0)
+                return true;
+            return proc.exitCode() == 0;
+        };
+
+        QString output;
+        QString err;
+        if (!runSearch(true, &output, &err)) {
+            if (err.contains(QStringLiteral("--unlock"), Qt::CaseInsensitive)
+                || err.contains(QStringLiteral("unknown"), Qt::CaseInsensitive)) {
+                if (!runSearch(false, &output, &err))
+                    continue;
+            } else {
+                continue;
+            }
+        }
+        // Some secret-tool versions write search output to stderr.
+        if (output.trimmed().isEmpty() && !err.trimmed().isEmpty())
+            output = err;
+
+        QString blockUser;
+        QString blockPass;
+        const auto flushBlock = [&]() {
+            if (blockUser.isEmpty())
+                return;
+            if (blockPass.isEmpty())
+                blockPass = lookupSecretForUser(candidate, blockUser);
+            appendUnique(blockUser, blockPass);
+            blockUser.clear();
+            blockPass.clear();
+        };
+
+        const QStringList lines = output.split(QLatin1Char('\n'));
+        for (QString rawLine : lines) {
+            if (rawLine.endsWith(QLatin1Char('\r')))
+                rawLine.chop(1);
+            const QString trimmed = rawLine.trimmed();
+            if (trimmed.startsWith(QLatin1Char('['))) {
+                flushBlock();
+                continue;
+            }
+            if (trimmed.startsWith(QLatin1String("attribute.username = "))) {
+                blockUser = trimmed.mid(21).trimmed();
+            } else if (trimmed.startsWith(QLatin1String("secret = "))) {
+                const int idx = rawLine.indexOf(QLatin1String("secret = "));
+                if (idx >= 0)
+                    blockPass = rawLine.mid(idx + 9);
+            }
+        }
+        flushBlock();
+    }
+#endif
+    return results;
 }
 
 bool PasswordStorage::lookupCredential(const QString &host, Credential *out)
 {
-    const QString cleanHost = host.trimmed().toLower();
-    if (cleanHost.isEmpty() || !out || !isAvailable())
+    if (!out)
         return false;
-
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start(
-        QStringLiteral("secret-tool"),
-        {
-            QStringLiteral("search"),
-            QStringLiteral("--all"),
-            QStringLiteral("application"), QStringLiteral("netzac"),
-            QStringLiteral("origin"), cleanHost,
-        });
-    if (!proc.waitForFinished(2500) || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+    const QVector<Credential> all = lookupCredentials(host);
+    if (all.isEmpty())
         return false;
-
-    QString foundUser;
-    QString foundPass;
-    const QString output = QString::fromUtf8(proc.readAllStandardOutput());
-    const QStringList lines = output.split(QLatin1Char('\n'));
-    for (const QString &rawLine : lines) {
-        const QString line = rawLine.trimmed();
-        if (line.startsWith(QLatin1String("attribute.username = "))) {
-            foundUser = line.mid(21).trimmed();
-        } else if (line.startsWith(QLatin1String("secret = "))) {
-            foundPass = line.mid(9);
-        }
-        if (!foundUser.isEmpty() && !foundPass.isEmpty()) {
-            out->username = foundUser;
-            out->password = foundPass;
-            return true;
-        }
-    }
-    return false;
+    *out = all.first();
+    return true;
 }
 
 void PasswordStorage::clearAll()
 {
     if (!isAvailable())
         return;
+#if defined(Q_OS_WIN)
+    DWORD count = 0;
+    PCREDENTIALW *creds = nullptr;
+    if (CredEnumerateW(L"Netzac/*", 0, &count, &creds) && creds) {
+        for (DWORD i = 0; i < count; ++i) {
+            if (creds[i] && creds[i]->TargetName)
+                CredDeleteW(creds[i]->TargetName, CRED_TYPE_GENERIC, 0);
+        }
+        CredFree(creds);
+    }
+#else
     QProcess::execute(
         QStringLiteral("secret-tool"),
         {QStringLiteral("clear"), QStringLiteral("application"), QStringLiteral("netzac")});
+#endif
 }
 
 QWebEngineProfile *netzacProfile()

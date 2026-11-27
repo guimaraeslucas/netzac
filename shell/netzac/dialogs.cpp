@@ -532,7 +532,11 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
     m_jsChk->setChecked(m_prefs.enableJavaScript);
     lay->addWidget(m_jsChk);
 
+#if defined(Q_OS_WIN)
+    m_rememberPasswordsChk = new QCheckBox(ztr("Remember passwords (Windows Credential Manager)"), page);
+#else
     m_rememberPasswordsChk = new QCheckBox(ztr("Remember passwords (ZacOS Keychain)"), page);
+#endif
     m_rememberPasswordsChk->setChecked(m_prefs.rememberPasswords);
     m_rememberPasswordsChk->setEnabled(PasswordStorage::isAvailable());
     lay->addWidget(m_rememberPasswordsChk);

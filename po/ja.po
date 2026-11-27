@@ -1672,3 +1672,35 @@ msgstr "ライト"
 #: shell/netzac/dialogs.cpp
 msgid "Dark"
 msgstr "ダーク"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want Netzac to save the password for \"%1\" on %2 in Windows Credential Manager?"
+msgstr "%2 上の \"%1\" のパスワードを Windows 資格情報マネージャーに保存しますか？"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password"
+msgstr "保存したパスワードを入力"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password (%1)"
+msgstr "保存したパスワードを入力 (%1)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill login and password"
+msgstr "ログイン名とパスワードを入力"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Filled saved credentials for %1"
+msgstr "%1 の保存済み資格情報を入力しました"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remember passwords (Windows Credential Manager)"
+msgstr "パスワードを記憶する (Windows 資格情報マネージャー)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved Passwords for %1"
+msgstr "%1 の保存済みパスワード"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved password for %1 in Windows Credential Manager"
+msgstr "%1 のパスワードを Windows 資格情報マネージャーに保存しました"

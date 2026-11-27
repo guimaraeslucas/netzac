@@ -162,6 +162,7 @@ private:
     void applyNavToolbarCompact(bool showText);
     void handleCredentialSubmitted(const QString &host, const QString &username, const QString &password);
     void installPasswordHelpers(NetzacWebPage *page, const QUrl &url);
+    void fillCredentialInPage(NetzacWebPage *page, const QString &username, const QString &password);
     void writeSavedHtml(const QString &path, const QString &htmlText);
     QWebEngineView *createBrowserWindow(NetzacWebView *opener, QWebEnginePage::WebWindowType type);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)

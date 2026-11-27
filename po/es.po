@@ -1672,3 +1672,35 @@ msgstr "Claro"
 #: shell/netzac/dialogs.cpp
 msgid "Dark"
 msgstr "Oscuro"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want Netzac to save the password for \"%1\" on %2 in Windows Credential Manager?"
+msgstr "¿Deseas que Netzac guarde la contraseña de \"%1\" en %2 en el Administrador de credenciales de Windows?"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password"
+msgstr "Rellenar contraseña guardada"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password (%1)"
+msgstr "Rellenar contraseña guardada (%1)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill login and password"
+msgstr "Rellenar usuario y contraseña"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Filled saved credentials for %1"
+msgstr "Se rellenaron las credenciales guardadas de %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remember passwords (Windows Credential Manager)"
+msgstr "Recordar contraseñas (Administrador de credenciales de Windows)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved Passwords for %1"
+msgstr "Contraseñas guardadas para %1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved password for %1 in Windows Credential Manager"
+msgstr "Contraseña guardada para %1 en el Administrador de credenciales de Windows"

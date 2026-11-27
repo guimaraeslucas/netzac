@@ -163,6 +163,7 @@ public:
 
     static bool isAvailable();
     static bool saveCredential(const QString &host, const QString &username, const QString &password);
+    static QVector<Credential> lookupCredentials(const QString &host);
     static bool lookupCredential(const QString &host, Credential *out);
     static void clearAll();
 };

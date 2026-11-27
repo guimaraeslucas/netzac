@@ -18,7 +18,7 @@ if host_machine.system() == 'windows'
   # MSVC needs these for the Qt 6 headers and for UTF-8 sources (accented text).
   netzac_cpp_args += ['/utf-8', '/permissive-', '/Zc:__cplusplus']
   # Keep main() as entry point with win_subsystem: 'windows' without Qt6EntryPoint.
-  netzac_link_args += ['/ENTRY:mainCRTStartup']
+  netzac_link_args += ['/ENTRY:mainCRTStartup', 'advapi32.lib']
 endif
 
 netzac_sources = [

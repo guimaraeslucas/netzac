@@ -22,6 +22,7 @@
 #include <QFont>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QKeySequence>
@@ -1644,6 +1645,18 @@ void NetzacWindow::onTabUrlChanged(NetzacWebView *view, const QUrl &qurl)
         m_statusSecurity->setIconName(isHttps ? QStringLiteral("security_locked") : QStringLiteral("security_open"));
         updateNavStates();
     }
+
+    if (m_prefs.rememberPasswords && m_prefs.enableJavaScript && !tab.showingBuiltin) {
+        const QUrl parsed(urlStr);
+        const QString scheme = parsed.scheme().toLower();
+        if (scheme == QLatin1String("http") || scheme == QLatin1String("https")) {
+            QPointer<NetzacWebPage> pagePtr(tab.page);
+            QTimer::singleShot(350, this, [this, pagePtr, parsed]() {
+                if (pagePtr)
+                    installPasswordHelpers(pagePtr, parsed);
+            });
+        }
+    }
 }
 
 void NetzacWindow::onTabTitleChanged(NetzacWebView *view, const QString &title)
@@ -1882,6 +1895,37 @@ void NetzacWindow::showWebContextMenu(const QPoint &globalPos, QWebEngineContext
     connect(stopAct, &QAction::triggered, view, &QWebEngineView::stop);
 
     menu.addSeparator();
+    if (m_prefs.rememberPasswords && PasswordStorage::isAvailable()) {
+        const BrowserTab *cur = currentTab();
+        const QUrl curUrl = cur ? QUrl(cur->currentUrl) : QUrl();
+        const QString scheme = curUrl.scheme().toLower();
+        if (cur && !cur->showingBuiltin
+            && (scheme == QLatin1String("http") || scheme == QLatin1String("https"))
+            && !curUrl.host().isEmpty()) {
+            const QVector<PasswordStorage::Credential> saved =
+                PasswordStorage::lookupCredentials(curUrl.host());
+            if (!saved.isEmpty()) {
+                if (saved.size() == 1) {
+                    const PasswordStorage::Credential cred = saved.first();
+                    QAction *fillAct = menu.addAction(
+                        ztr("Fill Saved Password (%1)").arg(cred.username));
+                    connect(fillAct, &QAction::triggered, this, [this, page, cred]() {
+                        fillCredentialInPage(page, cred.username, cred.password);
+                    });
+                } else {
+                    QMenu *fillMenu = menu.addMenu(ztr("Fill Saved Password"));
+                    fillMenu->setFont(menu.font());
+                    for (const PasswordStorage::Credential &cred : saved) {
+                        QAction *fillAct = fillMenu->addAction(cred.username);
+                        connect(fillAct, &QAction::triggered, this, [this, page, cred]() {
+                            fillCredentialInPage(page, cred.username, cred.password);
+                        });
+                    }
+                }
+                menu.addSeparator();
+            }
+        }
+    }
     QAction *bmPage = menu.addAction(ztr("Add Bookmark"));
     connect(bmPage, &QAction::triggered, this, &NetzacWindow::addCurrentBookmark);
     QAction *saveAs = menu.addAction(ztr("Save As..."));
@@ -2461,67 +2505,292 @@ void NetzacWindow::installPasswordHelpers(NetzacWebPage *page, const QUrl &url)
     if (host.isEmpty() || !PasswordStorage::isAvailable())
         return;
 
-    PasswordStorage::Credential cred;
-    QString fillJson = QStringLiteral("null");
-    if (PasswordStorage::lookupCredential(host, &cred)) {
+    const QVector<PasswordStorage::Credential> saved = PasswordStorage::lookupCredentials(host);
+    QJsonArray credsArr;
+    for (const PasswordStorage::Credential &c : saved) {
         QJsonObject obj;
-        obj.insert(QStringLiteral("user"), cred.username);
-        obj.insert(QStringLiteral("pass"), cred.password);
-        fillJson = QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+        obj.insert(QStringLiteral("user"), c.username);
+        obj.insert(QStringLiteral("pass"), c.password);
+        credsArr.append(obj);
     }
+    const QString credsJson = QString::fromUtf8(QJsonDocument(credsArr).toJson(QJsonDocument::Compact));
 
-    const QString hostJson = QString::fromUtf8(
-        QJsonDocument(QJsonObject{{QStringLiteral("host"), host}}).toJson(QJsonDocument::Compact));
+    QJsonObject metaObj;
+    metaObj.insert(QStringLiteral("host"), host);
+    metaObj.insert(QStringLiteral("header"), ztr("Saved Passwords for %1").arg(host));
+    metaObj.insert(QStringLiteral("fillHint"), ztr("Fill login and password"));
+    const QString metaJson = QString::fromUtf8(QJsonDocument(metaObj).toJson(QJsonDocument::Compact));
 
     const QString script = QStringLiteral(
-        "(function(){"
-        "var creds = %1;"
-        "var host = (%2).host;"
-        "function fillForm(f) {"
-        "  if (!creds) return;"
-        "  var pw = f.querySelector('input[type=\"password\"]');"
-        "  if (!pw) return;"
-        "  var inputs = Array.prototype.slice.call(f.querySelectorAll('input'));"
-        "  var userEl = null;"
-        "  for (var i = 0; i < inputs.length; i++) {"
-        "    if (inputs[i] === pw) break;"
-        "    var t = (inputs[i].type || 'text').toLowerCase();"
-        "    if (t === 'text' || t === 'email' || t === 'tel') userEl = inputs[i];"
-        "  }"
-        "  if (userEl && !userEl.value) {"
-        "    userEl.value = creds.user;"
-        "    userEl.dispatchEvent(new Event('input', {bubbles:true}));"
-        "  }"
-        "  if (!pw.value) {"
-        "    pw.value = creds.pass;"
-        "    pw.dispatchEvent(new Event('input', {bubbles:true}));"
-        "  }"
-        "}"
-        "var forms = document.querySelectorAll('form');"
-        "for (var i = 0; i < forms.length; i++) {"
-        "  var f = forms[i];"
-        "  fillForm(f);"
-        "  if (f.dataset.netzacPwHooked) continue;"
-        "  if (!f.querySelector('input[type=\"password\"]')) continue;"
-        "  f.dataset.netzacPwHooked = '1';"
-        "  f.addEventListener('submit', function() {"
-        "    var pw = this.querySelector('input[type=\"password\"]');"
-        "    if (!pw || !pw.value) return;"
-        "    var inputs = Array.prototype.slice.call(this.querySelectorAll('input'));"
-        "    var userVal = '';"
-        "    for (var j = 0; j < inputs.length; j++) {"
-        "      if (inputs[j] === pw) break;"
-        "      var t = (inputs[j].type || 'text').toLowerCase();"
-        "      if ((t === 'text' || t === 'email' || t === 'tel') && inputs[j].value) userVal = inputs[j].value;"
-        "    }"
-        "    if (userVal) {"
-        "      console.debug('__NETZAC_CRED__:' + JSON.stringify({host: host, user: userVal, pass: pw.value}));"
-        "    }"
-        "  }, true);"
-        "}"
-        "})();").arg(fillJson, hostJson);
+        "(function(){\n"
+        "var newCreds = %1;\n"
+        "var meta = %2;\n"
+        "if (!window.__netzacPwState) {\n"
+        "  window.__netzacPwState = { creds: newCreds, host: meta.host, labels: meta, hooked: false, lastSent: '', lastAt: 0 };\n"
+        "} else {\n"
+        "  window.__netzacPwState.creds = newCreds;\n"
+        "  window.__netzacPwState.host = meta.host;\n"
+        "  window.__netzacPwState.labels = meta;\n"
+        "}\n"
+        "var state = window.__netzacPwState;\n"
+        "function isVisibleInput(el) {\n"
+        "  if (!el || el.tagName !== 'INPUT' || el.disabled || el.readOnly) return false;\n"
+        "  var t = (el.type || 'text').toLowerCase();\n"
+        "  if (t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'checkbox' || t === 'radio' || t === 'file' || t === 'image') return false;\n"
+        "  if (el.getClientRects && el.getClientRects().length === 0 && el.offsetWidth === 0 && el.offsetHeight === 0) return false;\n"
+        "  return true;\n"
+        "}\n"
+        "function isPasswordInput(el) {\n"
+        "  return isVisibleInput(el) && (el.type || '').toLowerCase() === 'password';\n"
+        "}\n"
+        "function isTextLoginCandidate(el) {\n"
+        "  if (!isVisibleInput(el)) return false;\n"
+        "  var t = (el.type || 'text').toLowerCase();\n"
+        "  return t === 'text' || t === 'email' || t === 'tel' || t === '';\n"
+        "}\n"
+        "function hasLoginHint(el) {\n"
+        "  var ac = (el.getAttribute('autocomplete') || '').toLowerCase();\n"
+        "  if (ac.indexOf('username') >= 0 || ac.indexOf('email') >= 0) return true;\n"
+        "  if ((el.type || '').toLowerCase() === 'email') return true;\n"
+        "  var hay = ((el.name || '') + ' ' + (el.id || '') + ' ' + (el.placeholder || '') + ' ' + (el.getAttribute('aria-label') || '')).toLowerCase();\n"
+        "  return /user|login|email|e-mail|mail|account|identifier|signin|cpf|phone/.test(hay);\n"
+        "}\n"
+        "function findContainer(el) {\n"
+        "  if (el && el.form) return el.form;\n"
+        "  var cur = el ? el.parentElement : null;\n"
+        "  while (cur && cur !== document.body && cur !== document.documentElement) {\n"
+        "    if (cur.querySelector && cur.querySelector('input[type=\"password\"]')) return cur;\n"
+        "    cur = cur.parentElement;\n"
+        "  }\n"
+        "  return document;\n"
+        "}\n"
+        "function findPairFor(anchor) {\n"
+        "  var scope = anchor ? findContainer(anchor) : document;\n"
+        "  var all = Array.prototype.slice.call(scope.querySelectorAll('input'));\n"
+        "  var pwEl = null;\n"
+        "  if (isPasswordInput(anchor)) {\n"
+        "    pwEl = anchor;\n"
+        "  } else {\n"
+        "    for (var i = 0; i < all.length; i++) {\n"
+        "      if (isPasswordInput(all[i])) { pwEl = all[i]; break; }\n"
+        "    }\n"
+        "  }\n"
+        "  var userEl = null;\n"
+        "  if (pwEl) {\n"
+        "    for (var j = 0; j < all.length; j++) {\n"
+        "      if (all[j] === pwEl) break;\n"
+        "      if (isTextLoginCandidate(all[j])) userEl = all[j];\n"
+        "    }\n"
+        "  }\n"
+        "  if (!userEl && isTextLoginCandidate(anchor)) userEl = anchor;\n"
+        "  return { userEl: userEl, pwEl: pwEl };\n"
+        "}\n"
+        "function isLoginOrPasswordField(el) {\n"
+        "  if (!isVisibleInput(el)) return false;\n"
+        "  if (isPasswordInput(el)) return true;\n"
+        "  if (!isTextLoginCandidate(el)) return false;\n"
+        "  var pair = findPairFor(el);\n"
+        "  if (pair.pwEl && pair.userEl === el) return true;\n"
+        "  return hasLoginHint(el);\n"
+        "}\n"
+        "function setNativeValue(el, val) {\n"
+        "  if (!el) return;\n"
+        "  var proto = window.HTMLInputElement ? window.HTMLInputElement.prototype : null;\n"
+        "  var desc = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;\n"
+        "  if (desc && desc.set) desc.set.call(el, val);\n"
+        "  else el.value = val;\n"
+        "  el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));\n"
+        "  el.dispatchEvent(new Event('change', { bubbles: true, composed: true }));\n"
+        "}\n"
+        "function fillWithCred(anchor, cred) {\n"
+        "  if (!cred) return false;\n"
+        "  var pair = findPairFor(anchor);\n"
+        "  if (!pair.userEl && !pair.pwEl) {\n"
+        "    var inputs = Array.prototype.slice.call(document.querySelectorAll('input'));\n"
+        "    for (var i = 0; i < inputs.length; i++) {\n"
+        "      if (isPasswordInput(inputs[i])) { pair = findPairFor(inputs[i]); break; }\n"
+        "    }\n"
+        "    if (!pair.userEl) {\n"
+        "      for (var k = 0; k < inputs.length; k++) {\n"
+        "        if (isTextLoginCandidate(inputs[k]) && hasLoginHint(inputs[k])) { pair.userEl = inputs[k]; break; }\n"
+        "      }\n"
+        "    }\n"
+        "  }\n"
+        "  if (pair.userEl) setNativeValue(pair.userEl, cred.user || '');\n"
+        "  if (pair.pwEl) setNativeValue(pair.pwEl, cred.pass || '');\n"
+        "  var focusTarget = pair.pwEl || pair.userEl;\n"
+        "  if (focusTarget && focusTarget.focus) focusTarget.focus();\n"
+        "  return !!(pair.userEl || pair.pwEl);\n"
+        "}\n"
+        "window.__netzacFillCred = function(user, pass) {\n"
+        "  var anchor = (document.activeElement && document.activeElement.tagName === 'INPUT') ? document.activeElement : null;\n"
+        "  return fillWithCred(anchor, { user: user, pass: pass });\n"
+        "};\n"
+        "var POPUP_ID = 'zacos9-pw-autofill-popup';\n"
+        "function hidePopup() {\n"
+        "  var el = document.getElementById(POPUP_ID);\n"
+        "  if (el && el.parentNode) el.parentNode.removeChild(el);\n"
+        "  state.anchor = null;\n"
+        "}\n"
+        "function showPopup(anchor) {\n"
+        "  if (!anchor || !state.creds || !state.creds.length) { hidePopup(); return; }\n"
+        "  var root = document.documentElement || document.body;\n"
+        "  if (!root) return;\n"
+        "  var existing = document.getElementById(POPUP_ID);\n"
+        "  if (existing && existing.parentNode) existing.parentNode.removeChild(existing);\n"
+        "  state.anchor = anchor;\n"
+        "  var rect = anchor.getBoundingClientRect();\n"
+        "  var box = document.createElement('div');\n"
+        "  box.id = POPUP_ID;\n"
+        "  var w = Math.max(230, Math.round(rect.width));\n"
+        "  var left = Math.max(4, Math.min(window.innerWidth - w - 6, Math.round(rect.left)));\n"
+        "  var top = Math.round(rect.bottom + 2);\n"
+        "  box.style.cssText = 'position:fixed !important;left:' + left + 'px !important;top:' + top + 'px !important;' +\n"
+        "    'min-width:' + w + 'px !important;max-width:360px !important;z-index:2147483647 !important;' +\n"
+        "    'background:#eeeeee !important;color:#000000 !important;border:1px solid #000000 !important;' +\n"
+        "    'box-shadow:2px 2px 0 rgba(0,0,0,0.35),inset 1px 1px 0 #ffffff,inset -1px -1px 0 #999999 !important;' +\n"
+        "    'font-family:\"ZacOS 9 System\",Tahoma,sans-serif !important;font-size:12px !important;line-height:1.3 !important;' +\n"
+        "    'padding:2px !important;box-sizing:border-box !important;text-align:left !important;';\n"
+        "  var hdr = document.createElement('div');\n"
+        "  hdr.textContent = state.labels.header;\n"
+        "  hdr.style.cssText = 'padding:3px 7px !important;font-size:11px !important;font-weight:bold !important;' +\n"
+        "    'color:#333333 !important;background:#dddddd !important;border-bottom:1px solid #999999 !important;' +\n"
+        "    'white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;';\n"
+        "  box.appendChild(hdr);\n"
+        "  state.creds.forEach(function(cred) {\n"
+        "    var item = document.createElement('div');\n"
+        "    item.style.cssText = 'padding:5px 8px !important;cursor:pointer !important;display:flex !important;' +\n"
+        "      'flex-direction:column !important;gap:1px !important;background:transparent !important;color:#000000 !important;';\n"
+        "    var uSpan = document.createElement('span');\n"
+        "    uSpan.textContent = cred.user;\n"
+        "    uSpan.style.cssText = 'font-weight:bold !important;font-size:12px !important;color:inherit !important;' +\n"
+        "      'white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;';\n"
+        "    var hSpan = document.createElement('span');\n"
+        "    hSpan.textContent = '\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022  \\u2014  ' + state.labels.fillHint;\n"
+        "    hSpan.style.cssText = 'font-size:10px !important;color:#444444 !important;';\n"
+        "    item.appendChild(uSpan);\n"
+        "    item.appendChild(hSpan);\n"
+        "    item.addEventListener('mouseenter', function() {\n"
+        "      item.style.setProperty('background', '#3366cc', 'important');\n"
+        "      item.style.setProperty('color', '#ffffff', 'important');\n"
+        "      hSpan.style.setProperty('color', '#eeeeee', 'important');\n"
+        "    });\n"
+        "    item.addEventListener('mouseleave', function() {\n"
+        "      item.style.setProperty('background', 'transparent', 'important');\n"
+        "      item.style.setProperty('color', '#000000', 'important');\n"
+        "      hSpan.style.setProperty('color', '#444444', 'important');\n"
+        "    });\n"
+        "    item.addEventListener('mousedown', function(e) {\n"
+        "      e.preventDefault();\n"
+        "      e.stopPropagation();\n"
+        "      fillWithCred(anchor, cred);\n"
+        "      hidePopup();\n"
+        "    });\n"
+        "    box.appendChild(item);\n"
+        "  });\n"
+        "  root.appendChild(box);\n"
+        "  var bRect = box.getBoundingClientRect();\n"
+        "  if (bRect.bottom > window.innerHeight - 4 && rect.top > bRect.height + 6) {\n"
+        "    box.style.setProperty('top', Math.round(rect.top - bRect.height - 2) + 'px', 'important');\n"
+        "  }\n"
+        "}\n"
+        "function reportCredFromScope(scope) {\n"
+        "  if (!scope) return;\n"
+        "  var pw = scope.querySelector ? scope.querySelector('input[type=\"password\"]') : null;\n"
+        "  if (!pw || !pw.value) return;\n"
+        "  var inputs = Array.prototype.slice.call(scope.querySelectorAll('input'));\n"
+        "  var userVal = '';\n"
+        "  for (var j = 0; j < inputs.length; j++) {\n"
+        "    if (inputs[j] === pw) break;\n"
+        "    var t = (inputs[j].type || 'text').toLowerCase();\n"
+        "    if ((t === 'text' || t === 'email' || t === 'tel' || t === '') && inputs[j].value) userVal = inputs[j].value;\n"
+        "  }\n"
+        "  if (!userVal) return;\n"
+        "  var payload = JSON.stringify({ host: state.host, user: userVal, pass: pw.value });\n"
+        "  var now = Date.now();\n"
+        "  if (state.lastSent === payload && (now - state.lastAt) < 2000) return;\n"
+        "  state.lastSent = payload;\n"
+        "  state.lastAt = now;\n"
+        "  console.debug('__NETZAC_CRED__:' + payload);\n"
+        "}\n"
+        "function hookForms() {\n"
+        "  var forms = document.querySelectorAll('form');\n"
+        "  for (var i = 0; i < forms.length; i++) {\n"
+        "    var f = forms[i];\n"
+        "    if (f.dataset.netzacPwHooked) continue;\n"
+        "    if (!f.querySelector('input[type=\"password\"]')) continue;\n"
+        "    f.dataset.netzacPwHooked = '1';\n"
+        "    f.addEventListener('submit', function() { reportCredFromScope(this); }, true);\n"
+        "  }\n"
+        "}\n"
+        "if (!state.hooked) {\n"
+        "  state.hooked = true;\n"
+        "  document.addEventListener('focusin', function(e) {\n"
+        "    var el = e.target;\n"
+        "    if (isLoginOrPasswordField(el)) showPopup(el);\n"
+        "  }, true);\n"
+        "  document.addEventListener('mousedown', function(e) {\n"
+        "    var pop = document.getElementById(POPUP_ID);\n"
+        "    if (pop && pop.contains(e.target)) return;\n"
+        "    if (isLoginOrPasswordField(e.target)) {\n"
+        "      setTimeout(function() { showPopup(e.target); }, 0);\n"
+        "      return;\n"
+        "    }\n"
+        "    hidePopup();\n"
+        "  }, true);\n"
+        "  document.addEventListener('keydown', function(e) {\n"
+        "    if (e.key === 'Escape') { hidePopup(); return; }\n"
+        "    if (e.key === 'Enter' && isPasswordInput(e.target)) {\n"
+        "      reportCredFromScope(findContainer(e.target));\n"
+        "    }\n"
+        "  }, true);\n"
+        "  document.addEventListener('click', function(e) {\n"
+        "    var btn = e.target && e.target.closest ? e.target.closest('button,input[type=\"submit\"]') : null;\n"
+        "    if (btn) {\n"
+        "      var scope = btn.form || findContainer(btn);\n"
+        "      reportCredFromScope(scope);\n"
+        "    }\n"
+        "  }, true);\n"
+        "  window.addEventListener('scroll', hidePopup, true);\n"
+        "  window.addEventListener('resize', hidePopup);\n"
+        "  if (typeof MutationObserver !== 'undefined' && document.documentElement) {\n"
+        "    var obs = new MutationObserver(function() { hookForms(); });\n"
+        "    obs.observe(document.documentElement, { childList: true, subtree: true });\n"
+        "  }\n"
+        "}\n"
+        "hookForms();\n"
+        "if (document.activeElement && isLoginOrPasswordField(document.activeElement)) {\n"
+        "  showPopup(document.activeElement);\n"
+        "}\n"
+        "})();").arg(credsJson, metaJson);
 
     page->runJavaScript(script, QWebEngineScript::ApplicationWorld);
+}
+
+void NetzacWindow::fillCredentialInPage(
+    NetzacWebPage *page,
+    const QString &username,
+    const QString &password)
+{
+    if (!page)
+        return;
+
+    QJsonObject obj;
+    obj.insert(QStringLiteral("user"), username);
+    obj.insert(QStringLiteral("pass"), password);
+    const QString credJson = QString::fromUtf8(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+
+    const QString js = QStringLiteral(
+        "(function(){\n"
+        "  var c = %1;\n"
+        "  if (window.__netzacFillCred) {\n"
+        "    window.__netzacFillCred(c.user, c.pass);\n"
+        "  }\n"
+        "})();").arg(credJson);
+
+    page->runJavaScript(js, QWebEngineScript::ApplicationWorld);
+    if (m_statusLabel)
+        m_statusLabel->setStatusText(ztr("Filled saved credentials for %1").arg(username));
 }
 
 void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString &username, const QString &password)
@@ -2529,11 +2798,10 @@ void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString 
     if (!m_prefs.rememberPasswords || !PasswordStorage::isAvailable())
         return;
 
-    PasswordStorage::Credential existing;
-    if (PasswordStorage::lookupCredential(host, &existing)
-        && existing.username == username
-        && existing.password == password) {
-        return;
+    const QVector<PasswordStorage::Credential> existingList = PasswordStorage::lookupCredentials(host);
+    for (const PasswordStorage::Credential &existing : existingList) {
+        if (existing.username == username && existing.password == password)
+            return;
     }
 
     PlatinumDialog dlg(this);
@@ -2547,10 +2815,16 @@ void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString 
     auto *iconLbl = new QLabel(&dlg);
     iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
     iconLbl->setAlignment(Qt::AlignTop);
-    auto *msgLbl = new QLabel(
+#if defined(Q_OS_WIN)
+    const QString promptText =
+        ztr("Do you want Netzac to save the password for \"%1\" on %2 in Windows Credential Manager?")
+            .arg(username, host);
+#else
+    const QString promptText =
         ztr("Do you want Netzac to save the password for \"%1\" on %2 in ZacOS Keychain?")
-            .arg(username, host),
-        &dlg);
+            .arg(username, host);
+#endif
+    auto *msgLbl = new QLabel(promptText, &dlg);
     msgLbl->setWordWrap(true);
     top->addWidget(iconLbl);
     top->addWidget(msgLbl, 1);
@@ -2568,9 +2842,18 @@ void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString 
     lay->addLayout(btnRow);
 
     if (dlg.exec() == QDialog::Accepted) {
-        PasswordStorage::saveCredential(host, username, password);
-        if (m_statusLabel)
-            m_statusLabel->setStatusText(ztr("Saved password for %1 in ZacOS Keychain").arg(host));
+        if (PasswordStorage::saveCredential(host, username, password)) {
+            if (m_statusLabel) {
+#if defined(Q_OS_WIN)
+                m_statusLabel->setStatusText(
+                    ztr("Saved password for %1 in Windows Credential Manager").arg(host));
+#else
+                m_statusLabel->setStatusText(ztr("Saved password for %1 in ZacOS Keychain").arg(host));
+#endif
+            }
+            if (const BrowserTab *cur = currentTab())
+                installPasswordHelpers(cur->page, QUrl(cur->currentUrl));
+        }
     }
 }
 
