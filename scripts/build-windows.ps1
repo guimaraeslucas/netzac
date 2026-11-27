@@ -14,6 +14,9 @@
 
 .EXAMPLE
     scripts\build-windows.ps1 -QtDir C:\Qt\6.8.3\msvc2022_64 -Zip
+
+.EXAMPLE
+    scripts\build-windows.ps1 -Zip -ZipPath zacos9-netzac_1.0.0_windows-x64.zip
 #>
 [CmdletBinding()]
 param(
@@ -23,12 +26,19 @@ param(
     [ValidateSet('release', 'debug', 'debugoptimized')]
     [string]$BuildType = 'release',
     [switch]$SkipDeploy,
-    [switch]$Zip
+    [switch]$Zip,
+    [string]$ZipPath
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
+
+# Prefer the repository virtualenv when it exists (CI and local helper installs).
+$venvBin = Join-Path $root '.venv\Scripts'
+if ((Test-Path $venvBin) -and (($env:Path -split ';') -notcontains $venvBin)) {
+    $env:Path = $venvBin + ';' + $env:Path
+}
 
 function Write-Step([string]$Message) {
     Write-Host "==> $Message" -ForegroundColor Cyan
@@ -179,9 +189,16 @@ try {
     }
 
     if ($Zip) {
-        $zipPath = Join-Path $root 'zacos9-netzac-windows-x64.zip'
-        $tempZip = Join-Path $root 'zacos9-netzac-windows-x64.tmp.zip'
-        Write-Step "Creating $zipPath"
+        if (-not $ZipPath) { $ZipPath = 'zacos9-netzac-windows-x64.zip' }
+        if (-not [System.IO.Path]::IsPathRooted($ZipPath)) {
+            $ZipPath = Join-Path $root $ZipPath
+        }
+        $zipDir = Split-Path -Parent $ZipPath
+        if ($zipDir) { New-Item -ItemType Directory -Path $zipDir -Force | Out-Null }
+        # Compress-Archive appends ".zip" when the destination does not have it,
+        # so the temporary archive keeps a .zip extension.
+        $tempZip = [System.IO.Path]::ChangeExtension($ZipPath, '.tmp.zip')
+        Write-Step "Creating $ZipPath"
         if (Test-Path $tempZip) { Remove-Item $tempZip -Force }
         try {
             Compress-Archive -Path (Join-Path $DistDir '*') -DestinationPath $tempZip -Force -ErrorAction Stop
@@ -189,8 +206,8 @@ try {
             throw ("could not create the zip (is the application still running and " +
                 "locking a file in $DistDir?): " + $_.Exception.Message)
         }
-        if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-        Move-Item $tempZip $zipPath -Force
+        if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
+        Move-Item $tempZip $ZipPath -Force
     }
 
     Write-Host "Executable: $(Resolve-Path $exe)" -ForegroundColor Green

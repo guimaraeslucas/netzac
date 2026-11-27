@@ -1,0 +1,228 @@
+name: Release Windows package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading "v" (for example 1.0.0)'
+        required: true
+        default: '1.0.0'
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: '6.8.3'
+
+jobs:
+  build-zip:
+    name: Build portable ZIP (windows x64)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    # A release that already carries the Windows archive does not need a rebuild.
+    if: >-
+      github.event_name != 'release' ||
+      !contains(join(github.event.release.assets.*.name, ','), '_windows-x64.zip')
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      zip: ${{ steps.package.outputs.zip }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release version
+        id: release
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:EVENT_NAME -eq 'push' -or $env:EVENT_NAME -eq 'release') {
+            $tag = $env:REF_NAME
+          } else {
+            $tag = 'v' + ($env:INPUT_VERSION -replace '^v', '')
+          }
+          $version = $tag -replace '^v', ''
+          if ($version -notmatch '^[0-9][A-Za-z0-9.+~]*$') {
+            Write-Host "::error::Version '$version' must start with a digit and contain only letters, digits, '.', '+' or '~'."
+            exit 1
+          }
+          [System.IO.File]::AppendAllText($env:GITHUB_OUTPUT, "tag=$tag`n")
+          [System.IO.File]::AppendAllText($env:GITHUB_OUTPUT, "version=$version`n")
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Qt 6 with WebEngine
+        id: qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          modules: 'qtwebengine qtwebchannel qtpositioning'
+          cache: true
+          setup-python: false
+
+      - name: Install Meson and Ninja
+        shell: pwsh
+        env:
+          QT_ROOT: ${{ steps.qt.outputs.qt-root-dir }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $qtBin = Join-Path $env:QT_ROOT 'bin'
+          if (Test-Path (Join-Path $qtBin 'qmake.exe')) {
+            [System.IO.File]::AppendAllText($env:GITHUB_PATH, "$qtBin`n")
+            $env:Path = $qtBin + ';' + $env:Path
+          }
+          python -m pip install --upgrade meson ninja
+          $pythonDir = Split-Path -Parent (Get-Command python).Source
+          $scriptsDir = Join-Path $pythonDir 'Scripts'
+          if (Test-Path (Join-Path $scriptsDir 'meson.exe')) {
+            [System.IO.File]::AppendAllText($env:GITHUB_PATH, "$scriptsDir`n")
+            $env:Path = $scriptsDir + ';' + $env:Path
+          }
+          foreach ($tool in @('meson', 'ninja', 'qmake', 'lrelease')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+              throw "$tool was not found on PATH."
+            }
+          }
+
+      - name: Build and package portable ZIP
+        id: package
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $qtDir = '${{ steps.qt.outputs.qt-root-dir }}'
+          if (-not (Test-Path (Join-Path $qtDir 'bin\qmake.exe'))) {
+            throw "Qt was not installed correctly at '$qtDir'."
+          }
+          $zip = "zacos9-netzac_${env:VERSION}_windows-x64.zip"
+          ./scripts/build-windows.ps1 -QtDir $qtDir -BuildType release -Zip -ZipPath $zip
+          if (-not (Test-Path $zip)) { throw "Expected archive '$zip' was not created." }
+          [System.IO.File]::AppendAllText($env:GITHUB_OUTPUT, "zip=$zip`n")
+
+      - name: Verify ZIP contents
+        shell: pwsh
+        env:
+          ZIP_NAME: ${{ steps.package.outputs.zip }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $env:ZIP_NAME).Path)
+          try {
+            $entries = @($archive.Entries | ForEach-Object { $_.FullName -replace '\\', '/' })
+          } finally {
+            $archive.Dispose()
+          }
+          $required = @(
+            'zacos9-netzac.exe',
+            'Qt6Core.dll',
+            'Qt6WebEngineCore.dll',
+            'QtWebEngineProcess.exe',
+            'platforms/qwindows.dll',
+            'resources/icudtl.dat',
+            'resources/qtwebengine_resources.pak',
+            'translations/zacos9-netzac_pt.qm'
+          )
+          $missing = @($required | Where-Object { $entries -notcontains $_ })
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::The archive is missing: $($missing -join ', ')."
+            exit 1
+          }
+          if ($entries | Where-Object { $_ -like 'vc_redist*' }) {
+            Write-Host '::error::The archive must not bundle vc_redist.x64.exe.'
+            exit 1
+          }
+          Write-Host "Archive contains $($entries.Count) entries."
+
+      - name: Generate SHA-256
+        shell: pwsh
+        env:
+          ZIP_NAME: ${{ steps.package.outputs.zip }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hash = (Get-FileHash -Path $env:ZIP_NAME -Algorithm SHA256).Hash.ToLowerInvariant()
+          # LF endings keep the checksum in the GNU "sha256sum -c" format.
+          $line = "$hash  $($env:ZIP_NAME)`n"
+          [System.IO.File]::WriteAllText("$($env:ZIP_NAME).sha256", $line, [System.Text.Encoding]::ASCII)
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            ${{ steps.package.outputs.zip }}
+            ${{ steps.package.outputs.zip }}.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-release:
+    name: Publish release
+    needs: build-zip
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.build-zip.outputs.tag }}
+      VERSION: ${{ needs.build-zip.outputs.version }}
+      ZIP: zacos9-netzac_${{ needs.build-zip.outputs.version }}_windows-x64.zip
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: dist
+
+      - name: Publish release
+        run: |
+          set -eu
+          (cd dist && sha256sum -c "$ZIP.sha256")
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; uploading assets."
+          elif git rev-parse --verify --quiet "refs/tags/$TAG" >/dev/null; then
+            # The Debian workflow may create the same release concurrently; a failed
+            # create only matters if the release is still missing afterwards.
+            gh release create "$TAG" \
+              --title "Netzac Navigator $VERSION" \
+              --generate-notes || true
+          else
+            gh release create "$TAG" \
+              --title "Netzac Navigator $VERSION" \
+              --generate-notes \
+              --target "$GITHUB_SHA" || true
+          fi
+
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$TAG" "dist/$ZIP" "dist/$ZIP.sha256" --clobber; then
+              exit 0
+            fi
+            echo "Upload attempt $attempt failed; retrying in 10s..." >&2
+            sleep 10
+          done
+          echo "::error::Could not upload the Windows package to release $TAG." >&2
+          exit 1
