@@ -20,6 +20,7 @@
 #include <QUrl>
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
+#include <QWebEngineSettings>
 
 namespace {
 
@@ -87,7 +88,7 @@ QVector<NetzacPreferences::PersonalToolbarItem> NetzacPreferences::defaultPerson
 {
     return {
         {ztr("Home"), QStringLiteral("about:netzac"), QStringLiteral("home"), false, {}},
-        {ztr("FrogFind"), QStringLiteral("https://frogfind.com"), QStringLiteral("search"), false, {}},
+        {ztr("Google"), QStringLiteral("https://google.com"), QStringLiteral("search"), false, {}},
         {ztr("Wiby"), QStringLiteral("https://wiby.me"), QStringLiteral("guide"), false, {}},
         {ztr("Macintosh Repository"), QStringLiteral("https://www.macintoshrepository.org/"), QStringLiteral("page"), false, {}},
         {ztr("The Old Net"), QStringLiteral("https://theoldnet.com"), QStringLiteral("page"), false, {}},
@@ -617,6 +618,8 @@ QWebEngineProfile *netzacProfile()
         s_profile->setCachePath(cachePath);
         s_profile->setPersistentPermissionsPolicy(
             QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk);
+        if (QWebEngineSettings *ws = s_profile->settings())
+            ws->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
         installNetzacScripts(s_profile);
     }
     return s_profile;

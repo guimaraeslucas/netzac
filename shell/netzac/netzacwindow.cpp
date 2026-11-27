@@ -31,6 +31,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSignalBlocker>
@@ -45,6 +46,9 @@
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineSettings>
+
+#include <functional>
+#include <utility>
 
 namespace {
 
@@ -1033,6 +1037,7 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     page->settings()->setAttribute(QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
     page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
     page->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
     if (m_popupOpts.hideScrollbars)
         page->settings()->setAttribute(QWebEngineSettings::ShowScrollBars, false);
 
@@ -1525,6 +1530,14 @@ void NetzacWindow::connectTabSignals(NetzacWebView *view, NetzacWebPage *page, C
             resize(w, h);
     });
     connect(view, &NetzacWebView::contextMenuRequested, this, &NetzacWindow::showWebContextMenu);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    connect(page, &QWebEnginePage::permissionRequested, this, &NetzacWindow::handlePermissionRequested);
+#else
+    connect(page, &QWebEnginePage::featurePermissionRequested, this,
+        [this, page](const QUrl &origin, QWebEnginePage::Feature feature) {
+            handleFeaturePermissionRequested(page, origin, feature);
+        });
+#endif
     connect(calm, &CalmModeController::enabledChanged, this, [this, view](bool enabled) {
         onCalmEnabledChanged(view, enabled);
     });
@@ -2571,3 +2584,104 @@ void NetzacWindow::showAbout()
 {
     AboutDialog(this).exec();
 }
+
+namespace {
+
+void promptClipboardPermission(
+    QWidget *parent,
+    const QUrl &origin,
+    std::function<void(bool allowed)> onDecided)
+{
+    const QString host = origin.host().isEmpty() ? origin.toDisplayString() : origin.host();
+    auto *dlg = new PlatinumDialog(parent);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setWindowTitle(ztr("Clipboard Access"));
+    dlg->setFixedWidth(380);
+
+    auto *lay = new QVBoxLayout(dlg);
+    lay->setContentsMargins(12, 12, 12, 12);
+    lay->setSpacing(10);
+
+    auto *top = new QHBoxLayout();
+    auto *iconLbl = new QLabel(dlg);
+    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
+    iconLbl->setAlignment(Qt::AlignTop);
+    auto *msgLbl = new QLabel(
+        ztr("Do you want to allow %1 to read and write your clipboard?").arg(host),
+        dlg);
+    msgLbl->setWordWrap(true);
+    top->addWidget(iconLbl);
+    top->addWidget(msgLbl, 1);
+    lay->addLayout(top);
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->addStretch(1);
+    QPushButton *denyBtn = makeDialogButton(ztr("Deny"), false, dlg);
+    QPushButton *allowBtn = makeDialogButton(ztr("Allow"), true, dlg);
+    QObject::connect(denyBtn, &QPushButton::clicked, dlg, &QDialog::reject);
+    QObject::connect(allowBtn, &QPushButton::clicked, dlg, &QDialog::accept);
+    btnRow->addWidget(denyBtn);
+    btnRow->addWidget(allowBtn);
+    lay->addLayout(btnRow);
+
+    QObject::connect(dlg, &QDialog::finished, dlg, [onDecided = std::move(onDecided)](int result) {
+        onDecided(result == QDialog::Accepted);
+    });
+
+    dlg->show();
+    dlg->raise();
+    dlg->activateWindow();
+}
+
+}  // namespace
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+void NetzacWindow::handlePermissionRequested(QWebEnginePermission permission)
+{
+    if (!permission.isValid())
+        return;
+
+    if (permission.permissionType() != QWebEnginePermission::PermissionType::ClipboardReadWrite) {
+        permission.deny();
+        return;
+    }
+
+    promptClipboardPermission(this, permission.origin(), [permission](bool allowed) {
+        if (!permission.isValid())
+            return;
+        if (allowed)
+            permission.grant();
+        else
+            permission.deny();
+    });
+}
+#else
+void NetzacWindow::handleFeaturePermissionRequested(
+    NetzacWebPage *page,
+    const QUrl &securityOrigin,
+    QWebEnginePage::Feature feature)
+{
+    if (!page)
+        return;
+
+    if (feature != QWebEnginePage::ClipboardReadWrite) {
+        page->setFeaturePermission(securityOrigin, feature, QWebEnginePage::PermissionDeniedByUser);
+        return;
+    }
+
+    QPointer<NetzacWebPage> pagePtr(page);
+    promptClipboardPermission(
+        this,
+        securityOrigin,
+        [pagePtr, securityOrigin, feature](bool allowed) {
+            if (!pagePtr)
+                return;
+            pagePtr->setFeaturePermission(
+                securityOrigin,
+                feature,
+                allowed
+                    ? QWebEnginePage::PermissionGrantedByUser
+                    : QWebEnginePage::PermissionDeniedByUser);
+        });
+}
+#endif

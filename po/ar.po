@@ -1308,3 +1308,19 @@ msgstr "سيتم تطبيق إعداد تسريع أجهزة GPU بعد إعاد
 #: shell/netzac/preferences.cpp
 msgid "Chrome (Windows)"
 msgstr "Chrome (Windows)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Clipboard Access"
+msgstr "الوصول إلى الحافظة"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want to allow %1 to read and write your clipboard?"
+msgstr "هل تريد السماح لـ %1 بالقراءة من الحافظة والكتابة إليها؟"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Deny"
+msgstr "رفض"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Allow"
+msgstr "سماح"

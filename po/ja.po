@@ -1308,3 +1308,19 @@ msgstr "GPU ハードウェアアクセラレーションの設定は Netzac の
 #: shell/netzac/preferences.cpp
 msgid "Chrome (Windows)"
 msgstr "Chrome (Windows)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Clipboard Access"
+msgstr "クリップボードへのアクセス"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want to allow %1 to read and write your clipboard?"
+msgstr "%1 にクリップボードの読み取りと書き込みを許可しますか？"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Deny"
+msgstr "拒否"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Allow"
+msgstr "許可"

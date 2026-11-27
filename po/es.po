@@ -1308,3 +1308,19 @@ msgstr "La configuración de aceleración de hardware de GPU surtirá efecto tra
 #: shell/netzac/preferences.cpp
 msgid "Chrome (Windows)"
 msgstr "Chrome (Windows)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Clipboard Access"
+msgstr "Acceso al portapapeles"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want to allow %1 to read and write your clipboard?"
+msgstr "¿Desea permitir que %1 lea y escriba en su portapapeles?"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Deny"
+msgstr "Denegar"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Allow"
+msgstr "Permitir"

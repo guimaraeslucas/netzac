@@ -13,6 +13,10 @@
 #include <QUrl>
 #include <QVector>
 #include <QWebEnginePage>
+#include <QtGlobal>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+#include <QWebEnginePermission>
+#endif
 
 class QAction;
 class QCloseEvent;
@@ -160,6 +164,14 @@ private:
     void installPasswordHelpers(NetzacWebPage *page, const QUrl &url);
     void writeSavedHtml(const QString &path, const QString &htmlText);
     QWebEngineView *createBrowserWindow(NetzacWebView *opener, QWebEnginePage::WebWindowType type);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    void handlePermissionRequested(QWebEnginePermission permission);
+#else
+    void handleFeaturePermissionRequested(
+        NetzacWebPage *page,
+        const QUrl &securityOrigin,
+        QWebEnginePage::Feature feature);
+#endif
 
     QAction *addMenuAction(QMenu *menu, const QString &text, const QKeySequence &shortcut = QKeySequence());
     QAction *addCheckableAction(QMenu *menu, const QString &text, bool checked);

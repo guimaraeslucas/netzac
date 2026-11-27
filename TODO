@@ -1,6 +1,6 @@
 # Missing features
 
-[ ] Support to copy via javascript
+[x] Support to copy via javascript
 [ ] Disable ZacOS css scrollbars option7
 [x] Download dialog
 

@@ -17,8 +17,8 @@ netzac_link_args = []
 if host_machine.system() == 'windows'
   # MSVC needs these for the Qt 6 headers and for UTF-8 sources (accented text).
   netzac_cpp_args += ['/utf-8', '/permissive-', '/Zc:__cplusplus']
-  # GUI subsystem without pulling in Qt6EntryPoint: keep main() as entry point.
-  netzac_link_args += ['/SUBSYSTEM:WINDOWS', '/ENTRY:mainCRTStartup']
+  # Keep main() as entry point with win_subsystem: 'windows' without Qt6EntryPoint.
+  netzac_link_args += ['/ENTRY:mainCRTStartup']
 endif
 
 netzac_sources = [
@@ -105,6 +105,7 @@ executable('zacos9-netzac',
   dependencies: [qt6_dep],
   cpp_args: netzac_cpp_args,
   link_args: netzac_link_args,
+  win_subsystem: 'windows',
   install: true,
   install_tag: 'netzac',
 )
