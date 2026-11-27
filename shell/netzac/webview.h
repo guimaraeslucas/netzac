@@ -10,6 +10,7 @@
 class QContextMenuEvent;
 class QWebEngineContextMenuRequest;
 class QWebEngineProfile;
+struct NetzacPreferences;
 
 class NetzacWebPage : public QWebEnginePage {
     Q_OBJECT
@@ -38,7 +39,8 @@ private:
     QString m_pendingPopupFeatures;
 };
 
-void installNetzacScripts(QWebEngineProfile *profile);
+void installNetzacScripts(QWebEngineProfile *profile, const NetzacPreferences &prefs);
+void applyAppearanceToPage(QWebEnginePage *page, const NetzacPreferences &prefs);
 
 class NetzacWebView : public QWebEngineView {
     Q_OBJECT

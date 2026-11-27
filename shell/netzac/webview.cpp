@@ -1,5 +1,7 @@
 #include "webview.h"
 
+#include "preferences.h"
+
 #include <QApplication>
 #include <QContextMenuEvent>
 #include <QDir>
@@ -31,7 +33,7 @@ struct PlatinumAccentRamp {
     const char *shadow;
 };
 
-PlatinumAccentRamp currentZacosAccentRamp()
+PlatinumAccentRamp currentZacosAccentRamp(const QString &preferredAccentId = QString())
 {
     static constexpr PlatinumAccentRamp kAccents[] = {
         {"lavender", "#eeeeee", "#ccccff", "#9999ff", "#6666cc", "#333399"},
@@ -43,6 +45,14 @@ PlatinumAccentRamp currentZacosAccentRamp()
         {"rose",     "#eeeeee", "#f9d2df", "#f2a6bf", "#bf738c", "#8c4059"},
         {"plum",     "#eeeeee", "#f0d6f5", "#e0adeb", "#ad7ab8", "#7a4785"},
     };
+
+    const QString overrideId = preferredAccentId.trimmed().toLower();
+    if (!overrideId.isEmpty() && overrideId != QLatin1String("system")) {
+        for (const PlatinumAccentRamp &ramp : kAccents) {
+            if (overrideId == QLatin1String(ramp.id))
+                return ramp;
+        }
+    }
 
     QString configRoot = qEnvironmentVariable("XDG_CONFIG_HOME");
     if (configRoot.isEmpty())
@@ -67,9 +77,9 @@ PlatinumAccentRamp currentZacosAccentRamp()
     return kAccents[0];
 }
 
-QString platinumScrollbarCss()
+QString platinumScrollbarCss(const QString &accentId = QString())
 {
-    const PlatinumAccentRamp ac = currentZacosAccentRamp();
+    const PlatinumAccentRamp ac = currentZacosAccentRamp(accentId);
     auto esc = [](const char *hex) {
         return QString::fromLatin1(hex).replace(QLatin1Char('#'), QStringLiteral("%23"));
     };
@@ -203,9 +213,78 @@ QString platinumScrollbarCss()
     return css;
 }
 
+QString escapeCssFontFamily(QString family)
+{
+    family.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    family.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return family;
+}
+
+QString escapeJsTemplateLiteral(QString text)
+{
+    text.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    text.replace(QLatin1Char('`'), QStringLiteral("\\`"));
+    text.replace(QStringLiteral("${"), QStringLiteral("\\${"));
+    return text;
+}
+
+QString buildCustomFontsCss(const NetzacPreferences &prefs)
+{
+    if (!prefs.forceCustomFonts)
+        return QString();
+
+    const int sz = qBound(8, prefs.defaultFontSize, 36);
+    const int fixedSz = qMax(8, sz - 1);
+
+    const bool preferSerif = (prefs.proportionalFontStyle == NetzacPreferences::ProportionalFontStyle::Serif);
+    const QString primaryRaw = preferSerif
+        ? (!prefs.serifFont.isEmpty() ? prefs.serifFont : prefs.sansSerifFont)
+        : (!prefs.sansSerifFont.isEmpty() ? prefs.sansSerifFont : prefs.serifFont);
+    const QString primaryGeneric = (preferSerif || prefs.sansSerifFont.isEmpty())
+        ? QStringLiteral("serif")
+        : QStringLiteral("sans-serif");
+
+    QString css;
+    if (!primaryRaw.isEmpty()) {
+        const QString primary = escapeCssFontFamily(primaryRaw);
+        css += QStringLiteral(
+            "html, body { font-family: \"%1\", %2 !important; }\n"
+            "body, p, div, li, td, th, dd, dt, a, blockquote, article, section, main, "
+            "aside, header, footer, nav, label, button, input, select, textarea, "
+            "h1, h2, h3, h4, h5, h6, "
+            "span:not([class*=\"icon\"]):not([class*=\"fa\"]):not([class*=\"glyph\"]) "
+            "{ font-family: \"%1\", %2 !important; }\n")
+            .arg(primary, primaryGeneric);
+    }
+
+    if (!prefs.serifFont.isEmpty() && !prefs.sansSerifFont.isEmpty()) {
+        if (!preferSerif) {
+            css += QStringLiteral("blockquote, q, cite { font-family: \"%1\", serif !important; }\n")
+                .arg(escapeCssFontFamily(prefs.serifFont));
+        } else {
+            css += QStringLiteral("nav, button, input, select, label { font-family: \"%1\", sans-serif !important; }\n")
+                .arg(escapeCssFontFamily(prefs.sansSerifFont));
+        }
+    }
+
+    if (!prefs.fixedFont.isEmpty()) {
+        css += QStringLiteral("pre, code, kbd, samp, tt, var, pre *, code * { font-family: \"%1\", monospace !important; }\n")
+            .arg(escapeCssFontFamily(prefs.fixedFont));
+    }
+
+    css += QStringLiteral(
+        "html, body { font-size: %1px !important; }\n"
+        "p, li, td, th, dd, dt, blockquote { font-size: %1px !important; }\n"
+        "pre, code, kbd, samp, tt { font-size: %2px !important; }\n")
+        .arg(sz)
+        .arg(fixedSz);
+
+    return css;
+}
+
 }  // namespace
 
-void installNetzacScripts(QWebEngineProfile *profile)
+void installNetzacScripts(QWebEngineProfile *profile, const NetzacPreferences &prefs)
 {
     if (!profile)
         return;
@@ -217,11 +296,8 @@ void installNetzacScripts(QWebEngineProfile *profile)
     const QString scrollbarScriptName = QStringLiteral("netzac-platinum-scrollbars");
     for (const QWebEngineScript &old : scripts->find(scrollbarScriptName))
         scripts->remove(old);
-    {
-        QString css = platinumScrollbarCss();
-        css.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-        css.replace(QLatin1Char('`'), QStringLiteral("\\`"));
-        css.replace(QStringLiteral("${"), QStringLiteral("\\${"));
+    if (prefs.enablePlatinumScrollbars) {
+        const QString css = escapeJsTemplateLiteral(platinumScrollbarCss(prefs.scrollbarAccent));
 
         // Inject the Platinum scrollbar style at the earliest possible moment. At
         // DocumentCreation the parser has usually not created <html>/<head> yet, so
@@ -230,11 +306,14 @@ void installNetzacScripts(QWebEngineProfile *profile)
         // requestAnimationFrame loop apply the style as soon as <html> exists.
         const QString js = QStringLiteral(
             "(function() {\n"
+            "  if (window.__netzacScrollbarCleanup) { window.__netzacScrollbarCleanup(); }\n"
             "  var id = 'zacos9-platinum-scrollbars';\n"
             "  var css = `%1`;\n"
             "  var guard = null;\n"
             "  var waiter = null;\n"
+            "  var stopped = false;\n"
             "  function apply() {\n"
+            "    if (stopped) return true;\n"
             "    if (document.getElementById(id)) return true;\n"
             "    var parent = document.head || document.documentElement;\n"
             "    if (!parent) return false;\n"
@@ -245,20 +324,28 @@ void installNetzacScripts(QWebEngineProfile *profile)
             "    return true;\n"
             "  }\n"
             "  function watch() {\n"
-            "    if (guard || typeof MutationObserver === 'undefined') return;\n"
+            "    if (stopped || guard || typeof MutationObserver === 'undefined') return;\n"
             "    var head = document.head;\n"
             "    if (!head) return;\n"
             "    guard = new MutationObserver(function() {\n"
-            "      if (!document.getElementById(id)) apply();\n"
+            "      if (!stopped && !document.getElementById(id)) apply();\n"
             "    });\n"
             "    guard.observe(head, { childList: true });\n"
             "  }\n"
             "  function attempt() {\n"
+            "    if (stopped) return true;\n"
             "    if (!apply()) return false;\n"
             "    if (waiter) { waiter.disconnect(); waiter = null; }\n"
             "    watch();\n"
             "    return true;\n"
             "  }\n"
+            "  window.__netzacScrollbarCleanup = function() {\n"
+            "    stopped = true;\n"
+            "    if (guard) { guard.disconnect(); guard = null; }\n"
+            "    if (waiter) { waiter.disconnect(); waiter = null; }\n"
+            "    var el = document.getElementById(id);\n"
+            "    if (el && el.parentNode) el.parentNode.removeChild(el);\n"
+            "  };\n"
             "  if (!attempt() && typeof MutationObserver !== 'undefined') {\n"
             "    waiter = new MutationObserver(function() { attempt(); });\n"
             "    waiter.observe(document, { childList: true, subtree: true });\n"
@@ -268,14 +355,86 @@ void installNetzacScripts(QWebEngineProfile *profile)
             "  window.addEventListener('load', attempt);\n"
             "  var frames = 0;\n"
             "  (function raf() {\n"
-            "    if (document.getElementById(id)) return;\n"
+            "    if (stopped || document.getElementById(id)) return;\n"
             "    attempt();\n"
-            "    if (++frames < 300) requestAnimationFrame(raf);\n"
+            "    if (!stopped && ++frames < 300) requestAnimationFrame(raf);\n"
             "  })();\n"
             "})();\n").arg(css);
 
         QWebEngineScript script;
         script.setName(scrollbarScriptName);
+        script.setSourceCode(js);
+        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
+        script.setRunsOnSubFrames(true);
+        script.setWorldId(QWebEngineScript::ApplicationWorld);
+        scripts->insert(script);
+    }
+
+    const QString fontsScriptName = QStringLiteral("netzac-custom-fonts");
+    for (const QWebEngineScript &old : scripts->find(fontsScriptName))
+        scripts->remove(old);
+    if (prefs.forceCustomFonts) {
+        const QString fontCss = escapeJsTemplateLiteral(buildCustomFontsCss(prefs));
+        const QString js = QStringLiteral(
+            "(function() {\n"
+            "  if (location.origin === 'https://localhost' && location.pathname === '/') return;\n"
+            "  if (window.__netzacCustomFontsCleanup) { window.__netzacCustomFontsCleanup(); }\n"
+            "  var id = 'zacos9-custom-fonts';\n"
+            "  var css = `%1`;\n"
+            "  var guard = null;\n"
+            "  var waiter = null;\n"
+            "  var stopped = false;\n"
+            "  function apply() {\n"
+            "    if (stopped) return true;\n"
+            "    if (document.getElementById(id)) return true;\n"
+            "    var parent = document.head || document.documentElement;\n"
+            "    if (!parent) return false;\n"
+            "    var st = document.createElement('style');\n"
+            "    st.id = id;\n"
+            "    st.textContent = css;\n"
+            "    parent.insertBefore(st, parent.firstChild);\n"
+            "    return true;\n"
+            "  }\n"
+            "  function watch() {\n"
+            "    if (stopped || guard || typeof MutationObserver === 'undefined') return;\n"
+            "    var head = document.head;\n"
+            "    if (!head) return;\n"
+            "    guard = new MutationObserver(function() {\n"
+            "      if (!stopped && !document.getElementById(id)) apply();\n"
+            "    });\n"
+            "    guard.observe(head, { childList: true });\n"
+            "  }\n"
+            "  function attempt() {\n"
+            "    if (stopped) return true;\n"
+            "    if (!apply()) return false;\n"
+            "    if (waiter) { waiter.disconnect(); waiter = null; }\n"
+            "    watch();\n"
+            "    return true;\n"
+            "  }\n"
+            "  window.__netzacCustomFontsCleanup = function() {\n"
+            "    stopped = true;\n"
+            "    if (guard) { guard.disconnect(); guard = null; }\n"
+            "    if (waiter) { waiter.disconnect(); waiter = null; }\n"
+            "    var el = document.getElementById(id);\n"
+            "    if (el && el.parentNode) el.parentNode.removeChild(el);\n"
+            "  };\n"
+            "  if (!attempt() && typeof MutationObserver !== 'undefined') {\n"
+            "    waiter = new MutationObserver(function() { attempt(); });\n"
+            "    waiter.observe(document, { childList: true, subtree: true });\n"
+            "  }\n"
+            "  document.addEventListener('readystatechange', attempt);\n"
+            "  document.addEventListener('DOMContentLoaded', attempt);\n"
+            "  window.addEventListener('load', attempt);\n"
+            "  var frames = 0;\n"
+            "  (function raf() {\n"
+            "    if (stopped || document.getElementById(id)) return;\n"
+            "    attempt();\n"
+            "    if (!stopped && ++frames < 300) requestAnimationFrame(raf);\n"
+            "  })();\n"
+            "})();\n").arg(fontCss);
+
+        QWebEngineScript script;
+        script.setName(fontsScriptName);
         script.setSourceCode(js);
         script.setInjectionPoint(QWebEngineScript::DocumentCreation);
         script.setRunsOnSubFrames(true);
@@ -309,6 +468,69 @@ void installNetzacScripts(QWebEngineProfile *profile)
         script.setWorldId(QWebEngineScript::MainWorld);
         scripts->insert(script);
     }
+}
+
+void applyAppearanceToPage(QWebEnginePage *page, const NetzacPreferences &prefs)
+{
+    if (!page)
+        return;
+
+    prefs.applyFontSettings(page->settings());
+
+    const QString sbEnabled = prefs.enablePlatinumScrollbars ? QStringLiteral("true") : QStringLiteral("false");
+    const QString sbCss = prefs.enablePlatinumScrollbars
+        ? escapeJsTemplateLiteral(platinumScrollbarCss(prefs.scrollbarAccent))
+        : QString();
+    const QString fontsEnabled = prefs.forceCustomFonts ? QStringLiteral("true") : QStringLiteral("false");
+    const QString fontsCss = prefs.forceCustomFonts
+        ? escapeJsTemplateLiteral(buildCustomFontsCss(prefs))
+        : QString();
+
+    const QString js = QStringLiteral(
+        "(function() {\n"
+        "  var sbId = 'zacos9-platinum-scrollbars';\n"
+        "  if (%1) {\n"
+        "    var sbEl = document.getElementById(sbId);\n"
+        "    if (sbEl) {\n"
+        "      sbEl.textContent = `%2`;\n"
+        "    } else {\n"
+        "      var p = document.head || document.documentElement;\n"
+        "      if (p) {\n"
+        "        sbEl = document.createElement('style');\n"
+        "        sbEl.id = sbId;\n"
+        "        sbEl.textContent = `%2`;\n"
+        "        p.appendChild(sbEl);\n"
+        "      }\n"
+        "    }\n"
+        "  } else {\n"
+        "    if (window.__netzacScrollbarCleanup) { window.__netzacScrollbarCleanup(); }\n"
+        "    var oldSb = document.getElementById(sbId);\n"
+        "    if (oldSb && oldSb.parentNode) oldSb.parentNode.removeChild(oldSb);\n"
+        "  }\n"
+        "  var fontId = 'zacos9-custom-fonts';\n"
+        "  var isStart = (location.origin === 'https://localhost' && location.pathname === '/');\n"
+        "  if (%3 && !isStart) {\n"
+        "    var fEl = document.getElementById(fontId);\n"
+        "    if (fEl) {\n"
+        "      fEl.textContent = `%4`;\n"
+        "    } else {\n"
+        "      var p2 = document.head || document.documentElement;\n"
+        "      if (p2) {\n"
+        "        fEl = document.createElement('style');\n"
+        "        fEl.id = fontId;\n"
+        "        fEl.textContent = `%4`;\n"
+        "        p2.insertBefore(fEl, p2.firstChild);\n"
+        "      }\n"
+        "    }\n"
+        "  } else {\n"
+        "    if (window.__netzacCustomFontsCleanup) { window.__netzacCustomFontsCleanup(); }\n"
+        "    var oldF = document.getElementById(fontId);\n"
+        "    if (oldF && oldF.parentNode) oldF.parentNode.removeChild(oldF);\n"
+        "  }\n"
+        "})();\n")
+        .arg(sbEnabled, sbCss, fontsEnabled, fontsCss);
+
+    page->runJavaScript(js, QWebEngineScript::ApplicationWorld);
 }
 
 NetzacWebPage::NetzacWebPage(QWebEngineProfile *profile, QObject *parent)

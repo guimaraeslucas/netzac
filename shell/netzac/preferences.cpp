@@ -66,6 +66,21 @@ QVector<NetzacPreferences::PresetEntry> NetzacPreferences::userAgentPresets()
     };
 }
 
+QVector<NetzacPreferences::AccentEntry> NetzacPreferences::scrollbarAccentPresets()
+{
+    return {
+        {"system", ztr("System (ZacOS 9)"), ""},
+        {"lavender", ztr("Lavender"), "#9999ff"},
+        {"graphite", ztr("Graphite"), "#cccccc"},
+        {"gold", ztr("Gold"), "#ffe699"},
+        {"bronze", ztr("Bronze"), "#e8c7b0"},
+        {"ivy", ztr("Ivy"), "#33cc66"},
+        {"ocean", ztr("Ocean"), "#9edbfa"},
+        {"rose", ztr("Rose"), "#f2a6bf"},
+        {"plum", ztr("Plum"), "#e0adeb"},
+    };
+}
+
 QStringList NetzacPreferences::defaultAdBlockSubscriptions()
 {
     return {
@@ -120,6 +135,15 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.rememberPasswords = true;
     prefs.showNavButtonText = true;
     prefs.disableGpuAcceleration = false;
+    prefs.enablePlatinumScrollbars = true;
+    prefs.scrollbarAccent = QStringLiteral("system");
+    prefs.uiTheme = UiTheme::ZacosDefault;
+    prefs.forceCustomFonts = false;
+    prefs.proportionalFontStyle = ProportionalFontStyle::SansSerif;
+    prefs.serifFont.clear();
+    prefs.sansSerifFont.clear();
+    prefs.fixedFont.clear();
+    prefs.defaultFontSize = 16;
     prefs.calm = CalmConfig();
     prefs.personalToolbar = defaultPersonalToolbar();
     prefs.mailUrl.clear();
@@ -173,6 +197,41 @@ NetzacPreferences NetzacPreferences::load()
     prefs.rememberPasswords = s.value(QStringLiteral("navigator/rememberPasswords"), prefs.rememberPasswords).toBool();
     prefs.showNavButtonText = s.value(QStringLiteral("navigator/showNavButtonText"), prefs.showNavButtonText).toBool();
     prefs.disableGpuAcceleration = s.value(QStringLiteral("navigator/disableGpuAcceleration"), prefs.disableGpuAcceleration).toBool();
+
+    prefs.enablePlatinumScrollbars = s.value(
+        QStringLiteral("appearance/enablePlatinumScrollbars"),
+        prefs.enablePlatinumScrollbars).toBool();
+    const QString rawAccent = s.value(
+        QStringLiteral("appearance/scrollbarAccent"),
+        prefs.scrollbarAccent).toString().trimmed().toLower();
+    bool validAccent = false;
+    for (const auto &entry : scrollbarAccentPresets()) {
+        if (rawAccent == QLatin1String(entry.id)) {
+            validAccent = true;
+            break;
+        }
+    }
+    prefs.scrollbarAccent = validAccent ? rawAccent : QStringLiteral("system");
+    const int themeVal = qBound(
+        0,
+        s.value(QStringLiteral("appearance/uiTheme"), int(prefs.uiTheme)).toInt(),
+        2);
+    prefs.uiTheme = static_cast<UiTheme>(themeVal);
+    prefs.forceCustomFonts = s.value(
+        QStringLiteral("appearance/forceCustomFonts"),
+        prefs.forceCustomFonts).toBool();
+    const int propStyleVal = qBound(
+        0,
+        s.value(QStringLiteral("appearance/proportionalFontStyle"), int(prefs.proportionalFontStyle)).toInt(),
+        1);
+    prefs.proportionalFontStyle = static_cast<ProportionalFontStyle>(propStyleVal);
+    prefs.serifFont = s.value(QStringLiteral("appearance/serifFont"), prefs.serifFont).toString().trimmed();
+    prefs.sansSerifFont = s.value(QStringLiteral("appearance/sansSerifFont"), prefs.sansSerifFont).toString().trimmed();
+    prefs.fixedFont = s.value(QStringLiteral("appearance/fixedFont"), prefs.fixedFont).toString().trimmed();
+    prefs.defaultFontSize = qBound(
+        8,
+        s.value(QStringLiteral("appearance/defaultFontSize"), prefs.defaultFontSize).toInt(),
+        36);
 
     const int calmJsVal = qBound(0, s.value(QStringLiteral("calm/jsDetection"), int(prefs.calm.jsDetection)).toInt(), 2);
     prefs.calm.jsDetection = static_cast<CalmJsDetection>(calmJsVal);
@@ -286,6 +345,16 @@ void NetzacPreferences::save() const
     s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
     s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
     s.setValue(QStringLiteral("navigator/disableGpuAcceleration"), disableGpuAcceleration);
+
+    s.setValue(QStringLiteral("appearance/enablePlatinumScrollbars"), enablePlatinumScrollbars);
+    s.setValue(QStringLiteral("appearance/scrollbarAccent"), scrollbarAccent);
+    s.setValue(QStringLiteral("appearance/uiTheme"), int(uiTheme));
+    s.setValue(QStringLiteral("appearance/forceCustomFonts"), forceCustomFonts);
+    s.setValue(QStringLiteral("appearance/proportionalFontStyle"), int(proportionalFontStyle));
+    s.setValue(QStringLiteral("appearance/serifFont"), serifFont);
+    s.setValue(QStringLiteral("appearance/sansSerifFont"), sansSerifFont);
+    s.setValue(QStringLiteral("appearance/fixedFont"), fixedFont);
+    s.setValue(QStringLiteral("appearance/defaultFontSize"), defaultFontSize);
 
     s.setValue(QStringLiteral("calm/jsDetection"), int(calm.jsDetection));
     s.setValue(QStringLiteral("calm/layoutMode"), int(calm.layoutMode));
@@ -620,9 +689,54 @@ QWebEngineProfile *netzacProfile()
             QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk);
         if (QWebEngineSettings *ws = s_profile->settings())
             ws->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
-        installNetzacScripts(s_profile);
+        installNetzacScripts(s_profile, NetzacPreferences::load());
     }
     return s_profile;
+}
+
+void NetzacPreferences::applyFontSettings(QWebEngineSettings *ws) const
+{
+    if (!ws)
+        return;
+
+    if (forceCustomFonts) {
+        if (!serifFont.isEmpty())
+            ws->setFontFamily(QWebEngineSettings::SerifFont, serifFont);
+        else
+            ws->resetFontFamily(QWebEngineSettings::SerifFont);
+
+        if (!sansSerifFont.isEmpty())
+            ws->setFontFamily(QWebEngineSettings::SansSerifFont, sansSerifFont);
+        else
+            ws->resetFontFamily(QWebEngineSettings::SansSerifFont);
+
+        if (!fixedFont.isEmpty())
+            ws->setFontFamily(QWebEngineSettings::FixedFont, fixedFont);
+        else
+            ws->resetFontFamily(QWebEngineSettings::FixedFont);
+
+        QString stdFamily;
+        if (proportionalFontStyle == ProportionalFontStyle::Serif)
+            stdFamily = !serifFont.isEmpty() ? serifFont : sansSerifFont;
+        else
+            stdFamily = !sansSerifFont.isEmpty() ? sansSerifFont : serifFont;
+
+        if (!stdFamily.isEmpty())
+            ws->setFontFamily(QWebEngineSettings::StandardFont, stdFamily);
+        else
+            ws->resetFontFamily(QWebEngineSettings::StandardFont);
+
+        const int sz = qBound(8, defaultFontSize, 36);
+        ws->setFontSize(QWebEngineSettings::DefaultFontSize, sz);
+        ws->setFontSize(QWebEngineSettings::DefaultFixedFontSize, qMax(8, sz - 1));
+    } else {
+        ws->resetFontFamily(QWebEngineSettings::StandardFont);
+        ws->resetFontFamily(QWebEngineSettings::SerifFont);
+        ws->resetFontFamily(QWebEngineSettings::SansSerifFont);
+        ws->resetFontFamily(QWebEngineSettings::FixedFont);
+        ws->resetFontSize(QWebEngineSettings::DefaultFontSize);
+        ws->resetFontSize(QWebEngineSettings::DefaultFixedFontSize);
+    }
 }
 
 void NetzacPreferences::apply(QWebEngineProfile *profile) const
@@ -716,6 +830,9 @@ void NetzacPreferences::apply(QWebEngineProfile *profile) const
             return true;
         });
     }
+
+    applyFontSettings(profile->settings());
+    installNetzacScripts(profile, *this);
 
     NetzacAdBlocker *blocker = NetzacAdBlocker::instance();
     blocker->install(profile);

@@ -354,7 +354,11 @@ void NetzacThrobber::paintEvent(QPaintEvent * /*event*/)
     painter.restore();
 
     const int offset = isDown() ? 1 : 0;
+#if defined(Q_OS_WIN)
+    QFont nFont(QStringLiteral("Times New Roman"));
+#else
     QFont nFont(QStringLiteral("Nimbus Roman"));
+#endif
     nFont.setPixelSize(m_compact ? 17 : 27);
     nFont.setBold(true);
     painter.setFont(nFont);

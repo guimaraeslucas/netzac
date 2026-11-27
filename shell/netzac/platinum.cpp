@@ -11,6 +11,7 @@
 #include <QStyle>
 #include <QStyleFactory>
 #include <QStyleHints>
+#include <QWidget>
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold)
 {
@@ -46,22 +47,139 @@ QFont zacosFont(const QString &preferred, int pixelSize, bool bold)
     return font;
 }
 
-void applyZacos9Theme(QApplication &app)
+namespace {
+
+QString zacos9StyleKey()
 {
-#if defined(Q_OS_WIN)
-    // The Platinum look is a light theme: never follow the system dark mode.
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
-#endif
-#endif
     const QStringList keys = QStyleFactory::keys();
     for (const QString &key : keys) {
-        if (key.compare(QStringLiteral("zacos9"), Qt::CaseInsensitive) == 0) {
-            app.setStyle(key);
-            break;
-        }
+        if (key.compare(QStringLiteral("zacos9"), Qt::CaseInsensitive) == 0)
+            return key;
     }
+    return QString();
+}
+
+QPalette makePlatinumLightPalette()
+{
+    QPalette pal;
+    pal.setColor(QPalette::Window, QColor(QStringLiteral("#dddddd")));
+    pal.setColor(QPalette::WindowText, QColor(QStringLiteral("#000000")));
+    pal.setColor(QPalette::Base, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::AlternateBase, QColor(QStringLiteral("#f0f0f0")));
+    pal.setColor(QPalette::ToolTipBase, QColor(QStringLiteral("#ffffdc")));
+    pal.setColor(QPalette::ToolTipText, QColor(QStringLiteral("#000000")));
+    pal.setColor(QPalette::Text, QColor(QStringLiteral("#000000")));
+    pal.setColor(QPalette::Button, QColor(QStringLiteral("#cccccc")));
+    pal.setColor(QPalette::ButtonText, QColor(QStringLiteral("#000000")));
+    pal.setColor(QPalette::BrightText, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::Light, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::Midlight, QColor(QStringLiteral("#e6e6e6")));
+    pal.setColor(QPalette::Mid, QColor(QStringLiteral("#aaaaaa")));
+    pal.setColor(QPalette::Dark, QColor(QStringLiteral("#888888")));
+    pal.setColor(QPalette::Shadow, QColor(QStringLiteral("#000000")));
+    pal.setColor(QPalette::Highlight, QColor(QStringLiteral("#6666cc")));
+    pal.setColor(QPalette::HighlightedText, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::Link, QColor(QStringLiteral("#0000ee")));
+    pal.setColor(QPalette::LinkVisited, QColor(QStringLiteral("#551a8b")));
+    const QColor disabledText(QStringLiteral("#777777"));
+    pal.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::Text, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
+    return pal;
+}
+
+QPalette makePlatinumDarkPalette()
+{
+    QPalette pal;
+    pal.setColor(QPalette::Window, QColor(QStringLiteral("#2b2b2b")));
+    pal.setColor(QPalette::WindowText, QColor(QStringLiteral("#eeeeee")));
+    pal.setColor(QPalette::Base, QColor(QStringLiteral("#1e1e1e")));
+    pal.setColor(QPalette::AlternateBase, QColor(QStringLiteral("#262626")));
+    pal.setColor(QPalette::ToolTipBase, QColor(QStringLiteral("#333333")));
+    pal.setColor(QPalette::ToolTipText, QColor(QStringLiteral("#eeeeee")));
+    pal.setColor(QPalette::Text, QColor(QStringLiteral("#eeeeee")));
+    pal.setColor(QPalette::Button, QColor(QStringLiteral("#363636")));
+    pal.setColor(QPalette::ButtonText, QColor(QStringLiteral("#eeeeee")));
+    pal.setColor(QPalette::BrightText, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::Light, QColor(QStringLiteral("#4c4c4c")));
+    pal.setColor(QPalette::Midlight, QColor(QStringLiteral("#3e3e3e")));
+    pal.setColor(QPalette::Mid, QColor(QStringLiteral("#262626")));
+    pal.setColor(QPalette::Dark, QColor(QStringLiteral("#181818")));
+    pal.setColor(QPalette::Shadow, QColor(QStringLiteral("#0c0c0c")));
+    pal.setColor(QPalette::Highlight, QColor(QStringLiteral("#6666cc")));
+    pal.setColor(QPalette::HighlightedText, QColor(QStringLiteral("#ffffff")));
+    pal.setColor(QPalette::Link, QColor(QStringLiteral("#88aaff")));
+    pal.setColor(QPalette::LinkVisited, QColor(QStringLiteral("#bb99ff")));
+    const QColor disabledText(QStringLiteral("#808080"));
+    pal.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::Text, disabledText);
+    pal.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
+    return pal;
+}
+
+}  // namespace
+
+bool hasZacos9Style()
+{
+    return !zacos9StyleKey().isEmpty();
+}
+
+void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
+{
+    static QString s_initialStyle;
+    if (s_initialStyle.isEmpty() && app.style())
+        s_initialStyle = app.style()->objectName();
+
+    const QString zacosKey = zacos9StyleKey();
+    const bool onZacos = !zacosKey.isEmpty();
+    NetzacPreferences::UiTheme effective = theme;
+    if (!onZacos && effective == NetzacPreferences::UiTheme::ZacosDefault)
+        effective = NetzacPreferences::UiTheme::Light;
+
+    switch (effective) {
+    case NetzacPreferences::UiTheme::ZacosDefault:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        app.styleHints()->unsetColorScheme();
+#endif
+        if (onZacos)
+            app.setStyle(zacosKey);
+        if (app.style())
+            app.setPalette(app.style()->standardPalette());
+        break;
+    case NetzacPreferences::UiTheme::Light:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
+#if defined(Q_OS_WIN)
+        if (!s_initialStyle.isEmpty())
+            app.setStyle(s_initialStyle);
+        if (app.style())
+            app.setPalette(app.style()->standardPalette());
+#else
+        app.setStyle(QStringLiteral("Fusion"));
+        app.setPalette(makePlatinumLightPalette());
+#endif
+        break;
+    case NetzacPreferences::UiTheme::Dark:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        app.styleHints()->setColorScheme(Qt::ColorScheme::Dark);
+#endif
+        app.setStyle(QStringLiteral("Fusion"));
+        app.setPalette(makePlatinumDarkPalette());
+        break;
+    }
+
     app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+
+    for (QWidget *w : QApplication::topLevelWidgets()) {
+        if (!w)
+            continue;
+        w->setStyle(app.style());
+        w->setPalette(app.palette());
+        w->update();
+        for (QWidget *child : w->findChildren<QWidget *>())
+            child->update();
+    }
 }
 
 PlatinumColors platinumColors(const QPalette &palette)
@@ -416,7 +534,89 @@ QPixmap makeAlertIcon(const QString &kind, int size)
     const QColor gold(QStringLiteral("#ffcc00"));
     const QColor blue(QStringLiteral("#6666cc"));
 
-    if (kind == QLatin1String("warning")) {
+    if (kind == QLatin1String("certificate")) {
+        if (size != 48)
+            p.scale(qreal(size) / 48.0, qreal(size) / 48.0);
+
+        // 1. Classic retro Earth globe (top-left)
+        const QRect globeRect(2, 2, 32, 32);
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(QStringLiteral("#2060b0")));
+        p.drawEllipse(globeRect);
+
+        p.save();
+        p.setClipRegion(QRegion(globeRect, QRegion::Ellipse));
+        p.setBrush(QColor(QStringLiteral("#46a24a")));
+        p.drawPolygon(QPolygon({
+            QPoint(7, 7), QPoint(16, 6), QPoint(19, 13),
+            QPoint(14, 18), QPoint(9, 16)
+        }));
+        p.drawPolygon(QPolygon({
+            QPoint(20, 13), QPoint(31, 11), QPoint(33, 22),
+            QPoint(24, 26), QPoint(19, 19)
+        }));
+        p.drawPolygon(QPolygon({
+            QPoint(4, 21), QPoint(12, 22), QPoint(13, 31),
+            QPoint(5, 31)
+        }));
+        p.setPen(QColor(QStringLiteral("#70c874")));
+        p.drawLine(9, 8, 15, 8);
+        p.drawLine(22, 13, 28, 13);
+        // Latitude / longitude grid lines
+        p.setPen(QColor(QStringLiteral("#7ab8e8")));
+        p.drawLine(globeRect.left(), globeRect.center().y(), globeRect.right(), globeRect.center().y());
+        p.drawArc(globeRect.adjusted(7, 0, -7, 0), 0, 360 * 16);
+        p.restore();
+
+        p.setPen(QColor(QStringLiteral("#a8dcff")));
+        p.drawArc(globeRect.adjusted(2, 2, -2, -2), 100 * 16, 70 * 16);
+        p.setPen(black);
+        p.setBrush(Qt::NoBrush);
+        p.drawEllipse(globeRect);
+
+        // 2. Certificate parchment overlapping lower-right
+        p.fillRect(18, 19, 29, 22, QColor(QStringLiteral("#666666")));
+        const QRect certRect(16, 17, 29, 22);
+        p.setPen(black);
+        p.setBrush(QColor(QStringLiteral("#fffdf0")));
+        p.drawRect(certRect);
+        p.setPen(QColor(QStringLiteral("#c8b070")));
+        p.setBrush(Qt::NoBrush);
+        p.drawRect(18, 19, 25, 18);
+
+        // Certificate header & text lines
+        p.fillRect(20, 21, 18, 2, QColor(QStringLiteral("#335588")));
+        p.setPen(QColor(QStringLiteral("#777777")));
+        p.drawLine(20, 26, 33, 26);
+        p.drawLine(20, 29, 31, 29);
+        p.drawLine(20, 32, 30, 32);
+        p.drawLine(20, 35, 29, 35);
+
+        // 3. Red ribbons & gold wax seal
+        const QColor ribbon(QStringLiteral("#cc2222"));
+        const QColor ribbonDark(QStringLiteral("#881111"));
+        p.setPen(black);
+        p.setBrush(ribbon);
+        p.drawPolygon(QPolygon({
+            QPoint(35, 36), QPoint(37, 36), QPoint(35, 46), QPoint(32, 44)
+        }));
+        p.drawPolygon(QPolygon({
+            QPoint(39, 36), QPoint(41, 36), QPoint(44, 44), QPoint(41, 46)
+        }));
+        p.setPen(ribbonDark);
+        p.drawLine(36, 38, 34, 44);
+        p.drawLine(40, 38, 42, 44);
+
+        const QRect sealRect(33, 28, 10, 10);
+        p.setPen(black);
+        p.setBrush(QColor(QStringLiteral("#f2c230")));
+        p.drawEllipse(sealRect);
+        p.setPen(QColor(QStringLiteral("#996600")));
+        p.setBrush(Qt::NoBrush);
+        p.drawEllipse(35, 30, 6, 6);
+        p.setPen(QColor(QStringLiteral("#fff4aa")));
+        p.drawPoint(36, 30);
+    } else if (kind == QLatin1String("warning")) {
         const QPolygon tri({QPoint(16, 2), QPoint(30, 28), QPoint(2, 28)});
         p.setPen(black);
         p.setBrush(gold);

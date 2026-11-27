@@ -10,12 +10,16 @@
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QClipboard>
+#include <QComboBox>
+#include <QCryptographicHash>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QFontMetrics>
 #include <QFrame>
 #include <QGridLayout>
@@ -26,10 +30,18 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPainter>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSizePolicy>
 #include <QSpinBox>
+#include <QSsl>
+#include <QSslCertificate>
+#include <QSslCertificateExtension>
+#include <QSslCipher>
+#include <QSslError>
+#include <QSslKey>
+#include <QSslSocket>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QUrl>
@@ -395,6 +407,7 @@ PreferencesDialog::PreferencesDialog(
     m_categoryList = new QListWidget(this);
     m_categoryList->setFixedWidth(155);
     m_categoryList->addItem(ztr("Navigator"));
+    m_categoryList->addItem(ztr("Appearance"));
     m_categoryList->addItem(ztr("Calm Mode"));
     m_categoryList->addItem(ztr("Personal Toolbar"));
     m_categoryList->addItem(ztr("Quick Links"));
@@ -421,6 +434,7 @@ PreferencesDialog::PreferencesDialog(
 
     m_stack = new QStackedWidget(this);
     m_stack->addWidget(buildNavigatorPage(currentUrl));
+    m_stack->addWidget(buildAppearancePage());
     m_stack->addWidget(buildCalmModePage());
     m_stack->addWidget(buildPersonalToolbarPage());
     m_stack->addWidget(buildQuickLinksPage());
@@ -604,6 +618,263 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
     resetRow->addWidget(resetBtn);
     resetRow->addStretch(1);
     lay->addLayout(resetRow);
+
+    lay->addStretch(1);
+    return page;
+}
+
+class AccentSwatchWidget : public QWidget {
+public:
+    explicit AccentSwatchWidget(QWidget *parent = nullptr)
+        : QWidget(parent)
+    {
+        setFixedSize(22, 22);
+    }
+
+    void setAccentHex(const QString &hex)
+    {
+        m_color = hex.isEmpty() ? resolveSystemAccentColor() : QColor(hex);
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent * /*event*/) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, false);
+        const QColor fill = isEnabled() ? m_color : palette().color(QPalette::Window);
+        p.fillRect(rect().adjusted(1, 1, -1, -1), fill);
+        p.setPen(palette().color(isEnabled() ? QPalette::Shadow : QPalette::Mid));
+        p.drawRect(0, 0, width() - 1, height() - 1);
+        if (isEnabled()) {
+            p.setPen(fill.lighter(125));
+            p.drawLine(1, 1, width() - 3, 1);
+            p.drawLine(1, 1, 1, height() - 3);
+            p.setPen(fill.darker(135));
+            p.drawLine(2, height() - 2, width() - 2, height() - 2);
+            p.drawLine(width() - 2, 2, width() - 2, height() - 2);
+        }
+    }
+
+private:
+    static QColor resolveSystemAccentColor()
+    {
+        QString configRoot = qEnvironmentVariable("XDG_CONFIG_HOME");
+        if (configRoot.isEmpty())
+            configRoot = QDir::homePath() + QStringLiteral("/.config");
+
+        QString accentId = QStringLiteral("lavender");
+        QFile desktopConf(configRoot + QStringLiteral("/zacos9/desktop.conf"));
+        if (desktopConf.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            while (!desktopConf.atEnd()) {
+                const QString line = QString::fromUtf8(desktopConf.readLine()).trimmed();
+                if (line.startsWith(QLatin1String("accent="))) {
+                    accentId = line.mid(7).trimmed().toLower();
+                    break;
+                }
+            }
+        }
+        for (const auto &entry : NetzacPreferences::scrollbarAccentPresets()) {
+            if (*entry.swatchHex && accentId == QLatin1String(entry.id))
+                return QColor(QString::fromLatin1(entry.swatchHex));
+        }
+        return QColor(QStringLiteral("#9999ff"));
+    }
+
+    QColor m_color = QColor(QStringLiteral("#9999ff"));
+};
+
+namespace {
+
+QComboBox *makeFontCombo(const QString &currentFamily, bool preferMonospace, QWidget *parent)
+{
+    auto *combo = new QComboBox(parent);
+    combo->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    combo->addItem(ztr("(Default)"), QString());
+
+    const QStringList allFamilies = QFontDatabase::families();
+    QStringList monoFamilies;
+    QStringList otherFamilies;
+    for (const QString &fam : allFamilies) {
+        if (fam.startsWith(QLatin1Char('@')) || QFontDatabase::isPrivateFamily(fam))
+            continue;
+        if (preferMonospace && QFontDatabase::isFixedPitch(fam))
+            monoFamilies.append(fam);
+        else
+            otherFamilies.append(fam);
+    }
+
+    if (preferMonospace && !monoFamilies.isEmpty()) {
+        for (const QString &fam : monoFamilies)
+            combo->addItem(fam, fam);
+        if (!otherFamilies.isEmpty())
+            combo->insertSeparator(combo->count());
+    }
+    for (const QString &fam : otherFamilies)
+        combo->addItem(fam, fam);
+
+    if (!currentFamily.isEmpty()) {
+        const int idx = combo->findData(currentFamily);
+        if (idx >= 0) {
+            combo->setCurrentIndex(idx);
+        } else {
+            combo->addItem(currentFamily, currentFamily);
+            combo->setCurrentIndex(combo->count() - 1);
+        }
+    }
+    return combo;
+}
+
+}  // namespace
+
+QWidget *PreferencesDialog::buildAppearancePage()
+{
+    auto *page = new QWidget(this);
+    auto *lay = new QVBoxLayout(page);
+    lay->setContentsMargins(6, 4, 6, 4);
+    lay->setSpacing(6);
+
+    auto *themeHdr = new QLabel(ztr("Theme:"), page);
+    themeHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(themeHdr);
+
+    auto *themeRow = new QHBoxLayout();
+    themeRow->setContentsMargins(20, 0, 0, 0);
+    themeRow->setSpacing(8);
+    themeRow->addWidget(new QLabel(ztr("Application Theme:"), page));
+    m_uiThemePopup = new PlatinumPopupButton(page);
+    m_uiThemePopup->setMinimumWidth(180);
+    if (hasZacos9Style()) {
+        m_uiThemePopup->addItem(ztr("ZacOS 9 Default"), int(NetzacPreferences::UiTheme::ZacosDefault));
+        m_uiThemePopup->addItem(ztr("Light"), int(NetzacPreferences::UiTheme::Light));
+        m_uiThemePopup->addItem(ztr("Dark"), int(NetzacPreferences::UiTheme::Dark));
+        m_uiThemePopup->setCurrentData(int(m_prefs.uiTheme));
+    } else {
+        m_uiThemePopup->addItem(ztr("Light"), int(NetzacPreferences::UiTheme::Light));
+        m_uiThemePopup->addItem(ztr("Dark"), int(NetzacPreferences::UiTheme::Dark));
+        const auto effective = (m_prefs.uiTheme == NetzacPreferences::UiTheme::Dark)
+            ? NetzacPreferences::UiTheme::Dark
+            : NetzacPreferences::UiTheme::Light;
+        m_uiThemePopup->setCurrentData(int(effective));
+    }
+    themeRow->addWidget(m_uiThemePopup);
+    themeRow->addStretch(1);
+    lay->addLayout(themeRow);
+
+    auto *themeSep = new QFrame(page);
+    themeSep->setFrameShape(QFrame::HLine);
+    lay->addWidget(themeSep);
+
+    auto *sbHdr = new QLabel(ztr("Scrollbars:"), page);
+    sbHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(sbHdr);
+
+    m_scrollbarsChk = new QCheckBox(ztr("Use Platinum CSS scrollbars on web pages"), page);
+    m_scrollbarsChk->setChecked(m_prefs.enablePlatinumScrollbars);
+    lay->addWidget(m_scrollbarsChk);
+
+    auto *accentRow = new QHBoxLayout();
+    accentRow->setContentsMargins(20, 0, 0, 0);
+    accentRow->setSpacing(8);
+    m_scrollbarAccentLbl = new QLabel(ztr("Scrollbar Accent Color:"), page);
+    accentRow->addWidget(m_scrollbarAccentLbl);
+
+    m_scrollbarAccentPopup = new PlatinumPopupButton(page);
+    m_scrollbarAccentPopup->setMinimumWidth(180);
+    for (const auto &entry : NetzacPreferences::scrollbarAccentPresets())
+        m_scrollbarAccentPopup->addItem(entry.label, QString::fromLatin1(entry.id));
+    m_scrollbarAccentPopup->setCurrentData(m_prefs.scrollbarAccent);
+    accentRow->addWidget(m_scrollbarAccentPopup);
+
+    m_accentSwatch = new AccentSwatchWidget(page);
+    accentRow->addWidget(m_accentSwatch);
+    accentRow->addStretch(1);
+    lay->addLayout(accentRow);
+
+    const auto updateAccentSwatch = [this]() {
+        const QString id = m_scrollbarAccentPopup->currentData().toString();
+        QString hex;
+        for (const auto &entry : NetzacPreferences::scrollbarAccentPresets()) {
+            if (id == QLatin1String(entry.id)) {
+                hex = QString::fromLatin1(entry.swatchHex);
+                break;
+            }
+        }
+        m_accentSwatch->setAccentHex(hex);
+    };
+    connect(m_scrollbarAccentPopup, &PlatinumPopupButton::currentIndexChanged, this, updateAccentSwatch);
+    updateAccentSwatch();
+
+    const auto syncScrollbarsEnabled = [this](bool enabled) {
+        m_scrollbarAccentLbl->setEnabled(enabled);
+        m_scrollbarAccentPopup->setEnabled(enabled);
+        m_accentSwatch->setEnabled(enabled);
+    };
+    connect(m_scrollbarsChk, &QCheckBox::toggled, this, syncScrollbarsEnabled);
+    syncScrollbarsEnabled(m_scrollbarsChk->isChecked());
+
+    auto *sep = new QFrame(page);
+    sep->setFrameShape(QFrame::HLine);
+    lay->addWidget(sep);
+
+    auto *fontHdr = new QLabel(ztr("Web Page Fonts:"), page);
+    fontHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(fontHdr);
+
+    m_forceFontsChk = new QCheckBox(
+        ztr("Use custom fonts and force web pages to render with them"),
+        page);
+    m_forceFontsChk->setChecked(m_prefs.forceCustomFonts);
+    lay->addWidget(m_forceFontsChk);
+
+    m_fontsBox = new QWidget(page);
+    auto *fontGrid = new QGridLayout(m_fontsBox);
+    fontGrid->setContentsMargins(20, 2, 0, 0);
+    fontGrid->setHorizontalSpacing(10);
+    fontGrid->setVerticalSpacing(6);
+    fontGrid->setColumnStretch(1, 1);
+
+    fontGrid->addWidget(new QLabel(ztr("Default Style:"), m_fontsBox), 0, 0);
+    m_fontStylePopup = new PlatinumPopupButton(m_fontsBox);
+    m_fontStylePopup->addItem(ztr("Sans-Serif"), int(NetzacPreferences::ProportionalFontStyle::SansSerif));
+    m_fontStylePopup->addItem(ztr("Serif"), int(NetzacPreferences::ProportionalFontStyle::Serif));
+    m_fontStylePopup->setCurrentData(int(m_prefs.proportionalFontStyle));
+    fontGrid->addWidget(m_fontStylePopup, 0, 1);
+
+    fontGrid->addWidget(new QLabel(ztr("Serif Font:"), m_fontsBox), 1, 0);
+    m_serifFontCombo = makeFontCombo(m_prefs.serifFont, false, m_fontsBox);
+    fontGrid->addWidget(m_serifFontCombo, 1, 1);
+
+    fontGrid->addWidget(new QLabel(ztr("Sans-Serif Font:"), m_fontsBox), 2, 0);
+    m_sansFontCombo = makeFontCombo(m_prefs.sansSerifFont, false, m_fontsBox);
+    fontGrid->addWidget(m_sansFontCombo, 2, 1);
+
+    fontGrid->addWidget(new QLabel(ztr("Fixed (Code) Font:"), m_fontsBox), 3, 0);
+    m_fixedFontCombo = makeFontCombo(m_prefs.fixedFont, true, m_fontsBox);
+    fontGrid->addWidget(m_fixedFontCombo, 3, 1);
+
+    fontGrid->addWidget(new QLabel(ztr("Font Size (px):"), m_fontsBox), 4, 0);
+    auto *sizeRow = new QHBoxLayout();
+    sizeRow->setContentsMargins(0, 0, 0, 0);
+    m_fontSizeSpin = new QSpinBox(m_fontsBox);
+    m_fontSizeSpin->setRange(8, 36);
+    m_fontSizeSpin->setValue(m_prefs.defaultFontSize);
+    m_fontSizeSpin->setFixedWidth(90);
+    sizeRow->addWidget(m_fontSizeSpin);
+    sizeRow->addStretch(1);
+    fontGrid->addLayout(sizeRow, 4, 1);
+
+    auto *fontHint = new QLabel(
+        ztr("When enabled, Netzac injects CSS at the start of each page to force rendering with the selected fonts and size."),
+        m_fontsBox);
+    fontHint->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    fontHint->setWordWrap(true);
+    fontGrid->addWidget(fontHint, 5, 0, 1, 2);
+
+    lay->addWidget(m_fontsBox);
+    connect(m_forceFontsChk, &QCheckBox::toggled, m_fontsBox, &QWidget::setEnabled);
+    m_fontsBox->setEnabled(m_forceFontsChk->isChecked());
 
     lay->addStretch(1);
     return page;
@@ -1465,6 +1736,17 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.rememberPasswords = m_rememberPasswordsChk->isChecked();
     out.disableGpuAcceleration = m_disableGpuChk->isChecked();
 
+    out.uiTheme = static_cast<NetzacPreferences::UiTheme>(m_uiThemePopup->currentData().toInt());
+    out.enablePlatinumScrollbars = m_scrollbarsChk->isChecked();
+    out.scrollbarAccent = m_scrollbarAccentPopup->currentData().toString();
+    out.forceCustomFonts = m_forceFontsChk->isChecked();
+    out.proportionalFontStyle = static_cast<NetzacPreferences::ProportionalFontStyle>(
+        m_fontStylePopup->currentData().toInt());
+    out.serifFont = m_serifFontCombo->currentData().toString().trimmed();
+    out.sansSerifFont = m_sansFontCombo->currentData().toString().trimmed();
+    out.fixedFont = m_fixedFontCombo->currentData().toString().trimmed();
+    out.defaultFontSize = m_fontSizeSpin->value();
+
     out.calm.jsDetection = static_cast<CalmJsDetection>(m_calmJsPopup->currentData().toInt());
     out.calm.layoutMode = m_calmLayoutReader->isChecked()
         ? CalmLayoutMode::ReaderFocus
@@ -2136,4 +2418,401 @@ void DownloadDialog::openContainingFolder()
 {
     if (!m_targetPath.isEmpty())
         QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(m_targetPath).absolutePath()));
+}
+
+namespace {
+
+QString formatHexFingerprint(const QByteArray &digest)
+{
+    const QByteArray hex = digest.toHex().toUpper();
+    QStringList parts;
+    parts.reserve(hex.size() / 2);
+    for (int i = 0; i + 1 < hex.size(); i += 2)
+        parts.append(QString::fromLatin1(hex.mid(i, 2)));
+    return parts.join(QLatin1Char(':'));
+}
+
+QString formatCertInfoList(const QStringList &values)
+{
+    return values.isEmpty() ? QStringLiteral("—") : values.join(QStringLiteral(", "));
+}
+
+QString formatPublicKeyInfo(const QSslKey &key)
+{
+    if (key.isNull())
+        return QStringLiteral("—");
+    QString algo;
+    switch (key.algorithm()) {
+    case QSsl::Rsa:
+        algo = QStringLiteral("RSA");
+        break;
+    case QSsl::Dsa:
+        algo = QStringLiteral("DSA");
+        break;
+    case QSsl::Ec:
+        algo = QStringLiteral("EC");
+        break;
+    case QSsl::Dh:
+        algo = QStringLiteral("DH");
+        break;
+    default:
+        algo = ztr("Unknown");
+        break;
+    }
+    return QStringLiteral("%1 (%2 bits)").arg(algo).arg(key.length());
+}
+
+QString formatSslProtocol(QSsl::SslProtocol proto)
+{
+    switch (proto) {
+    case QSsl::TlsV1_2:
+        return QStringLiteral("TLS 1.2");
+    case QSsl::TlsV1_3:
+        return QStringLiteral("TLS 1.3");
+    case QSsl::TlsV1_2OrLater:
+        return QStringLiteral("TLS 1.2+");
+    case QSsl::TlsV1_3OrLater:
+        return QStringLiteral("TLS 1.3+");
+    case QSsl::DtlsV1_2:
+        return QStringLiteral("DTLS 1.2");
+    default:
+        return ztr("Unknown");
+    }
+}
+
+QString formatSanMap(const QMultiMap<QSsl::AlternativeNameEntryType, QString> &san)
+{
+    if (san.isEmpty())
+        return QStringLiteral("—");
+
+    QStringList entries;
+    const auto appendType = [&san, &entries](QSsl::AlternativeNameEntryType type, const QString &label) {
+        const QStringList vals = san.values(type);
+        for (const QString &v : vals)
+            entries.append(QStringLiteral("%1: %2").arg(label, v));
+    };
+    appendType(QSsl::DnsEntry, QStringLiteral("DNS"));
+    appendType(QSsl::IpAddressEntry, QStringLiteral("IP"));
+    appendType(QSsl::EmailEntry, QStringLiteral("Email"));
+    return entries.isEmpty() ? QStringLiteral("—") : entries.join(QStringLiteral(", "));
+}
+
+QString formatValidityRange(const QDateTime &dt)
+{
+    if (!dt.isValid())
+        return QStringLiteral("—");
+    return QStringLiteral("%1 (%2)")
+        .arg(dt.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")),
+             dt.toUTC().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss 'UTC'")));
+}
+
+}  // namespace
+
+CertificateInfoDialog::CertificateInfoDialog(
+    const QString &title,
+    const QString &url,
+    QWidget *parent)
+    : PlatinumDialog(parent)
+{
+    setWindowTitle(ztr("Page & Security Info"));
+    const QPixmap certPm = makeAlertIcon(QStringLiteral("certificate"), 48);
+    setWindowIcon(QIcon(certPm));
+    setMinimumSize(540, 440);
+    resize(580, 480);
+
+    auto *lay = new QVBoxLayout(this);
+    lay->setContentsMargins(14, 14, 14, 12);
+    lay->setSpacing(10);
+
+    auto *topRow = new QHBoxLayout();
+    topRow->setSpacing(12);
+
+    auto *iconLbl = new QLabel(this);
+    iconLbl->setPixmap(certPm);
+    iconLbl->setFixedSize(48, 48);
+    topRow->addWidget(iconLbl, 0, Qt::AlignTop);
+
+    auto *metaCol = new QVBoxLayout();
+    metaCol->setSpacing(4);
+
+    auto *titleLbl = new QLabel(title.isEmpty() ? ztr("(Untitled)") : title, this);
+    titleLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    titleLbl->setWordWrap(true);
+    metaCol->addWidget(titleLbl);
+
+    auto *locLbl = new QLabel(ztr("Location: %1").arg(url), this);
+    locLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    locLbl->setWordWrap(true);
+    locLbl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    metaCol->addWidget(locLbl);
+
+    QString secSummary;
+    if (url.startsWith(QLatin1String("https://")))
+        secSummary = ztr("Encrypted connection (HTTPS) — Security padlock is locked.");
+    else if (url.startsWith(QLatin1String("about:")))
+        secSummary = ztr("Built-in Netzac Navigator local document.");
+    else
+        secSummary = ztr("Unencrypted connection (HTTP) — Information sent over this connection is not encrypted.");
+
+    auto *secLbl = new QLabel(secSummary, this);
+    secLbl->setWordWrap(true);
+    metaCol->addWidget(secLbl);
+
+    topRow->addLayout(metaCol, 1);
+    lay->addLayout(topRow);
+
+    auto *sep = new QFrame(this);
+    sep->setFrameShape(QFrame::HLine);
+    lay->addWidget(sep);
+
+    auto *detailsHdr = new QLabel(ztr("Certificate Details:"), this);
+    detailsHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(detailsHdr);
+
+    m_detailsEdit = new QPlainTextEdit(this);
+    m_detailsEdit->setReadOnly(true);
+    m_detailsEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    QFont monoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    monoFont.setPixelSize(11);
+    m_detailsEdit->setFont(monoFont);
+    lay->addWidget(m_detailsEdit, 1);
+
+    auto *btnRow = new QHBoxLayout();
+    m_copyBtn = makeDialogButton(ztr("Copy Details"), false, this);
+    m_copyBtn->setMinimumWidth(110);
+    connect(m_copyBtn, &QPushButton::clicked, this, [this]() {
+        if (QClipboard *cb = QApplication::clipboard())
+            cb->setText(m_detailsEdit->toPlainText());
+    });
+    btnRow->addWidget(m_copyBtn);
+    btnRow->addStretch(1);
+
+    QPushButton *closeBtn = makeDialogButton(ztr("Close"), true, this);
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+    btnRow->addWidget(closeBtn);
+    lay->addLayout(btnRow);
+
+    m_timeoutTimer.setSingleShot(true);
+    m_timeoutTimer.setInterval(8000);
+    connect(&m_timeoutTimer, &QTimer::timeout, this, [this]() {
+        if (m_lookupFinished)
+            return;
+        const QString target = m_port == 443
+            ? m_host
+            : QStringLiteral("%1:%2").arg(m_host).arg(m_port);
+        finishLookupWithError(ztr("Timed out while retrieving certificate from %1.").arg(target));
+    });
+
+    const QUrl parsed(url);
+    if (parsed.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) == 0
+        && !parsed.host().isEmpty()) {
+        startCertificateLookup(parsed);
+    } else {
+        m_lookupFinished = true;
+        QStringList lines;
+        lines << ztr("Title: %1").arg(title.isEmpty() ? ztr("(Untitled)") : title);
+        lines << ztr("Location: %1").arg(url);
+        lines << ztr("Protocol: %1").arg(parsed.scheme().isEmpty() ? ztr("Unknown") : parsed.scheme().toUpper());
+        lines << QString();
+        lines << ztr("No TLS/SSL certificate is used for this page.");
+        m_detailsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+    }
+}
+
+CertificateInfoDialog::~CertificateInfoDialog()
+{
+    m_timeoutTimer.stop();
+    if (m_socket)
+        m_socket->abort();
+}
+
+void CertificateInfoDialog::startCertificateLookup(const QUrl &url)
+{
+    m_host = url.host();
+    m_port = static_cast<quint16>(url.port(443));
+    const QString hostPort = m_port == 443
+        ? m_host
+        : QStringLiteral("%1:%2").arg(m_host).arg(m_port);
+
+    if (!QSslSocket::supportsSsl()) {
+        m_lookupFinished = true;
+        m_detailsEdit->setPlainText(ztr("TLS/SSL certificate inspection is unavailable on this system."));
+        return;
+    }
+
+    m_detailsEdit->setPlainText(ztr("Inspecting TLS certificate for %1...").arg(hostPort));
+
+    m_socket = new QSslSocket(this);
+    connect(m_socket, &QSslSocket::sslErrors, this, [this](const QList<QSslError> &errors) {
+        for (const QSslError &err : errors) {
+            const QString msg = err.errorString().trimmed();
+            if (!msg.isEmpty() && !m_sslWarnings.contains(msg))
+                m_sslWarnings.append(msg);
+        }
+        if (m_socket)
+            m_socket->ignoreSslErrors();
+    });
+    connect(m_socket, &QSslSocket::encrypted, this, &CertificateInfoDialog::displayCertificateResult);
+    connect(m_socket, &QAbstractSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
+        if (m_lookupFinished || !m_socket)
+            return;
+        if (!m_socket->peerCertificate().isNull())
+            displayCertificateResult();
+        else
+            finishLookupWithError(m_socket->errorString());
+    });
+
+    m_timeoutTimer.start();
+    m_socket->connectToHostEncrypted(m_host, m_port);
+}
+
+void CertificateInfoDialog::finishLookupWithError(const QString &reason)
+{
+    if (m_lookupFinished)
+        return;
+    m_lookupFinished = true;
+    m_timeoutTimer.stop();
+    if (m_socket)
+        m_socket->abort();
+
+    QStringList lines;
+    lines << ztr("Host: %1").arg(m_host);
+    lines << ztr("Port: %1").arg(m_port);
+    lines << QString();
+    lines << ztr("Could not retrieve TLS certificate details: %1").arg(reason);
+    if (!m_sslWarnings.isEmpty()) {
+        lines << QString();
+        lines << ztr("TLS Warnings: %1").arg(m_sslWarnings.join(QStringLiteral("; ")));
+    }
+    m_detailsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+}
+
+void CertificateInfoDialog::displayCertificateResult()
+{
+    if (m_lookupFinished || !m_socket)
+        return;
+    m_lookupFinished = true;
+    m_timeoutTimer.stop();
+
+    const QSslCertificate leaf = m_socket->peerCertificate();
+    const QList<QSslCertificate> chain = m_socket->peerCertificateChain();
+    const QSslCipher cipher = m_socket->sessionCipher();
+    const QSsl::SslProtocol proto = m_socket->sessionProtocol();
+    m_socket->disconnectFromHost();
+
+    QStringList lines;
+    lines << ztr("=== Connection ===");
+    lines << ztr("Host: %1").arg(m_host);
+    lines << ztr("Port: %1").arg(m_port);
+    lines << ztr("Protocol: %1").arg(formatSslProtocol(proto));
+    if (!cipher.isNull()) {
+        lines << ztr("Cipher Suite: %1 (%2 bits)").arg(cipher.name()).arg(cipher.usedBits());
+        if (!cipher.encryptionMethod().isEmpty() || !cipher.authenticationMethod().isEmpty()) {
+            lines << ztr("Cipher Details: Encryption=%1, Auth=%2, KeyExchange=%3")
+                         .arg(cipher.encryptionMethod(),
+                              cipher.authenticationMethod(),
+                              cipher.keyExchangeMethod());
+        }
+    }
+    if (m_sslWarnings.isEmpty()) {
+        lines << ztr("Verification: Trusted certificate chain");
+    } else {
+        lines << ztr("Verification: Warnings detected — %1").arg(m_sslWarnings.join(QStringLiteral("; ")));
+    }
+
+    if (leaf.isNull()) {
+        lines << QString();
+        lines << ztr("No peer certificate was presented by the server.");
+        m_detailsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+        return;
+    }
+
+    lines << QString();
+    lines << ztr("=== Issued To (Subject) ===");
+    lines << ztr("Display Name: %1").arg(leaf.subjectDisplayName());
+    lines << ztr("Common Name (CN): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::CommonName)));
+    lines << ztr("Organization (O): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::Organization)));
+    lines << ztr("Organizational Unit (OU): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::OrganizationalUnitName)));
+    lines << ztr("Locality (L): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::LocalityName)));
+    lines << ztr("State / Province (ST): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::StateOrProvinceName)));
+    lines << ztr("Country (C): %1").arg(formatCertInfoList(leaf.subjectInfo(QSslCertificate::CountryName)));
+    lines << ztr("Subject Alternative Names: %1").arg(formatSanMap(leaf.subjectAlternativeNames()));
+
+    lines << QString();
+    lines << ztr("=== Issued By (Issuer) ===");
+    lines << ztr("Display Name: %1").arg(leaf.issuerDisplayName());
+    lines << ztr("Common Name (CN): %1").arg(formatCertInfoList(leaf.issuerInfo(QSslCertificate::CommonName)));
+    lines << ztr("Organization (O): %1").arg(formatCertInfoList(leaf.issuerInfo(QSslCertificate::Organization)));
+    lines << ztr("Organizational Unit (OU): %1").arg(formatCertInfoList(leaf.issuerInfo(QSslCertificate::OrganizationalUnitName)));
+    lines << ztr("Country (C): %1").arg(formatCertInfoList(leaf.issuerInfo(QSslCertificate::CountryName)));
+
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    const QDateTime eff = leaf.effectiveDate();
+    const QDateTime exp = leaf.expiryDate();
+    QString validityStatus;
+    if (eff.isValid() && now < eff.toUTC())
+        validityStatus = ztr("Not yet valid");
+    else if (exp.isValid() && now > exp.toUTC())
+        validityStatus = ztr("Expired");
+    else if (!eff.isValid() || !exp.isValid())
+        validityStatus = ztr("Unknown");
+    else
+        validityStatus = ztr("Valid");
+
+    lines << QString();
+    lines << ztr("=== Validity ===");
+    lines << ztr("Status: %1").arg(validityStatus);
+    lines << ztr("Issued On: %1").arg(formatValidityRange(eff));
+    lines << ztr("Expires On: %1").arg(formatValidityRange(exp));
+
+    lines << QString();
+    lines << ztr("=== Certificate Properties ===");
+    lines << ztr("Version: %1").arg(leaf.version().isEmpty() ? QStringLiteral("—") : QString::fromLatin1(leaf.version()));
+    lines << ztr("Serial Number: %1").arg(leaf.serialNumber().isEmpty() ? QStringLiteral("—") : QString::fromLatin1(leaf.serialNumber()));
+    lines << ztr("Public Key: %1").arg(formatPublicKeyInfo(leaf.publicKey()));
+    lines << ztr("Self-Signed: %1").arg(leaf.isSelfSigned() ? ztr("Yes") : ztr("No"));
+    lines << ztr("SHA-256 Fingerprint: %1").arg(formatHexFingerprint(leaf.digest(QCryptographicHash::Sha256)));
+    lines << ztr("SHA-1 Fingerprint: %1").arg(formatHexFingerprint(leaf.digest(QCryptographicHash::Sha1)));
+
+    const QList<QSslCertificateExtension> exts = leaf.extensions();
+    if (!exts.isEmpty()) {
+        lines << QString();
+        lines << ztr("=== Extensions ===");
+        for (const QSslCertificateExtension &ext : exts) {
+            const QString name = ext.name().isEmpty() ? ext.oid() : ext.name();
+            lines << QStringLiteral("- %1 (%2)%3")
+                         .arg(name, ext.oid(), ext.isCritical() ? QStringLiteral(" [critical]") : QString());
+        }
+    }
+
+    if (!chain.isEmpty()) {
+        lines << QString();
+        lines << ztr("=== Certificate Chain (%1) ===").arg(chain.size());
+        for (int i = 0; i < chain.size(); ++i) {
+            const QSslCertificate &c = chain.at(i);
+            lines << QStringLiteral("[%1] %2").arg(i).arg(c.subjectDisplayName());
+            lines << QStringLiteral("    %1").arg(ztr("Issuer: %1").arg(c.issuerDisplayName()));
+            lines << QStringLiteral("    %1").arg(ztr("Valid: %1 -> %2")
+                .arg(c.effectiveDate().toUTC().toString(QStringLiteral("yyyy-MM-dd")),
+                     c.expiryDate().toUTC().toString(QStringLiteral("yyyy-MM-dd"))));
+            lines << QStringLiteral("    %1").arg(ztr("SHA-256: %1")
+                .arg(formatHexFingerprint(c.digest(QCryptographicHash::Sha256))));
+        }
+    }
+
+    const QString textDump = leaf.toText().trimmed();
+    if (!textDump.isEmpty()) {
+        lines << QString();
+        lines << ztr("=== Raw Certificate Text ===");
+        lines << textDump;
+    }
+
+    const QByteArray pem = leaf.toPem().trimmed();
+    if (!pem.isEmpty()) {
+        lines << QString();
+        lines << ztr("=== PEM Certificate ===");
+        lines << QString::fromLatin1(pem);
+    }
+
+    m_detailsEdit->setPlainText(lines.join(QLatin1Char('\n')));
 }

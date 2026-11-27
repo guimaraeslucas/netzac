@@ -14,15 +14,19 @@
 
 class QButtonGroup;
 class QCheckBox;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QListWidget;
+class QPlainTextEdit;
 class QPushButton;
 class QRadioButton;
 class QSpinBox;
+class QSslSocket;
 class QStackedWidget;
 class QWebEngineDownloadRequest;
 
+class AccentSwatchWidget;
 class DownloadGlobeWidget;
 class PlatinumPopupButton;
 class PlatinumProgressBar;
@@ -102,6 +106,7 @@ public:
 
 private:
     QWidget *buildNavigatorPage(const QString &currentUrl);
+    QWidget *buildAppearancePage();
     QWidget *buildCalmModePage();
     QWidget *buildPersonalToolbarPage();
     QWidget *buildQuickLinksPage();
@@ -131,6 +136,20 @@ private:
     QLabel *m_defaultBrowserLbl = nullptr;
     QPushButton *m_setDefaultBrowserBtn = nullptr;
     bool m_resetRequested = false;
+
+    // Appearance
+    PlatinumPopupButton *m_uiThemePopup = nullptr;
+    QCheckBox *m_scrollbarsChk = nullptr;
+    QLabel *m_scrollbarAccentLbl = nullptr;
+    PlatinumPopupButton *m_scrollbarAccentPopup = nullptr;
+    AccentSwatchWidget *m_accentSwatch = nullptr;
+    QCheckBox *m_forceFontsChk = nullptr;
+    QWidget *m_fontsBox = nullptr;
+    PlatinumPopupButton *m_fontStylePopup = nullptr;
+    QComboBox *m_serifFontCombo = nullptr;
+    QComboBox *m_sansFontCombo = nullptr;
+    QComboBox *m_fixedFontCombo = nullptr;
+    QSpinBox *m_fontSizeSpin = nullptr;
 
     // Calm Mode
     PlatinumPopupButton *m_calmJsPopup = nullptr;
@@ -254,4 +273,26 @@ private:
     QPushButton *m_openFileBtn = nullptr;
     QPushButton *m_openFolderBtn = nullptr;
     QPushButton *m_cancelCloseBtn = nullptr;
+};
+
+class CertificateInfoDialog : public PlatinumDialog {
+    Q_OBJECT
+
+public:
+    CertificateInfoDialog(const QString &title, const QString &url, QWidget *parent = nullptr);
+    ~CertificateInfoDialog() override;
+
+private:
+    void startCertificateLookup(const QUrl &url);
+    void displayCertificateResult();
+    void finishLookupWithError(const QString &reason);
+
+    QPlainTextEdit *m_detailsEdit = nullptr;
+    QPushButton *m_copyBtn = nullptr;
+    QPointer<QSslSocket> m_socket;
+    QTimer m_timeoutTimer;
+    QStringList m_sslWarnings;
+    bool m_lookupFinished = false;
+    QString m_host;
+    quint16 m_port = 443;
 };

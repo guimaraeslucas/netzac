@@ -1324,3 +1324,351 @@ msgstr "رفض"
 #: shell/netzac/netzacwindow.cpp
 msgid "Allow"
 msgstr "سماح"
+
+#: shell/netzac/dialogs.cpp
+msgid "(Default)"
+msgstr "(افتراضي)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>"
+msgstr "<p>لإعداد هذا الزر لفتح منصة Git الخاصة بك (مثل GitHub أو GitLab أو Gitea)، افتح <b>تحرير &rsaquo; التفضيلات &rsaquo; الروابط السريعة</b> وعيّن <b>رابط Git</b>.</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your chat service, open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>"
+msgstr "<p>لإعداد هذا الزر لفتح خدمة الدردشة الخاصة بك، افتح <b>تحرير &rsaquo; التفضيلات &rsaquo; الروابط السريعة</b> وعيّن <b>رابط الدردشة</b>.</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your mail link (for example Gmail or webmail), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>"
+msgstr "<p>لإعداد هذا الزر لفتح رابط بريدك الإلكتروني (مثل Gmail أو بريد الويب)، افتح <b>تحرير &rsaquo; التفضيلات &rsaquo; الروابط السريعة</b> وعيّن <b>رابط البريد</b>.</p>"
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Chain (%1) ==="
+msgstr "=== سلسلة الشهادات (%1) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Properties ==="
+msgstr "=== خصائص الشهادة ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Connection ==="
+msgstr "=== الاتصال ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Extensions ==="
+msgstr "=== الامتدادات ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued By (Issuer) ==="
+msgstr "=== صادرة عن (المُصدِر) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued To (Subject) ==="
+msgstr "=== صادرة إلى (الموضوع) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== PEM Certificate ==="
+msgstr "=== شهادة PEM ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Raw Certificate Text ==="
+msgstr "=== النص الخام للشهادة ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Validity ==="
+msgstr "=== الصلاحية ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "Appearance"
+msgstr "المظهر"
+
+#: shell/netzac/preferences.cpp
+msgid "Bronze"
+msgstr "برونزي"
+
+#: shell/netzac/dialogs.cpp
+msgid "Certificate Details:"
+msgstr "تفاصيل الشهادة:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Details: Encryption=%1, Auth=%2, KeyExchange=%3"
+msgstr "تفاصيل التشفير: التشفير=%1، المصادقة=%2، تبادل المفاتيح=%3"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Suite: %1 (%2 bits)"
+msgstr "مجموعة التشفير: %1 (%2 بت)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Common Name (CN): %1"
+msgstr "الاسم الشائع (CN): %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Details"
+msgstr "نسخ التفاصيل"
+
+#: shell/netzac/dialogs.cpp
+msgid "Could not retrieve TLS certificate details: %1"
+msgstr "تعذر جلب تفاصيل شهادة TLS: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Country (C): %1"
+msgstr "البلد (C): %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Style:"
+msgstr "النمط الافتراضي:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Display Name: %1"
+msgstr "اسم العرض: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expired"
+msgstr "منتهية الصلاحية"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expires On: %1"
+msgstr "تنتهي في: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Fixed (Code) Font:"
+msgstr "الخط ثابت العرض (للشيفرة):"
+
+#: shell/netzac/dialogs.cpp
+msgid "Font Size (px):"
+msgstr "حجم الخط (بكسل):"
+
+#: shell/netzac/preferences.cpp
+msgid "Gold"
+msgstr "ذهبي"
+
+#: shell/netzac/preferences.cpp
+msgid "Graphite"
+msgstr "غرافيت"
+
+#: shell/netzac/dialogs.cpp
+msgid "Host: %1"
+msgstr "المضيف: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Inspecting TLS certificate for %1..."
+msgstr "جارٍ فحص شهادة TLS للموقع %1..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Issued On: %1"
+msgstr "صادرة في: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Issuer: %1"
+msgstr "المُصدِر: %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Ivy"
+msgstr "لبلاب"
+
+#: shell/netzac/preferences.cpp
+msgid "Lavender"
+msgstr "خزامي"
+
+#: shell/netzac/dialogs.cpp
+msgid "Locality (L): %1"
+msgstr "المدينة (L): %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Location: %1"
+msgstr "الموقع: %1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac Navigator is not currently set as your default web browser.\n\nWould you like to set Netzac as your default browser for web links?"
+msgstr "متصفح Netzac Navigator غير معيّن حاليًا كمتصفح الويب الافتراضي.\n\nهل تريد تعيين Netzac كمتصفحك الافتراضي لروابط الويب؟"
+
+#: shell/netzac/dialogs.cpp
+msgid "No"
+msgstr "لا"
+
+#: shell/netzac/dialogs.cpp
+msgid "No TLS/SSL certificate is used for this page."
+msgstr "لا تُستخدم أي شهادة TLS/SSL لهذه الصفحة."
+
+#: shell/netzac/dialogs.cpp
+msgid "No peer certificate was presented by the server."
+msgstr "لم يقدّم الخادم أي شهادة نظير."
+
+#: shell/netzac/dialogs.cpp
+msgid "Not yet valid"
+msgstr "غير صالحة بعد"
+
+#: shell/netzac/preferences.cpp
+msgid "Ocean"
+msgstr "محيطي"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organization (O): %1"
+msgstr "المؤسسة (O): %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organizational Unit (OU): %1"
+msgstr "الوحدة التنظيمية (OU): %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Plum"
+msgstr "برقوقي"
+
+#: shell/netzac/dialogs.cpp
+msgid "Port: %1"
+msgstr "المنفذ: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Protocol: %1"
+msgstr "البروتوكول: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Public Key: %1"
+msgstr "المفتاح العام: %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Rose"
+msgstr "وردي"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-1 Fingerprint: %1"
+msgstr "بصمة SHA-1: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256 Fingerprint: %1"
+msgstr "بصمة SHA-256: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256: %1"
+msgstr "SHA-256: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif"
+msgstr "بدون ذيول (Sans-Serif)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif Font:"
+msgstr "خط Sans-Serif:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbar Accent Color:"
+msgstr "لون التمييز لشريط التمرير:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbars:"
+msgstr "أشرطة التمرير:"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Search with DuckDuckGo..."
+msgstr "ابحث باستخدام DuckDuckGo..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Self-Signed: %1"
+msgstr "موقّعة ذاتيًا: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serial Number: %1"
+msgstr "الرقم التسلسلي: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif"
+msgstr "بذيول (Serif)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif Font:"
+msgstr "خط Serif:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Set custom URLs for the bottom-right Mail, Chat and Git buttons.\nLeave a field empty to open its built-in about: page."
+msgstr "عيّن عناوين URL مخصصة لأزرار البريد والدردشة وGit في أسفل اليمين.\nاترك الحقل فارغًا لفتح صفحة about: المدمجة."
+
+#: shell/netzac/dialogs.cpp
+msgid "State / Province (ST): %1"
+msgstr "الولاية / المقاطعة (ST): %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status: %1"
+msgstr "الحالة: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Subject Alternative Names: %1"
+msgstr "الأسماء البديلة للموضوع: %1"
+
+#: shell/netzac/preferences.cpp
+msgid "System (ZacOS 9)"
+msgstr "النظام (ZacOS 9)"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS Warnings: %1"
+msgstr "تحذيرات TLS: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS/SSL certificate inspection is unavailable on this system."
+msgstr "فحص شهادة TLS/SSL غير متاح على هذا النظام."
+
+#: shell/netzac/dialogs.cpp
+msgid "Timed out while retrieving certificate from %1."
+msgstr "انتهت مهلة جلب الشهادة من %1."
+
+#: shell/netzac/dialogs.cpp
+msgid "Title: %1"
+msgstr "العنوان: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use Platinum CSS scrollbars on web pages"
+msgstr "استخدام أشرطة تمرير Platinum CSS في صفحات الويب"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use custom fonts and force web pages to render with them"
+msgstr "استخدام خطوط مخصصة وإجبار صفحات الويب على العرض بها"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid"
+msgstr "صالحة"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid: %1 -> %2"
+msgstr "المدة الصالحة: %1 -> %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Trusted certificate chain"
+msgstr "التحقق: سلسلة شهادات موثوقة"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Warnings detected — %1"
+msgstr "التحقق: تم اكتشاف تحذيرات — %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Version: %1"
+msgstr "الإصدار: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Web Page Fonts:"
+msgstr "خطوط صفحات الويب:"
+
+#: shell/netzac/dialogs.cpp
+msgid "When enabled, Netzac injects CSS at the start of each page to force rendering with the selected fonts and size."
+msgstr "عند التفعيل، يحقن Netzac شيفرة CSS في بداية كل صفحة لفرض العرض بالخطوط والحجم المحددين."
+
+#: shell/netzac/dialogs.cpp
+msgid "Yes"
+msgstr "نعم"
+
+#: shell/netzac/dialogs.cpp
+msgid "Theme:"
+msgstr "السمة:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Application Theme:"
+msgstr "سمة التطبيق:"
+
+#: shell/netzac/dialogs.cpp
+msgid "ZacOS 9 Default"
+msgstr "افتراضي ZacOS 9"
+
+#: shell/netzac/dialogs.cpp
+msgid "Light"
+msgstr "فاتح"
+
+#: shell/netzac/dialogs.cpp
+msgid "Dark"
+msgstr "داكن"

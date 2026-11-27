@@ -1324,3 +1324,351 @@ msgstr "Refuser"
 #: shell/netzac/netzacwindow.cpp
 msgid "Allow"
 msgstr "Autoriser"
+
+#: shell/netzac/dialogs.cpp
+msgid "(Default)"
+msgstr "(Par défaut)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>"
+msgstr "<p>Pour configurer ce bouton afin d'ouvrir votre forge Git (par exemple GitHub, GitLab ou Gitea), ouvrez <b>Édition &rsaquo; Préférences &rsaquo; Liens rapides</b> et définissez l'<b>URL Git</b>.</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your chat service, open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>"
+msgstr "<p>Pour configurer ce bouton afin d'ouvrir votre service de clavardage, ouvrez <b>Édition &rsaquo; Préférences &rsaquo; Liens rapides</b> et définissez l'<b>URL du clavardage</b>.</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your mail link (for example Gmail or webmail), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>"
+msgstr "<p>Pour configurer ce bouton afin d'ouvrir votre lien de courriel (par exemple Gmail ou messagerie Web), ouvrez <b>Édition &rsaquo; Préférences &rsaquo; Liens rapides</b> et définissez l'<b>URL du courriel</b>.</p>"
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Chain (%1) ==="
+msgstr "=== Chaîne de certificats (%1) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Properties ==="
+msgstr "=== Propriétés du certificat ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Connection ==="
+msgstr "=== Connexion ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Extensions ==="
+msgstr "=== Extensions ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued By (Issuer) ==="
+msgstr "=== Émis par (Émetteur) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued To (Subject) ==="
+msgstr "=== Émis pour (Sujet) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== PEM Certificate ==="
+msgstr "=== Certificat PEM ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Raw Certificate Text ==="
+msgstr "=== Texte brut du certificat ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Validity ==="
+msgstr "=== Validité ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "Appearance"
+msgstr "Apparence"
+
+#: shell/netzac/preferences.cpp
+msgid "Bronze"
+msgstr "Bronze"
+
+#: shell/netzac/dialogs.cpp
+msgid "Certificate Details:"
+msgstr "Détails du certificat :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Details: Encryption=%1, Auth=%2, KeyExchange=%3"
+msgstr "Détails du chiffrement : Chiffrement=%1, Auth=%2, Échange de clés=%3"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Suite: %1 (%2 bits)"
+msgstr "Suite de chiffrement : %1 (%2 bits)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Common Name (CN): %1"
+msgstr "Nom commun (CN) : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Details"
+msgstr "Copier les détails"
+
+#: shell/netzac/dialogs.cpp
+msgid "Could not retrieve TLS certificate details: %1"
+msgstr "Impossible de récupérer les détails du certificat TLS : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Country (C): %1"
+msgstr "Pays (C) : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Style:"
+msgstr "Style par défaut :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Display Name: %1"
+msgstr "Nom affiché : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expired"
+msgstr "Expiré"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expires On: %1"
+msgstr "Expire le : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Fixed (Code) Font:"
+msgstr "Police à chasse fixe (code) :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Font Size (px):"
+msgstr "Taille de police (px) :"
+
+#: shell/netzac/preferences.cpp
+msgid "Gold"
+msgstr "Or"
+
+#: shell/netzac/preferences.cpp
+msgid "Graphite"
+msgstr "Graphite"
+
+#: shell/netzac/dialogs.cpp
+msgid "Host: %1"
+msgstr "Hôte : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Inspecting TLS certificate for %1..."
+msgstr "Inspection du certificat TLS pour %1..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Issued On: %1"
+msgstr "Émis le : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Issuer: %1"
+msgstr "Émetteur : %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Ivy"
+msgstr "Lierre"
+
+#: shell/netzac/preferences.cpp
+msgid "Lavender"
+msgstr "Lavande"
+
+#: shell/netzac/dialogs.cpp
+msgid "Locality (L): %1"
+msgstr "Localité (L) : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Location: %1"
+msgstr "Emplacement : %1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac Navigator is not currently set as your default web browser.\n\nWould you like to set Netzac as your default browser for web links?"
+msgstr "Netzac Navigator n'est pas actuellement défini comme navigateur Web par défaut.\n\nSouhaitez-vous définir Netzac comme navigateur par défaut pour les liens Web ?"
+
+#: shell/netzac/dialogs.cpp
+msgid "No"
+msgstr "Non"
+
+#: shell/netzac/dialogs.cpp
+msgid "No TLS/SSL certificate is used for this page."
+msgstr "Aucun certificat TLS/SSL n'est utilisé pour cette page."
+
+#: shell/netzac/dialogs.cpp
+msgid "No peer certificate was presented by the server."
+msgstr "Le serveur n'a présenté aucun certificat."
+
+#: shell/netzac/dialogs.cpp
+msgid "Not yet valid"
+msgstr "Pas encore valide"
+
+#: shell/netzac/preferences.cpp
+msgid "Ocean"
+msgstr "Océan"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organization (O): %1"
+msgstr "Organisation (O) : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organizational Unit (OU): %1"
+msgstr "Unité organisationnelle (OU) : %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Plum"
+msgstr "Prune"
+
+#: shell/netzac/dialogs.cpp
+msgid "Port: %1"
+msgstr "Port : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Protocol: %1"
+msgstr "Protocole : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Public Key: %1"
+msgstr "Clé publique : %1"
+
+#: shell/netzac/preferences.cpp
+msgid "Rose"
+msgstr "Rose"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-1 Fingerprint: %1"
+msgstr "Empreinte SHA-1 : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256 Fingerprint: %1"
+msgstr "Empreinte SHA-256 : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256: %1"
+msgstr "SHA-256 : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif"
+msgstr "Sans empattement (Sans-Serif)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif Font:"
+msgstr "Police Sans-Serif :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbar Accent Color:"
+msgstr "Couleur d'accentuation des barres :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbars:"
+msgstr "Barres de défilement :"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Search with DuckDuckGo..."
+msgstr "Rechercher avec DuckDuckGo..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Self-Signed: %1"
+msgstr "Auto-signé : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serial Number: %1"
+msgstr "Numéro de série : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif"
+msgstr "Avec empattement (Serif)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif Font:"
+msgstr "Police Serif :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Set custom URLs for the bottom-right Mail, Chat and Git buttons.\nLeave a field empty to open its built-in about: page."
+msgstr "Définissez des URL personnalisées pour les boutons Courriel, Clavardage et Git en bas à droite.\nLaissez un champ vide pour ouvrir sa page about: intégrée."
+
+#: shell/netzac/dialogs.cpp
+msgid "State / Province (ST): %1"
+msgstr "État / Province (ST) : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status: %1"
+msgstr "État : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Subject Alternative Names: %1"
+msgstr "Autres noms du sujet (SAN) : %1"
+
+#: shell/netzac/preferences.cpp
+msgid "System (ZacOS 9)"
+msgstr "Système (ZacOS 9)"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS Warnings: %1"
+msgstr "Avertissements TLS : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS/SSL certificate inspection is unavailable on this system."
+msgstr "L'inspection des certificats TLS/SSL n'est pas disponible sur ce système."
+
+#: shell/netzac/dialogs.cpp
+msgid "Timed out while retrieving certificate from %1."
+msgstr "Délai dépassé lors de la récupération du certificat de %1."
+
+#: shell/netzac/dialogs.cpp
+msgid "Title: %1"
+msgstr "Titre : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use Platinum CSS scrollbars on web pages"
+msgstr "Utiliser les barres de défilement Platinum CSS sur les pages Web"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use custom fonts and force web pages to render with them"
+msgstr "Utiliser des polices personnalisées et forcer les pages Web à les utiliser"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid"
+msgstr "Valide"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid: %1 -> %2"
+msgstr "Valide : %1 -> %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Trusted certificate chain"
+msgstr "Vérification : Chaîne de certificats approuvée"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Warnings detected — %1"
+msgstr "Vérification : Avertissements détectés — %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Version: %1"
+msgstr "Version : %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Web Page Fonts:"
+msgstr "Polices des pages Web :"
+
+#: shell/netzac/dialogs.cpp
+msgid "When enabled, Netzac injects CSS at the start of each page to force rendering with the selected fonts and size."
+msgstr "Lorsque cette option est activée, Netzac injecte du CSS au début de chaque page pour forcer le rendu avec les polices et la taille choisies."
+
+#: shell/netzac/dialogs.cpp
+msgid "Yes"
+msgstr "Oui"
+
+#: shell/netzac/dialogs.cpp
+msgid "Theme:"
+msgstr "Thème :"
+
+#: shell/netzac/dialogs.cpp
+msgid "Application Theme:"
+msgstr "Thème de l'application :"
+
+#: shell/netzac/dialogs.cpp
+msgid "ZacOS 9 Default"
+msgstr "Par défaut de ZacOS 9"
+
+#: shell/netzac/dialogs.cpp
+msgid "Light"
+msgstr "Clair"
+
+#: shell/netzac/dialogs.cpp
+msgid "Dark"
+msgstr "Sombre"

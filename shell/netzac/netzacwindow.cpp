@@ -1033,11 +1033,12 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     auto *calm = new CalmModeController(page, m_prefs.calm, view);
 
     view->setMinimumSize(240, 160);
-    page->setBackgroundColor(QColor(QStringLiteral("#dddddd")));
+    page->setBackgroundColor(Qt::white);
     page->settings()->setAttribute(QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
     page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
     page->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
     page->settings()->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
+    m_prefs.applyFontSettings(page->settings());
     if (m_popupOpts.hideScrollbars)
         page->settings()->setAttribute(QWebEngineSettings::ShowScrollBars, false);
 
@@ -2302,20 +2303,7 @@ void NetzacWindow::showPageInfo()
         return;
     const QString url = tab->currentUrl;
     const QString title = tab->view->title().isEmpty() ? ztr("(Untitled)") : tab->view->title();
-    QString sec;
-    if (url.startsWith(QLatin1String("https://")))
-        sec = ztr("Encrypted connection (HTTPS) — Security padlock is locked.");
-    else if (url.startsWith(QLatin1String("about:")))
-        sec = ztr("Built-in Netzac Navigator local document.");
-    else
-        sec = ztr("Unencrypted connection (HTTP) — Information sent over this connection is not encrypted.");
-
-    PlatinumAlertDialog(
-        ztr("Page & Security Info"),
-        ztr("Title: %1\nLocation: %2\n\nSecurity: %3").arg(title, url, sec),
-        QStringLiteral("info"),
-        this)
-        .exec();
+    CertificateInfoDialog(title, url, this).exec();
 }
 
 void NetzacWindow::showHistoryDialog()
@@ -2399,11 +2387,16 @@ void NetzacWindow::openPreferences()
 {
     const BrowserTab *cur = currentTab();
     const bool prevDisableGpu = m_prefs.disableGpuAcceleration;
+    const auto prevTheme = m_prefs.uiTheme;
     PreferencesDialog dlg(m_prefs, cur ? cur->currentUrl : QString(), this);
     if (dlg.exec() == QDialog::Accepted) {
         m_prefs = dlg.preferences();
         m_prefs.save();
         m_prefs.apply(netzacProfile());
+        if (m_prefs.uiTheme != prevTheme || dlg.didResetAll()) {
+            if (auto *app = qobject_cast<QApplication *>(QApplication::instance()))
+                applyZacos9Theme(*app, m_prefs.uiTheme);
+        }
         if (m_prefs.disableGpuAcceleration != prevDisableGpu) {
             PlatinumAlertDialog alert(
                 ztr("Preferences"),
@@ -2443,6 +2436,7 @@ void NetzacWindow::openPreferences()
                     QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
                 tab.page->settings()->setAttribute(
                     QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
+                applyAppearanceToPage(tab.page, m_prefs);
             }
             if (tab.calm)
                 tab.calm->setConfig(m_prefs.calm);

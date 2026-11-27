@@ -7,6 +7,7 @@
 #include <QVector>
 
 class QWebEngineProfile;
+class QWebEngineSettings;
 
 struct NetzacPreferences {
     enum class CookiePolicy {
@@ -47,6 +48,23 @@ struct NetzacPreferences {
         ChromeTop = 1,
     };
 
+    enum class ProportionalFontStyle {
+        SansSerif = 0,
+        Serif = 1,
+    };
+
+    enum class UiTheme {
+        ZacosDefault = 0,
+        Light = 1,
+        Dark = 2,
+    };
+
+    struct AccentEntry {
+        const char *id;
+        QString label;
+        const char *swatchHex;
+    };
+
     struct PresetEntry {
         const char *id;
         QString label;
@@ -80,6 +98,15 @@ struct NetzacPreferences {
     bool rememberPasswords = true;
     bool showNavButtonText = true;
     bool disableGpuAcceleration = false;
+    bool enablePlatinumScrollbars = true;
+    QString scrollbarAccent;
+    UiTheme uiTheme = UiTheme::ZacosDefault;
+    bool forceCustomFonts = false;
+    ProportionalFontStyle proportionalFontStyle = ProportionalFontStyle::SansSerif;
+    QString serifFont;
+    QString sansSerifFont;
+    QString fixedFont;
+    int defaultFontSize = 16;
     CalmConfig calm;
 
     QVector<PersonalToolbarItem> personalToolbar;
@@ -115,10 +142,12 @@ struct NetzacPreferences {
     static bool isDefaultBrowser();
     static bool setAsDefaultBrowser();
     void apply(QWebEngineProfile *profile) const;
+    void applyFontSettings(QWebEngineSettings *settings) const;
     QString searchUrlFor(const QString &query) const;
 
     static QVector<PresetEntry> searchEnginePresets();
     static QVector<PresetEntry> userAgentPresets();
+    static QVector<AccentEntry> scrollbarAccentPresets();
     static QStringList defaultAdBlockSubscriptions();
     static QVector<PersonalToolbarItem> defaultPersonalToolbar();
     static QString defaultChromeUserAgent();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "preferences.h"
+
 #include <QColor>
 #include <QFont>
 #include <QPainter>
@@ -25,7 +27,10 @@ struct PlatinumColors {
 };
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold = false);
-void applyZacos9Theme(QApplication &app);
+bool hasZacos9Style();
+void applyZacos9Theme(
+    QApplication &app,
+    NetzacPreferences::UiTheme theme = NetzacPreferences::UiTheme::ZacosDefault);
 PlatinumColors platinumColors(const QPalette &palette);
 
 QPixmap makeDisabledPixmap(const QPixmap &pm);

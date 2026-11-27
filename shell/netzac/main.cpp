@@ -107,10 +107,11 @@ int main(int argc, char *argv[])
         }
     }
 #endif
-    applyZacos9Theme(app);
+    const NetzacPreferences initialPrefs = NetzacPreferences::load();
+    applyZacos9Theme(app, initialPrefs.uiTheme);
 
     NetzacPreferences::ensureDesktopEntryRegistered();
-    NetzacPreferences::load().apply(netzacProfile());
+    initialPrefs.apply(netzacProfile());
 
     QObject::connect(
         netzacProfile(),
