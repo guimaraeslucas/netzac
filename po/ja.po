@@ -1662,8 +1662,12 @@ msgid "Application Theme:"
 msgstr "アプリケーションのテーマ:"
 
 #: shell/netzac/dialogs.cpp
-msgid "ZacOS 9 Default"
-msgstr "ZacOS 9 デフォルト"
+msgid "Platinum"
+msgstr "Platinum"
+
+#: shell/netzac/dialogs.cpp
+msgid "ZacOS 9"
+msgstr "ZacOS 9"
 
 #: shell/netzac/dialogs.cpp
 msgid "Light"
@@ -1928,3 +1932,11 @@ msgstr "ソースを名前を付けて保存"
 #: shell/netzac/dialogs.cpp
 msgid "Wrap lines"
 msgstr "行を折り返す"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable Energy Saver mode (freeze and discard inactive windows)"
+msgstr "省エネルギーモードを有効にする（非アクティブなウィンドウをフリーズ・破棄）"
+
+#: shell/netzac/dialogs.cpp
+msgid "Freezes unfocused windows after 5 minutes and discards them after 2 hours (or when available memory drops below 15%). Also activates automatically when system energy saving mode is on."
+msgstr "フォーカスを失ったウィンドウを 5 分後にフリーズし、2 時間後（または利用可能メモリが 15% 未満になった場合）に破棄します。システムの省エネルギーモードが有効な場合も自動的に動作します。"

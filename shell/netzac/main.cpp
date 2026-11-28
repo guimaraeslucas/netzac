@@ -1,4 +1,5 @@
 #include "dialogs.h"
+#include "hibernation.h"
 #include "i18n.h"
 #include "netzacwindow.h"
 #include "platinum.h"
@@ -120,6 +121,7 @@ int main(int argc, char *argv[])
         [](QWebEngineDownloadRequest *download) {
             if (!download)
                 return;
+            HibernationManager::instance()->registerDownload(download);
             auto *dlg = new DownloadDialog(download);
             dlg->show();
             dlg->raise();

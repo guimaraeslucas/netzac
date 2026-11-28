@@ -2,6 +2,7 @@
 
 #include "bookmarks.h"
 #include "dialogs.h"
+#include "hibernation.h"
 #include "i18n.h"
 #include "platinum.h"
 #include "webview.h"
@@ -375,6 +376,7 @@ NetzacWindow::NetzacWindow(
     });
 
     if (loadInitial && initialUrl.isEmpty() && !m_popupOpts.isPopup
+        && m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs
         && m_prefs.startupMode == NetzacPreferences::StartupMode::RestoreLastPage
         && !m_prefs.lastTabs.isEmpty()) {
         for (int i = 0; i < m_prefs.lastTabs.size(); ++i)
@@ -397,6 +399,30 @@ NetzacWindow::NetzacWindow(
     updateTabBarPlacement();
     applyPopupRestrictions();
 
+    connect(
+        PreferencesBus::instance(),
+        &PreferencesBus::preferencesChanged,
+        this,
+        &NetzacWindow::applyPreferences);
+
+    m_freezeTimer.setSingleShot(true);
+    m_freezeTimer.setInterval(HibernationManager::kFreezeDelayMs);
+    connect(&m_freezeTimer, &QTimer::timeout, this, &NetzacWindow::handleFreezeTimeout);
+
+    m_discardTimer.setSingleShot(true);
+    m_discardTimer.setInterval(HibernationManager::kDiscardDelayMs);
+    connect(&m_discardTimer, &QTimer::timeout, this, &NetzacWindow::handleDiscardTimeout);
+
+    m_bgTabSweepTimer.setInterval(60 * 1000);
+    connect(&m_bgTabSweepTimer, &QTimer::timeout, this, &NetzacWindow::sweepBackgroundTabs);
+    m_bgTabSweepTimer.start();
+
+    connect(
+        HibernationManager::instance(),
+        &HibernationManager::lowMemoryDetected,
+        this,
+        &NetzacWindow::handleLowMemoryPressure);
+
     if (!m_popupOpts.isPopup && !m_prefs.defaultBrowserPrompted) {
         QTimer::singleShot(350, this, &NetzacWindow::promptDefaultBrowserIfNeeded);
     }
@@ -404,6 +430,9 @@ NetzacWindow::NetzacWindow(
 
 NetzacWindow::~NetzacWindow()
 {
+    m_freezeTimer.stop();
+    m_discardTimer.stop();
+    m_bgTabSweepTimer.stop();
     m_fsHideTimer.stop();
     m_fsRevealTimer.stop();
     m_fsMousePollTimer.stop();
@@ -566,7 +595,8 @@ void NetzacWindow::buildMenus()
             &QAction::triggered, this, &NetzacWindow::newWindow);
     m_actNewTab = addMenuAction(fileMenu, ztr("New Tab"), QKeySequence(QStringLiteral("Ctrl+T")));
     connect(m_actNewTab, &QAction::triggered, this, [this]() {
-        newTab(m_prefs.homeUrl, true);
+        if (m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs && !m_popupOpts.isPopup)
+            newTab(m_prefs.homeUrl, true);
     });
     m_actCloseTab = addMenuAction(fileMenu, ztr("Close Tab"), QKeySequence(QStringLiteral("Ctrl+W")));
     connect(m_actCloseTab, &QAction::triggered, this, [this]() {
@@ -585,8 +615,8 @@ void NetzacWindow::buildMenus()
     connect(addMenuAction(fileMenu, ztr("Print..."), QKeySequence::Print),
             &QAction::triggered, this, &NetzacWindow::printPage);
     fileMenu->addSeparator();
-    connect(addMenuAction(fileMenu, ztr("Close"), QKeySequence(QStringLiteral("Ctrl+Shift+W"))),
-            &QAction::triggered, this, &QWidget::close);
+    m_actCloseWindow = addMenuAction(fileMenu, ztr("Close"), QKeySequence(QStringLiteral("Ctrl+Shift+W")));
+    connect(m_actCloseWindow, &QAction::triggered, this, &QWidget::close);
     connect(addMenuAction(fileMenu, ztr("Quit"), QKeySequence::Quit),
             &QAction::triggered, QApplication::instance(), &QApplication::closeAllWindows);
 
@@ -663,22 +693,22 @@ void NetzacWindow::buildMenus()
     connect(m_actLinkModeTabs, &QAction::triggered, this, [this]() {
         m_prefs.linkOpenMode = NetzacPreferences::LinkOpenMode::Tabs;
         m_prefs.save();
-        updateTabBarPlacement();
+        PreferencesBus::instance()->broadcast(m_prefs);
     });
     connect(m_actLinkModeWindows, &QAction::triggered, this, [this]() {
         m_prefs.linkOpenMode = NetzacPreferences::LinkOpenMode::Windows;
         m_prefs.save();
-        updateTabBarPlacement();
+        PreferencesBus::instance()->broadcast(m_prefs);
     });
     connect(m_actTabStyleLeft, &QAction::triggered, this, [this]() {
         m_prefs.tabBarStyle = NetzacPreferences::TabBarStyle::IE45Left;
         m_prefs.save();
-        updateTabBarPlacement();
+        PreferencesBus::instance()->broadcast(m_prefs);
     });
     connect(m_actTabStyleTop, &QAction::triggered, this, [this]() {
         m_prefs.tabBarStyle = NetzacPreferences::TabBarStyle::ChromeTop;
         m_prefs.save();
-        updateTabBarPlacement();
+        PreferencesBus::instance()->broadcast(m_prefs);
     });
 
     viewMenu->addSeparator();
@@ -942,7 +972,7 @@ void NetzacWindow::buildToolbars()
     connect(m_actShowNavText, &QAction::toggled, this, [this](bool showText) {
         m_prefs.showNavButtonText = showText;
         m_prefs.save();
-        applyNavToolbarCompact(showText);
+        PreferencesBus::instance()->broadcast(m_prefs);
     });
     connect(m_actShowLoc, &QAction::toggled, m_locToolbar, &QWidget::setVisible);
     connect(m_actShowPers, &QAction::toggled, m_persToolbar, &QWidget::setVisible);
@@ -1110,6 +1140,15 @@ void NetzacWindow::buildStatusBar()
 
 int NetzacWindow::newTab(const QString &url, bool switchTo)
 {
+    if (m_prefs.linkOpenMode != NetzacPreferences::LinkOpenMode::Tabs || m_popupOpts.isPopup) {
+        const QString target = url.isEmpty() ? m_prefs.homeUrl : url;
+        auto *win = new NetzacWindow(target, nullptr, !target.isEmpty());
+        win->setAttribute(Qt::WA_DeleteOnClose);
+        win->show();
+        win->raise();
+        win->activateWindow();
+        return -1;
+    }
     return createTabInternal(url, switchTo, !url.isEmpty());
 }
 
@@ -1143,6 +1182,8 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     tab.calm = calm;
     tab.currentUrl = url.isEmpty() ? m_prefs.homeUrl : url;
     tab.title = ztr("New Tab");
+    if (!switchTo && m_currentTabIndex >= 0)
+        tab.inactiveSinceMs = QDateTime::currentMSecsSinceEpoch();
 
     m_tabs.append(tab);
     const int idx = int(m_tabs.size()) - 1;
@@ -1224,6 +1265,60 @@ void NetzacWindow::detachTab(int index, const QPoint &globalPos)
     win->show();
     win->raise();
     win->activateWindow();
+}
+
+void NetzacWindow::detachAllOtherTabsToWindows()
+{
+    if (m_popupOpts.isPopup || m_tabs.size() <= 1)
+        return;
+
+    const bool wasActive = isActiveWindow();
+    const int keepIndex = (m_currentTabIndex >= 0 && m_currentTabIndex < m_tabs.size())
+        ? m_currentTabIndex
+        : 0;
+
+    QVector<BrowserTab> detached;
+    detached.reserve(m_tabs.size() - 1);
+    for (int i = int(m_tabs.size()) - 1; i >= 0; --i) {
+        if (i == keepIndex)
+            continue;
+        BrowserTab tab = m_tabs.at(i);
+        if (m_htmlFullScreenActive && m_htmlFullScreenPage == tab.page) {
+            tab.page->triggerAction(QWebEnginePage::ExitFullScreen);
+            m_htmlFullScreenActive = false;
+            m_htmlFullScreenPage = nullptr;
+            if (!m_userFullScreen)
+                exitFullScreenMode();
+        }
+        disconnect(tab.view, nullptr, this, nullptr);
+        disconnect(tab.page, nullptr, this, nullptr);
+        disconnect(tab.calm, nullptr, this, nullptr);
+
+        m_tabs.removeAt(i);
+        m_tabStack->removeWidget(tab.view);
+        m_tabBar->removeTab(i);
+        detached.prepend(tab);
+    }
+
+    m_currentTabIndex = -1;
+    if (!m_tabs.isEmpty())
+        switchToTab(0);
+
+    for (int i = 0; i < detached.size(); ++i) {
+        auto *win = new NetzacWindow(QString(), nullptr, false);
+        win->setAttribute(Qt::WA_DeleteOnClose);
+        win->clearTabsForAdoption();
+        win->adoptTab(detached.at(i));
+        win->resize(size());
+        const int step = i + 1;
+        win->move(pos() + QPoint(28 * step, 28 * step));
+        win->show();
+    }
+
+    if (wasActive) {
+        raise();
+        activateWindow();
+    }
 }
 
 void NetzacWindow::transferTabTo(int index, PlatinumTabBar *targetBar, int targetInsertIndex)
@@ -1357,7 +1452,11 @@ void NetzacWindow::switchToTab(int index)
         if (!m_userFullScreen)
             exitFullScreenMode();
     }
+    if (m_currentTabIndex >= 0 && m_currentTabIndex < m_tabs.size())
+        m_tabs[m_currentTabIndex].inactiveSinceMs = QDateTime::currentMSecsSinceEpoch();
+
     m_currentTabIndex = index;
+    wakeTab(&m_tabs[index]);
     m_tabStack->setCurrentWidget(m_tabs[index].view);
     m_tabBar->setCurrentIndex(index);
     syncUiToCurrentTab();
@@ -1416,19 +1515,33 @@ void NetzacWindow::updateTabBarPlacement()
     if (!m_tabBar || !m_rootLayout || !m_workspaceLayout)
         return;
 
-    const bool showTabs = !m_popupOpts.isPopup
+    const bool tabsMode = !m_popupOpts.isPopup
         && !m_popupOpts.hideToolbar
-        && !m_htmlFullScreenActive
         && (m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs);
+    const bool showTabs = tabsMode && !m_htmlFullScreenActive;
 
     if (m_actTabStyleLeft)
-        m_actTabStyleLeft->setEnabled(showTabs);
+        m_actTabStyleLeft->setEnabled(tabsMode);
     if (m_actTabStyleTop)
-        m_actTabStyleTop->setEnabled(showTabs);
-    if (m_actNewTab)
-        m_actNewTab->setEnabled(!m_popupOpts.isPopup && !m_popupOpts.hideToolbar);
-    if (m_actCloseTab)
-        m_actCloseTab->setEnabled(!m_popupOpts.isPopup && !m_popupOpts.hideToolbar);
+        m_actTabStyleTop->setEnabled(tabsMode);
+    if (m_actNewTab) {
+        m_actNewTab->setEnabled(tabsMode);
+        m_actNewTab->setVisible(tabsMode);
+    }
+    if (m_actCloseTab) {
+        m_actCloseTab->setEnabled(tabsMode);
+        m_actCloseTab->setVisible(tabsMode);
+    }
+    if (m_actCloseWindow) {
+        if (tabsMode) {
+            m_actCloseWindow->setShortcuts({QKeySequence(QStringLiteral("Ctrl+Shift+W"))});
+        } else {
+            m_actCloseWindow->setShortcuts({
+                QKeySequence(QStringLiteral("Ctrl+W")),
+                QKeySequence(QStringLiteral("Ctrl+Shift+W")),
+            });
+        }
+    }
 
     m_rootLayout->removeWidget(m_tabBar);
     m_workspaceLayout->removeWidget(m_tabBar);
@@ -1669,12 +1782,25 @@ void NetzacWindow::updateFullScreenMouseState(const QPoint &localPos)
 void NetzacWindow::changeEvent(QEvent *event)
 {
     QMainWindow::changeEvent(event);
-    if (event && event->type() == QEvent::WindowStateChange && !m_enteringFullScreen) {
-        if (!isFullScreen() && (m_userFullScreen || m_htmlFullScreenActive || m_fsEventFilterInstalled)) {
+    if (!event)
+        return;
+
+    if (event->type() == QEvent::ActivationChange) {
+        if (isActiveWindow() && !isMinimized())
+            onWindowFocusGained();
+        else
+            onWindowFocusLost();
+    } else if (event->type() == QEvent::WindowStateChange) {
+        if (!m_enteringFullScreen && !isFullScreen()
+            && (m_userFullScreen || m_htmlFullScreenActive || m_fsEventFilterInstalled)) {
             if (m_htmlFullScreenActive && m_htmlFullScreenPage)
                 m_htmlFullScreenPage->triggerAction(QWebEnginePage::ExitFullScreen);
             exitFullScreenMode();
         }
+        if (isMinimized())
+            onWindowFocusLost();
+        else if (isActiveWindow())
+            onWindowFocusGained();
     }
 }
 
@@ -2112,37 +2238,37 @@ QWebEngineView *NetzacWindow::createBrowserWindow(NetzacWebView *opener, QWebEng
     return win->webView();
 }
 
-void NetzacWindow::showWebContextMenu(const QPoint &globalPos, QWebEngineContextMenuRequest *request)
+void NetzacWindow::showWebContextMenu(const WebContextMenuData &data)
 {
     NetzacWebView *view = webView();
     NetzacWebPage *page = webPage();
     if (!view || !page)
         return;
 
-    QMenu menu(this);
-    menu.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    auto *menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose, true);
+    menu->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
 
-    if (request && request->linkUrl().isValid()) {
-        const QUrl linkUrl = request->linkUrl();
-        const QString linkStr = linkUrl.toString();
+    if (data.linkUrl.isValid()) {
+        const QString linkStr = data.linkUrl.toString();
         if (m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs && !m_popupOpts.isPopup) {
-            QAction *openTabAct = menu.addAction(ztr("Open Link in New Tab"));
+            QAction *openTabAct = menu->addAction(ztr("Open Link in New Tab"));
             connect(openTabAct, &QAction::triggered, this, [this, linkStr]() {
                 newTab(linkStr, true);
             });
         }
-        QAction *openWin = menu.addAction(ztr("Open Link in New Window"));
+        QAction *openWin = menu->addAction(ztr("Open Link in New Window"));
         connect(openWin, &QAction::triggered, this, [linkStr]() {
             auto *win = new NetzacWindow(linkStr, nullptr, true);
             win->setAttribute(Qt::WA_DeleteOnClose);
             win->show();
         });
-        QAction *copyLink = menu.addAction(ztr("Copy Link Location"));
+        QAction *copyLink = menu->addAction(ztr("Copy Link Location"));
         connect(copyLink, &QAction::triggered, this, [linkStr]() {
             if (QClipboard *cb = QApplication::clipboard())
                 cb->setText(linkStr);
         });
-        QAction *bmLink = menu.addAction(ztr("Add Bookmark for Link"));
+        QAction *bmLink = menu->addAction(ztr("Add Bookmark for Link"));
         connect(bmLink, &QAction::triggered, this, [this, linkStr]() {
             bool exists = false;
             for (const auto &entry : m_bookmarks) {
@@ -2157,65 +2283,64 @@ void NetzacWindow::showWebContextMenu(const QPoint &globalPos, QWebEngineContext
             }
             m_statusLabel->setStatusText(ztr("Bookmarked: %1").arg(linkStr));
         });
-        menu.addSeparator();
+        menu->addSeparator();
     }
 
-    if (request
-        && request->mediaType() == QWebEngineContextMenuRequest::MediaTypeImage
-        && request->mediaUrl().isValid()) {
-        const QUrl mediaUrl = request->mediaUrl();
+    if (data.mediaType == QWebEngineContextMenuRequest::MediaTypeImage
+        && data.mediaUrl.isValid()) {
+        const QUrl mediaUrl = data.mediaUrl;
         const QString mediaStr = mediaUrl.toString();
-        QAction *viewImg = menu.addAction(ztr("View Image"));
+        QAction *viewImg = menu->addAction(ztr("View Image"));
         connect(viewImg, &QAction::triggered, this, [this, mediaStr]() {
             navigateTo(mediaStr);
         });
-        QAction *copyImg = menu.addAction(ztr("Copy Image Location"));
+        QAction *copyImg = menu->addAction(ztr("Copy Image Location"));
         connect(copyImg, &QAction::triggered, this, [mediaStr]() {
             if (QClipboard *cb = QApplication::clipboard())
                 cb->setText(mediaStr);
         });
-        QAction *saveImg = menu.addAction(ztr("Save Image As..."));
+        QAction *saveImg = menu->addAction(ztr("Save Image As..."));
         connect(saveImg, &QAction::triggered, this, [page, mediaUrl]() {
             page->download(mediaUrl);
         });
-        menu.addSeparator();
+        menu->addSeparator();
     }
 
-    if (request && request->isContentEditable()) {
-        QAction *undoAct = menu.addAction(ztr("Undo"));
+    if (data.isContentEditable) {
+        QAction *undoAct = menu->addAction(ztr("Undo"));
         connect(undoAct, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::Undo); });
-        QAction *cutAct = menu.addAction(ztr("Cut"));
+        QAction *cutAct = menu->addAction(ztr("Cut"));
         connect(cutAct, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::Cut); });
-        QAction *copyAct = menu.addAction(ztr("Copy"));
+        QAction *copyAct = menu->addAction(ztr("Copy"));
         connect(copyAct, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::Copy); });
-        QAction *pasteAct = menu.addAction(ztr("Paste"));
+        QAction *pasteAct = menu->addAction(ztr("Paste"));
         connect(pasteAct, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::Paste); });
-        QAction *selAllAct = menu.addAction(ztr("Select All"));
+        QAction *selAllAct = menu->addAction(ztr("Select All"));
         connect(selAllAct, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::SelectAll); });
-        menu.addSeparator();
-    } else if (request && !request->selectedText().isEmpty()) {
-        QAction *copySel = menu.addAction(ztr("Copy"));
+        menu->addSeparator();
+    } else if (!data.selectedText.isEmpty()) {
+        QAction *copySel = menu->addAction(ztr("Copy"));
         connect(copySel, &QAction::triggered, this, [page]() { page->triggerAction(QWebEnginePage::Copy); });
-        menu.addSeparator();
+        menu->addSeparator();
     }
 
-    QAction *backAct = menu.addAction(ztr("Back"));
+    QAction *backAct = menu->addAction(ztr("Back"));
     backAct->setEnabled(view->history()->canGoBack());
     connect(backAct, &QAction::triggered, view, &QWebEngineView::back);
 
-    QAction *fwdAct = menu.addAction(ztr("Forward"));
+    QAction *fwdAct = menu->addAction(ztr("Forward"));
     fwdAct->setEnabled(view->history()->canGoForward());
     connect(fwdAct, &QAction::triggered, view, &QWebEngineView::forward);
 
-    QAction *reloadAct = menu.addAction(ztr("Reload"));
+    QAction *reloadAct = menu->addAction(ztr("Reload"));
     connect(reloadAct, &QAction::triggered, view, &QWebEngineView::reload);
 
-    QAction *stopAct = menu.addAction(ztr("Stop"));
+    QAction *stopAct = menu->addAction(ztr("Stop"));
     const BrowserTab *tab = currentTab();
     stopAct->setEnabled(tab && tab->isLoading);
     connect(stopAct, &QAction::triggered, view, &QWebEngineView::stop);
 
-    menu.addSeparator();
+    menu->addSeparator();
     if (m_prefs.rememberPasswords && PasswordStorage::isAvailable()) {
         const BrowserTab *cur = currentTab();
         const QUrl curUrl = cur ? QUrl(cur->currentUrl) : QUrl();
@@ -2228,14 +2353,14 @@ void NetzacWindow::showWebContextMenu(const QPoint &globalPos, QWebEngineContext
             if (!saved.isEmpty()) {
                 if (saved.size() == 1) {
                     const PasswordStorage::Credential cred = saved.first();
-                    QAction *fillAct = menu.addAction(
+                    QAction *fillAct = menu->addAction(
                         ztr("Fill Saved Password (%1)").arg(cred.username));
                     connect(fillAct, &QAction::triggered, this, [this, page, cred]() {
                         fillCredentialInPage(page, cred.username, cred.password);
                     });
                 } else {
-                    QMenu *fillMenu = menu.addMenu(ztr("Fill Saved Password"));
-                    fillMenu->setFont(menu.font());
+                    QMenu *fillMenu = menu->addMenu(ztr("Fill Saved Password"));
+                    fillMenu->setFont(menu->font());
                     for (const PasswordStorage::Credential &cred : saved) {
                         QAction *fillAct = fillMenu->addAction(cred.username);
                         connect(fillAct, &QAction::triggered, this, [this, page, cred]() {
@@ -2243,20 +2368,20 @@ void NetzacWindow::showWebContextMenu(const QPoint &globalPos, QWebEngineContext
                         });
                     }
                 }
-                menu.addSeparator();
+                menu->addSeparator();
             }
         }
     }
-    QAction *bmPage = menu.addAction(ztr("Add Bookmark"));
+    QAction *bmPage = menu->addAction(ztr("Add Bookmark"));
     connect(bmPage, &QAction::triggered, this, &NetzacWindow::addCurrentBookmark);
-    QAction *saveAs = menu.addAction(ztr("Save As..."));
+    QAction *saveAs = menu->addAction(ztr("Save As..."));
     connect(saveAs, &QAction::triggered, this, &NetzacWindow::savePage);
-    QAction *srcAct = menu.addAction(ztr("Page Source"));
+    QAction *srcAct = menu->addAction(ztr("Page Source"));
     connect(srcAct, &QAction::triggered, this, &NetzacWindow::viewPageSource);
-    QAction *infoAct = menu.addAction(ztr("Page Info"));
+    QAction *infoAct = menu->addAction(ztr("Page Info"));
     connect(infoAct, &QAction::triggered, this, &NetzacWindow::showPageInfo);
 
-    menu.exec(globalPos);
+    menu->popup(data.globalPos);
 }
 
 void NetzacWindow::updateNavStates()
@@ -2359,10 +2484,7 @@ void NetzacWindow::selectCalmLayoutMode(CalmLayoutMode mode)
     if (m_prefs.calm.layoutMode != mode) {
         m_prefs.calm.layoutMode = mode;
         m_prefs.save();
-        for (BrowserTab &tab : m_tabs) {
-            if (tab.calm)
-                tab.calm->setConfig(m_prefs.calm);
-        }
+        PreferencesBus::instance()->broadcast(m_prefs);
     }
     if (CalmModeController *c = calmController()) {
         if (!c->isEnabled())
@@ -2500,7 +2622,7 @@ void NetzacWindow::addCurrentBookmark()
 
 void NetzacWindow::manageBookmarks()
 {
-    BookmarksDialog dlg(&m_bookmarks, this);
+    BookmarksDialog dlg(&m_bookmarks, m_prefs.personalToolbar, this);
     connect(&dlg, &BookmarksDialog::openRequested, this, &NetzacWindow::navigateTo);
     connect(&dlg, &BookmarksDialog::bookmarksModified, this, [this]() {
         BookmarkStorage::save(m_bookmarks);
@@ -2774,14 +2896,15 @@ void NetzacWindow::openPreferences()
     const auto prevTheme = m_prefs.uiTheme;
     PreferencesDialog dlg(m_prefs, cur ? cur->currentUrl : QString(), this);
     if (dlg.exec() == QDialog::Accepted) {
-        m_prefs = dlg.preferences();
-        m_prefs.save();
-        m_prefs.apply(netzacProfile());
-        if (m_prefs.uiTheme != prevTheme || dlg.didResetAll()) {
+        const NetzacPreferences updated = dlg.preferences();
+        updated.save();
+        updated.apply(netzacProfile());
+        if (updated.uiTheme != prevTheme || dlg.didResetAll()) {
             if (auto *app = qobject_cast<QApplication *>(QApplication::instance()))
-                applyZacos9Theme(*app, m_prefs.uiTheme);
+                applyZacos9Theme(*app, updated.uiTheme);
         }
-        if (m_prefs.disableGpuAcceleration != prevDisableGpu) {
+        PreferencesBus::instance()->broadcast(updated, dlg.didResetAll());
+        if (updated.disableGpuAcceleration != prevDisableGpu) {
             PlatinumAlertDialog alert(
                 ztr("Preferences"),
                 ztr("The GPU hardware acceleration setting will take effect after restarting Netzac."),
@@ -2789,50 +2912,86 @@ void NetzacWindow::openPreferences()
                 this);
             alert.exec();
         }
-        if (dlg.didResetAll()) {
-            m_bookmarks = BookmarkStorage::load();
-            m_history = HistoryStorage::load();
-            m_visitedUrls.clear();
-            for (const auto &entry : m_bookmarks) {
-                if (!m_visitedUrls.contains(entry.second))
-                    m_visitedUrls.append(entry.second);
-            }
-            if (m_actLinkModeTabs)
-                m_actLinkModeTabs->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs);
-            if (m_actLinkModeWindows)
-                m_actLinkModeWindows->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Windows);
-            if (m_actTabStyleLeft)
-                m_actTabStyleLeft->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::IE45Left);
-            if (m_actTabStyleTop)
-                m_actTabStyleTop->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::ChromeTop);
-            if (m_actShowNav) m_actShowNav->setChecked(true);
-            if (m_actShowLoc) m_actShowLoc->setChecked(true);
-            if (m_actShowPers) m_actShowPers->setChecked(true);
-            if (m_actShowStatus) m_actShowStatus->setChecked(true);
-            while (m_tabs.size() > 1)
-                closeTab(int(m_tabs.size()) - 1);
-            updateTabBarPlacement();
-            navigateTo(m_prefs.homeUrl);
-        }
-        for (BrowserTab &tab : m_tabs) {
-            if (tab.page) {
-                tab.page->settings()->setAttribute(
-                    QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
-                tab.page->settings()->setAttribute(
-                    QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
-                tab.page->settings()->setAttribute(
-                    QWebEngineSettings::PlaybackRequiresUserGesture, !m_prefs.autoplayMedia);
-                applyAppearanceToPage(tab.page, m_prefs);
-            }
-            if (tab.calm)
-                tab.calm->setConfig(m_prefs.calm);
-        }
+    }
+}
+
+void NetzacWindow::applyPreferences(const NetzacPreferences &prefs, bool resetAll)
+{
+    m_prefs = prefs;
+
+    if (m_actLinkModeTabs) {
+        const QSignalBlocker b(m_actLinkModeTabs);
+        m_actLinkModeTabs->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs);
+    }
+    if (m_actLinkModeWindows) {
+        const QSignalBlocker b(m_actLinkModeWindows);
+        m_actLinkModeWindows->setChecked(m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Windows);
+    }
+    if (m_actTabStyleLeft) {
+        const QSignalBlocker b(m_actTabStyleLeft);
+        m_actTabStyleLeft->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::IE45Left);
+    }
+    if (m_actTabStyleTop) {
+        const QSignalBlocker b(m_actTabStyleTop);
+        m_actTabStyleTop->setChecked(m_prefs.tabBarStyle == NetzacPreferences::TabBarStyle::ChromeTop);
+    }
+
+    if (isFullScreen()) {
+        m_preFsShowNavText = m_prefs.showNavButtonText;
+    } else {
         applyNavToolbarCompact(m_prefs.showNavButtonText);
         if (m_actShowNavText) {
             const QSignalBlocker b(m_actShowNavText);
             m_actShowNavText->setChecked(m_prefs.showNavButtonText);
         }
-        rebuildPersonalToolbar();
+    }
+
+    if (resetAll) {
+        m_bookmarks = BookmarkStorage::load();
+        m_history = HistoryStorage::load();
+        m_visitedUrls.clear();
+        for (const auto &entry : m_bookmarks) {
+            if (!m_visitedUrls.contains(entry.second))
+                m_visitedUrls.append(entry.second);
+        }
+        if (!m_popupOpts.isPopup && !m_popupOpts.hideToolbar) {
+            if (m_actShowNav) m_actShowNav->setChecked(true);
+            if (m_actShowLoc) m_actShowLoc->setChecked(true);
+            if (m_actShowPers) m_actShowPers->setChecked(true);
+            if (m_actShowStatus) m_actShowStatus->setChecked(true);
+        }
+        while (m_tabs.size() > 1)
+            closeTab(int(m_tabs.size()) - 1);
+        navigateTo(m_prefs.homeUrl);
+    }
+
+    if (!resetAll && !m_popupOpts.isPopup
+        && m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Windows
+        && m_tabs.size() > 1) {
+        detachAllOtherTabsToWindows();
+    }
+
+    updateTabBarPlacement();
+
+    for (BrowserTab &tab : m_tabs) {
+        if (tab.page) {
+            tab.page->settings()->setAttribute(
+                QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
+            tab.page->settings()->setAttribute(
+                QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
+            tab.page->settings()->setAttribute(
+                QWebEngineSettings::PlaybackRequiresUserGesture, !m_prefs.autoplayMedia);
+            applyAppearanceToPage(tab.page, m_prefs);
+        }
+        if (tab.calm)
+            tab.calm->setConfig(m_prefs.calm);
+    }
+    rebuildPersonalToolbar();
+    if (!m_windowFocused && isHibernationEligible()) {
+        if (!m_freezeTimer.isActive())
+            m_freezeTimer.start();
+        if (!m_discardTimer.isActive())
+            m_discardTimer.start();
     }
 }
 
@@ -3448,3 +3607,119 @@ void NetzacWindow::handleFeaturePermissionRequested(
         });
 }
 #endif
+
+bool NetzacWindow::isHibernationEligible() const
+{
+    return m_prefs.energySaverMode || HibernationManager::isSystemEnergySaverActive();
+}
+
+bool NetzacWindow::canHibernateTab(const BrowserTab &tab) const
+{
+    if (!tab.page)
+        return false;
+    if (tab.page->recentlyAudible() && !tab.page->isAudioMuted())
+        return false;
+    if (HibernationManager::instance()->hasOngoingDownloadForPage(tab.page))
+        return false;
+    if (tab.page->devToolsPage())
+        return false;
+    return true;
+}
+
+void NetzacWindow::freezeTab(BrowserTab &tab)
+{
+    if (!canHibernateTab(tab))
+        return;
+    if (tab.page->lifecycleState() != QWebEnginePage::LifecycleState::Active)
+        return;
+    tab.page->setVisible(false);
+    tab.page->setLifecycleState(QWebEnginePage::LifecycleState::Frozen);
+}
+
+void NetzacWindow::discardTab(BrowserTab &tab)
+{
+    if (!canHibernateTab(tab) || tab.showingBuiltin)
+        return;
+    if (tab.page->lifecycleState() == QWebEnginePage::LifecycleState::Discarded)
+        return;
+    tab.page->setVisible(false);
+    tab.page->setLifecycleState(QWebEnginePage::LifecycleState::Discarded);
+}
+
+void NetzacWindow::wakeTab(BrowserTab *tab)
+{
+    if (!tab || !tab->page)
+        return;
+    const bool wasDiscarded =
+        (tab->page->lifecycleState() == QWebEnginePage::LifecycleState::Discarded);
+    tab->page->setVisible(true);
+    tab->page->setLifecycleState(QWebEnginePage::LifecycleState::Active);
+    tab->inactiveSinceMs = 0;
+    if (wasDiscarded && tab->showingBuiltin)
+        loadBuiltinAbout(tab, tab->currentUrl);
+}
+
+void NetzacWindow::onWindowFocusLost()
+{
+    if (!m_windowFocused)
+        return;
+    m_windowFocused = false;
+    m_freezeTimer.start(HibernationManager::kFreezeDelayMs);
+    m_discardTimer.start(HibernationManager::kDiscardDelayMs);
+}
+
+void NetzacWindow::onWindowFocusGained()
+{
+    m_windowFocused = true;
+    m_freezeTimer.stop();
+    m_discardTimer.stop();
+    wakeTab(currentTab());
+}
+
+void NetzacWindow::handleFreezeTimeout()
+{
+    if (m_windowFocused || !isHibernationEligible())
+        return;
+    for (BrowserTab &tab : m_tabs)
+        freezeTab(tab);
+}
+
+void NetzacWindow::handleDiscardTimeout()
+{
+    if (m_windowFocused)
+        return;
+    for (BrowserTab &tab : m_tabs)
+        discardTab(tab);
+}
+
+void NetzacWindow::handleLowMemoryPressure()
+{
+    if (!m_windowFocused) {
+        for (BrowserTab &tab : m_tabs)
+            discardTab(tab);
+        return;
+    }
+    for (int i = 0; i < m_tabs.size(); ++i) {
+        if (i != m_currentTabIndex)
+            discardTab(m_tabs[i]);
+    }
+}
+
+void NetzacWindow::sweepBackgroundTabs()
+{
+    if (m_tabs.size() <= 1 || !isHibernationEligible())
+        return;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    for (int i = 0; i < m_tabs.size(); ++i) {
+        if (i == m_currentTabIndex)
+            continue;
+        BrowserTab &tab = m_tabs[i];
+        if (tab.inactiveSinceMs <= 0)
+            continue;
+        const qint64 elapsed = nowMs - tab.inactiveSinceMs;
+        if (elapsed >= HibernationManager::kDiscardDelayMs)
+            discardTab(tab);
+        else if (elapsed >= HibernationManager::kFreezeDelayMs)
+            freezeTab(tab);
+    }
+}

@@ -3,11 +3,14 @@
 #include "calmmode.h"
 
 #include <QMap>
+#include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QUrl>
 #include <QVector>
 
+class QFileSystemWatcher;
+class QTimer;
 class QWebEngineProfile;
 class QWebEngineSettings;
 
@@ -56,9 +59,10 @@ struct NetzacPreferences {
     };
 
     enum class UiTheme {
-        ZacosDefault = 0,
+        Platinum = 0,
         Light = 1,
         Dark = 2,
+        Zacos9 = 3,
     };
 
     enum class PermissionType {
@@ -125,9 +129,10 @@ struct NetzacPreferences {
     bool rememberPasswords = true;
     bool showNavButtonText = true;
     bool disableGpuAcceleration = false;
+    bool energySaverMode = false;
     bool enablePlatinumScrollbars = true;
     QString scrollbarAccent;
-    UiTheme uiTheme = UiTheme::ZacosDefault;
+    UiTheme uiTheme = UiTheme::Platinum;
     bool forceCustomFonts = false;
     ProportionalFontStyle proportionalFontStyle = ProportionalFontStyle::SansSerif;
     QString serifFont;
@@ -215,3 +220,29 @@ public:
 };
 
 QWebEngineProfile *netzacProfile();
+
+class PreferencesBus : public QObject {
+    Q_OBJECT
+
+public:
+    static PreferencesBus *instance();
+
+    void broadcast(const NetzacPreferences &prefs, bool resetAll = false);
+
+signals:
+    void preferencesChanged(const NetzacPreferences &prefs, bool resetAll);
+
+private:
+    explicit PreferencesBus(QObject *parent = nullptr);
+    void ensureWatcher();
+    void writeSyncToken(bool resetAll);
+    void handleExternalSync();
+
+    QString m_instanceId;
+    quint64 m_localSeq = 0;
+    QString m_lastToken;
+    QString m_syncDir;
+    QString m_syncFilePath;
+    QFileSystemWatcher *m_watcher = nullptr;
+    QTimer *m_reloadTimer = nullptr;
+};

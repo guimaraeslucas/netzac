@@ -2,15 +2,26 @@
 
 #include <functional>
 
+#include <QElapsedTimer>
 #include <QPoint>
+#include <QString>
 #include <QUrl>
+#include <QWebEngineContextMenuRequest>
 #include <QWebEnginePage>
 #include <QWebEngineView>
 
 class QContextMenuEvent;
-class QWebEngineContextMenuRequest;
 class QWebEngineProfile;
 struct NetzacPreferences;
+
+struct WebContextMenuData {
+    QPoint globalPos;
+    QUrl linkUrl;
+    QWebEngineContextMenuRequest::MediaType mediaType = QWebEngineContextMenuRequest::MediaTypeNone;
+    QUrl mediaUrl;
+    bool isContentEditable = false;
+    QString selectedText;
+};
 
 class NetzacWebPage : public QWebEnginePage {
     Q_OBJECT
@@ -21,6 +32,8 @@ public:
     void setBuiltInPage(bool isBuiltIn);
     bool isBuiltInPage() const { return m_isBuiltInPage; }
     QString takePendingPopupFeatures();
+    bool wasContextMenuPreventedRecently() const;
+    void resetContextMenuPrevented();
 
 signals:
     void mainFrameNavigationRequested(const QUrl &url, QWebEnginePage::NavigationType type);
@@ -37,6 +50,8 @@ protected:
 private:
     bool m_isBuiltInPage = false;
     QString m_pendingPopupFeatures;
+    bool m_lastContextMenuPrevented = false;
+    QElapsedTimer m_contextMenuPreventedTimer;
 };
 
 void installNetzacScripts(QWebEngineProfile *profile, const NetzacPreferences &prefs);
@@ -53,7 +68,7 @@ public:
     void setWindowCreator(WindowCreator creator);
 
 signals:
-    void contextMenuRequested(const QPoint &globalPos, QWebEngineContextMenuRequest *request);
+    void contextMenuRequested(const WebContextMenuData &data);
 
 protected:
     QWebEngineView *createWindow(QWebEnginePage::WebWindowType type) override;

@@ -74,7 +74,10 @@ class BookmarksDialog : public PlatinumDialog {
     Q_OBJECT
 
 public:
-    explicit BookmarksDialog(QVector<QPair<QString, QString>> *bookmarks, QWidget *parent = nullptr);
+    explicit BookmarksDialog(
+        QVector<QPair<QString, QString>> *bookmarks,
+        const QVector<NetzacPreferences::PersonalToolbarItem> &personalToolbar = {},
+        QWidget *parent = nullptr);
 
 signals:
     void openRequested(const QString &url);
@@ -90,6 +93,7 @@ private:
     void refresh();
 
     QVector<QPair<QString, QString>> *m_bookmarks = nullptr;
+    QVector<NetzacPreferences::PersonalToolbarItem> m_personalToolbar;
     QListWidget *m_list = nullptr;
 };
 
@@ -138,6 +142,7 @@ private:
     QCheckBox *m_jsChk = nullptr;
     QCheckBox *m_rememberPasswordsChk = nullptr;
     QCheckBox *m_disableGpuChk = nullptr;
+    QCheckBox *m_energySaverChk = nullptr;
     QLabel *m_defaultBrowserLbl = nullptr;
     QPushButton *m_setDefaultBrowserBtn = nullptr;
     bool m_resetRequested = false;

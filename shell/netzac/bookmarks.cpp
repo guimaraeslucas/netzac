@@ -2,6 +2,7 @@
 
 #include "i18n.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -10,9 +11,39 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <QStringConverter>
 #include <QTextStream>
 
 namespace {
+
+QString sanitizeUrl(QString url)
+{
+    url.remove(QLatin1Char('\r'));
+    url.remove(QLatin1Char('\n'));
+    return url.trimmed();
+}
+
+QString sanitizeTitle(QString title, const QString &fallback)
+{
+    title = title.simplified();
+    return title.isEmpty() ? fallback : title;
+}
+
+void writeBookmarkAnchor(
+    QTextStream &out,
+    const QString &indent,
+    const QString &rawUrl,
+    const QString &rawTitle,
+    qint64 timestamp)
+{
+    const QString cleanUrl = sanitizeUrl(rawUrl);
+    if (cleanUrl.isEmpty())
+        return;
+    const QString cleanTitle = sanitizeTitle(rawTitle, cleanUrl);
+    out << indent << "<DT><A HREF=\"" << cleanUrl.toHtmlEscaped()
+        << "\" ADD_DATE=\"" << timestamp << "\">"
+        << cleanTitle.toHtmlEscaped() << "</A>\n";
+}
 
 QString decodeBasicHtmlEntities(QString text)
 {
@@ -150,14 +181,26 @@ BookmarkStorage::BookmarkList BookmarkStorage::importFromFile(const QString &fil
 
 bool BookmarkStorage::exportToHtmlFile(const BookmarkList &bookmarks, const QString &filePath)
 {
-    const QFileInfo fi(filePath);
-    QDir().mkpath(fi.absolutePath());
+    return exportToHtmlFile(bookmarks, {}, filePath);
+}
 
-    QFile f(filePath);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+bool BookmarkStorage::exportToHtmlFile(
+    const BookmarkList &bookmarks,
+    const QVector<NetzacPreferences::PersonalToolbarItem> &personalToolbar,
+    const QString &filePath)
+{
+    const QFileInfo fi(filePath);
+    if (!fi.absolutePath().isEmpty() && !QDir().mkpath(fi.absolutePath()))
         return false;
 
+    QFile f(filePath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+        return false;
+
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+
     QTextStream out(&f);
+    out.setEncoding(QStringConverter::Utf8);
     out << "<!DOCTYPE NETSCAPE-Bookmark-file-1>\n"
         << "<!-- This is an automatically generated file.\n"
         << "     It will be read and overwritten.\n"
@@ -167,13 +210,45 @@ bool BookmarkStorage::exportToHtmlFile(const BookmarkList &bookmarks, const QStr
         << "<H1>Bookmarks</H1>\n"
         << "<DL><p>\n";
 
+    if (!personalToolbar.isEmpty()) {
+        out << "    <DT><H3 ADD_DATE=\"" << now
+            << "\" LAST_MODIFIED=\"" << now
+            << "\" PERSONAL_TOOLBAR_FOLDER=\"true\">"
+            << ztr("Personal Toolbar").toHtmlEscaped()
+            << "</H3>\n"
+            << "    <DL><p>\n";
+
+        for (const auto &item : personalToolbar) {
+            const bool isFolder = item.isFolder || item.icon == QLatin1String("folder");
+            if (isFolder) {
+                const QString folderTitle = sanitizeTitle(item.title, ztr("Folder"));
+                out << "        <DT><H3 ADD_DATE=\"" << now
+                    << "\" LAST_MODIFIED=\"" << now << "\">"
+                    << folderTitle.toHtmlEscaped()
+                    << "</H3>\n"
+                    << "        <DL><p>\n";
+                for (const auto &child : item.children) {
+                    writeBookmarkAnchor(
+                        out, QStringLiteral("            "), child.url, child.title, now);
+                }
+                out << "        </DL><p>\n";
+            } else {
+                writeBookmarkAnchor(
+                    out, QStringLiteral("        "), item.url, item.title, now);
+            }
+        }
+
+        out << "    </DL><p>\n";
+    }
+
     for (const auto &entry : bookmarks) {
-        const QString href = entry.second.toHtmlEscaped();
-        const QString title = entry.first.toHtmlEscaped();
-        out << "    <DT><A HREF=\"" << href << "\">" << title << "</A>\n";
+        writeBookmarkAnchor(out, QStringLiteral("    "), entry.second, entry.first, now);
     }
 
     out << "</DL><p>\n";
+    out.flush();
+    f.flush();
+    const bool ok = (out.status() == QTextStream::Ok) && (f.error() == QFileDevice::NoError);
     f.close();
-    return true;
+    return ok;
 }

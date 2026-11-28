@@ -9,17 +9,27 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPalette>
+#include <QPointer>
+#include <QTimer>
 #include <QUuid>
 #include <QWebEngineContextMenuRequest>
 #include <QWebEngineProfile>
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
+#include <QWebEngineSettings>
 
 namespace {
 
 const QString &popupTokenPrefix()
 {
     static const QString prefix = QStringLiteral("__NETZAC_POPUP_%1__:")
+        .arg(QUuid::createUuid().toString(QUuid::Id128));
+    return prefix;
+}
+
+const QString &contextMenuTokenPrefix()
+{
+    static const QString prefix = QStringLiteral("__NETZAC_CTX_%1__:")
         .arg(QUuid::createUuid().toString(QUuid::Id128));
     return prefix;
 }
@@ -468,6 +478,35 @@ void installNetzacScripts(QWebEngineProfile *profile, const NetzacPreferences &p
         script.setWorldId(QWebEngineScript::MainWorld);
         scripts->insert(script);
     }
+
+    const QString ctxGuardName = QStringLiteral("netzac-contextmenu-guard");
+    if (scripts->find(ctxGuardName).isEmpty()) {
+        QString prefix = contextMenuTokenPrefix();
+        prefix.replace(QLatin1Char('\''), QStringLiteral("\\'"));
+        const QString js = QStringLiteral(
+            "(function() {\n"
+            "  if (window.__netzacCtxGuardInstalled) return;\n"
+            "  window.__netzacCtxGuardInstalled = true;\n"
+            "  window.__netzacCtxPrevented = false;\n"
+            "  var prefix = '%1';\n"
+            "  window.addEventListener('contextmenu', function(e) {\n"
+            "    window.__netzacCtxPrevented = false;\n"
+            "    Promise.resolve().then(function() {\n"
+            "      var prevented = !!e.defaultPrevented;\n"
+            "      window.__netzacCtxPrevented = prevented;\n"
+            "      console.debug(prefix + (prevented ? '1' : '0'));\n"
+            "    });\n"
+            "  }, true);\n"
+            "})();\n").arg(prefix);
+
+        QWebEngineScript script;
+        script.setName(ctxGuardName);
+        script.setSourceCode(js);
+        script.setInjectionPoint(QWebEngineScript::DocumentCreation);
+        script.setRunsOnSubFrames(true);
+        script.setWorldId(QWebEngineScript::ApplicationWorld);
+        scripts->insert(script);
+    }
 }
 
 void applyAppearanceToPage(QWebEnginePage *page, const NetzacPreferences &prefs)
@@ -550,12 +589,32 @@ QString NetzacWebPage::takePendingPopupFeatures()
     return out;
 }
 
+bool NetzacWebPage::wasContextMenuPreventedRecently() const
+{
+    return m_lastContextMenuPrevented
+        && m_contextMenuPreventedTimer.isValid()
+        && m_contextMenuPreventedTimer.elapsed() < 500;
+}
+
+void NetzacWebPage::resetContextMenuPrevented()
+{
+    m_lastContextMenuPrevented = false;
+    m_contextMenuPreventedTimer.invalidate();
+}
+
 void NetzacWebPage::javaScriptConsoleMessage(
     JavaScriptConsoleMessageLevel level,
     const QString &message,
     int lineNumber,
     const QString &sourceID)
 {
+    const QString &ctxPrefix = contextMenuTokenPrefix();
+    if (message.startsWith(ctxPrefix)) {
+        const QString payload = message.mid(ctxPrefix.size()).trimmed();
+        m_lastContextMenuPrevented = (payload == QLatin1String("1"));
+        m_contextMenuPreventedTimer.restart();
+        return;
+    }
     const QString &prefix = popupTokenPrefix();
     if (message.startsWith(prefix)) {
         m_pendingPopupFeatures = message.mid(prefix.size()).trimmed();
@@ -618,6 +677,53 @@ QWebEngineView *NetzacWebView::createWindow(QWebEnginePage::WebWindowType type)
 
 void NetzacWebView::contextMenuEvent(QContextMenuEvent *event)
 {
+    QWebEngineContextMenuRequest *req = lastContextMenuRequest();
+    if (!req || req->isAccepted() || event->spontaneous()) {
+        event->ignore();
+        return;
+    }
+
+    auto *netzacPage = qobject_cast<NetzacWebPage *>(page());
+    if (netzacPage && netzacPage->wasContextMenuPreventedRecently()) {
+        req->setAccepted(true);
+        event->accept();
+        return;
+    }
+
+    WebContextMenuData data;
+    data.globalPos = event->globalPos();
+    data.linkUrl = req->linkUrl();
+    data.mediaType = req->mediaType();
+    data.mediaUrl = req->mediaUrl();
+    data.isContentEditable = req->isContentEditable();
+    data.selectedText = req->selectedText();
+
+    req->setAccepted(true);
     event->accept();
-    emit contextMenuRequested(event->globalPos(), lastContextMenuRequest());
+
+    if (netzacPage
+        && !netzacPage->isBuiltInPage()
+        && netzacPage->settings()->testAttribute(QWebEngineSettings::JavascriptEnabled)) {
+        QPointer<NetzacWebView> viewPtr(this);
+        QPointer<NetzacWebPage> pagePtr(netzacPage);
+        netzacPage->runJavaScript(
+            QStringLiteral("!!window.__netzacCtxPrevented"),
+            QWebEngineScript::ApplicationWorld,
+            [viewPtr, pagePtr, data](const QVariant &result) {
+                if (!viewPtr)
+                    return;
+                if (result.toBool())
+                    return;
+                if (pagePtr && pagePtr->wasContextMenuPreventedRecently())
+                    return;
+                emit viewPtr->contextMenuRequested(data);
+            });
+        return;
+    }
+
+    QPointer<NetzacWebView> viewPtr(this);
+    QTimer::singleShot(0, this, [viewPtr, data]() {
+        if (viewPtr)
+            emit viewPtr->contextMenuRequested(data);
+    });
 }

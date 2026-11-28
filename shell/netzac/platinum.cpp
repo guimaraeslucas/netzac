@@ -11,6 +11,7 @@
 #include <QStyle>
 #include <QStyleFactory>
 #include <QStyleHints>
+#include <QStyleOptionButton>
 #include <QWidget>
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold)
@@ -147,11 +148,18 @@ QPalette makePlatinumDarkPalette()
     return pal;
 }
 
+NetzacPreferences::UiTheme s_activeTheme = NetzacPreferences::UiTheme::Platinum;
+
 }  // namespace
 
 bool hasZacos9Style()
 {
     return !zacos9StyleKey().isEmpty();
+}
+
+NetzacPreferences::UiTheme activeUiTheme()
+{
+    return s_activeTheme;
 }
 
 void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
@@ -163,18 +171,31 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
     const QString zacosKey = zacos9StyleKey();
     const bool onZacos = !zacosKey.isEmpty();
     NetzacPreferences::UiTheme effective = theme;
-    if (!onZacos && effective == NetzacPreferences::UiTheme::ZacosDefault)
-        effective = NetzacPreferences::UiTheme::Light;
+    if (!onZacos && effective == NetzacPreferences::UiTheme::Platinum)
+        effective = NetzacPreferences::UiTheme::Zacos9;
+
+    s_activeTheme = effective;
 
     switch (effective) {
-    case NetzacPreferences::UiTheme::ZacosDefault:
+    case NetzacPreferences::UiTheme::Platinum:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
         app.styleHints()->unsetColorScheme();
 #endif
         if (onZacos)
             app.setStyle(zacosKey);
-        if (app.style())
-            app.setPalette(app.style()->standardPalette());
+        if (app.style()) {
+            QPalette pal = app.style()->standardPalette();
+            app.style()->polish(pal);
+            app.setPalette(pal);
+        }
+        break;
+    case NetzacPreferences::UiTheme::Zacos9:
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
+        app.setStyle(QStringLiteral("Fusion"));
+        app.setPalette(makePlatinumLightPalette());
+        app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
         break;
     case NetzacPreferences::UiTheme::Light:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
@@ -189,6 +210,7 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
         app.setStyle(QStringLiteral("Fusion"));
         app.setPalette(makePlatinumLightPalette());
 #endif
+        app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
         break;
     case NetzacPreferences::UiTheme::Dark:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
@@ -196,10 +218,9 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
 #endif
         app.setStyle(QStringLiteral("Fusion"));
         app.setPalette(makePlatinumDarkPalette());
+        app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
         break;
     }
-
-    app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
 
     for (QWidget *w : QApplication::topLevelWidgets()) {
         if (!w)
@@ -998,10 +1019,34 @@ void drawPlatinumBevelButton(
     const QPalette &palette,
     bool enabled,
     bool down,
-    bool hovered)
+    bool hovered,
+    const QWidget *widget)
 {
-    const PlatinumColors c = platinumColors(palette);
-    const bool isDark = c.button.lightness() < 128;
+    if (s_activeTheme != NetzacPreferences::UiTheme::Zacos9) {
+        QStyle *st = widget ? widget->style() : QApplication::style();
+        if (!st)
+            return;
+        QStyleOptionButton opt;
+        if (widget)
+            opt.initFrom(widget);
+        opt.rect = rect;
+        opt.palette = palette;
+        opt.features = QStyleOptionButton::None;
+        opt.state = QStyle::State_None;
+        if (enabled)
+            opt.state |= QStyle::State_Enabled;
+        if (down)
+            opt.state |= QStyle::State_Sunken;
+        else
+            opt.state |= QStyle::State_Raised;
+        if (hovered && enabled)
+            opt.state |= QStyle::State_MouseOver;
+        painter.save();
+        st->drawPrimitive(QStyle::PE_PanelButtonCommand, &opt, &painter, widget);
+        painter.restore();
+        return;
+    }
+
     const int x1 = rect.left();
     const int y1 = rect.top();
     const int x2 = rect.right();
@@ -1009,51 +1054,34 @@ void drawPlatinumBevelButton(
     if (x2 - x1 < 4 || y2 - y1 < 4)
         return;
 
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, false);
+
     if (!enabled) {
-        const QColor border = isDark ? c.dark : c.mid;
-        painter.fillRect(rect, c.window);
-        painter.setPen(border);
+        painter.fillRect(rect, QColor(QStringLiteral("#dddddd")));
+        painter.setPen(QColor(QStringLiteral("#aaaaaa")));
         painter.drawRect(x1, y1, x2 - x1, y2 - y1);
+        painter.restore();
         return;
     }
 
     QColor fill, outerTl, outerBr, outerMix, innerTl, innerBr, innerMix;
     if (down) {
-        if (isDark) {
-            fill = QColor(QStringLiteral("#444444"));
-            outerTl = QColor(QStringLiteral("#111111"));
-            outerBr = QColor(QStringLiteral("#555555"));
-            outerMix = QColor(QStringLiteral("#333333"));
-            innerTl = QColor(QStringLiteral("#2a2a2a"));
-            innerBr = QColor(QStringLiteral("#666666"));
-            innerMix = QColor(QStringLiteral("#444444"));
-        } else {
-            fill = QColor(QStringLiteral("#888888"));
-            outerTl = QColor(QStringLiteral("#222222"));
-            outerBr = QColor(QStringLiteral("#666666"));
-            outerMix = QColor(QStringLiteral("#555555"));
-            innerTl = QColor(QStringLiteral("#555555"));
-            innerBr = QColor(QStringLiteral("#aaaaaa"));
-            innerMix = QColor(QStringLiteral("#888888"));
-        }
+        fill = QColor(QStringLiteral("#888888"));
+        outerTl = QColor(QStringLiteral("#222222"));
+        outerBr = QColor(QStringLiteral("#666666"));
+        outerMix = QColor(QStringLiteral("#555555"));
+        innerTl = QColor(QStringLiteral("#555555"));
+        innerBr = QColor(QStringLiteral("#aaaaaa"));
+        innerMix = QColor(QStringLiteral("#888888"));
     } else {
-        if (isDark) {
-            fill = hovered ? QColor(QStringLiteral("#3c3c3c")) : QColor(QStringLiteral("#333333"));
-            outerTl = QColor(QStringLiteral("#4c4c4c"));
-            outerBr = QColor(QStringLiteral("#141414"));
-            outerMix = QColor(QStringLiteral("#2a2a2a"));
-            innerTl = QColor(QStringLiteral("#5a5a5a"));
-            innerBr = QColor(QStringLiteral("#222222"));
-            innerMix = QColor(QStringLiteral("#333333"));
-        } else {
-            fill = hovered ? QColor(QStringLiteral("#d8d8d8")) : QColor(QStringLiteral("#cccccc"));
-            outerTl = QColor(QStringLiteral("#888888"));
-            outerBr = QColor(QStringLiteral("#444444"));
-            outerMix = QColor(QStringLiteral("#777777"));
-            innerTl = QColor(QStringLiteral("#ffffff"));
-            innerBr = QColor(QStringLiteral("#999999"));
-            innerMix = QColor(QStringLiteral("#cccccc"));
-        }
+        fill = hovered ? QColor(QStringLiteral("#d8d8d8")) : QColor(QStringLiteral("#cccccc"));
+        outerTl = QColor(QStringLiteral("#888888"));
+        outerBr = QColor(QStringLiteral("#444444"));
+        outerMix = QColor(QStringLiteral("#777777"));
+        innerTl = QColor(QStringLiteral("#ffffff"));
+        innerBr = QColor(QStringLiteral("#999999"));
+        innerMix = QColor(QStringLiteral("#cccccc"));
     }
 
     painter.fillRect(QRect(x1 + 2, y1 + 2, x2 - x1 - 3, y2 - y1 - 3), fill);
@@ -1077,4 +1105,6 @@ void drawPlatinumBevelButton(
     painter.setPen(innerMix);
     painter.drawPoint(x2 - 1, y1 + 1);
     painter.drawPoint(x1 + 1, y2 - 1);
+
+    painter.restore();
 }

@@ -153,6 +153,7 @@ jobs:
         env:
           ZIP_NAME: ${{ steps.package.outputs.zip }}
           INSTALLER_NAME: ${{ steps.package.outputs.installer }}
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
         run: |
           $ErrorActionPreference = 'Stop'
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -188,8 +189,17 @@ jobs:
             Write-Host "::error::Installer '$($env:INSTALLER_NAME)' is unexpectedly small ($($installerItem.Length) bytes)."
             exit 1
           }
-          if ($installerItem.VersionInfo.ProductName -ne 'Netzac Navigator') {
-            Write-Host "::error::Unexpected installer ProductName '$($installerItem.VersionInfo.ProductName)'."
+          # Inno Setup patches its VERSIONINFO strings into fixed-width fields, so the
+          # padding length depends on the compiler stub and leaves trailing spaces.
+          # Always compare the trimmed value (and never call .Trim() on a raw possibly-$null).
+          $productName = "$($installerItem.VersionInfo.ProductName)".Trim()
+          $productVersion = "$($installerItem.VersionInfo.ProductVersion)".Trim()
+          if ($productName -ne 'Netzac Navigator') {
+            Write-Host "::error::Unexpected installer ProductName '$productName'."
+            exit 1
+          }
+          if ($productVersion -ne $env:EXPECTED_VERSION) {
+            Write-Host "::error::Unexpected installer ProductVersion '$productVersion' (expected '$($env:EXPECTED_VERSION)')."
             exit 1
           }
           $installerSizeMb = [math]::Round(($installerItem.Length / 1MB), 1)

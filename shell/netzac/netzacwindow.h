@@ -38,8 +38,8 @@ class QMenuBar;
 class QStackedWidget;
 class QStatusBar;
 class QVBoxLayout;
-class QWebEngineContextMenuRequest;
 class QWebEngineView;
+struct WebContextMenuData;
 
 class CollapsibleToolbar;
 class ElidingStatusLabel;
@@ -110,7 +110,7 @@ private slots:
     void onTabLinkHovered(NetzacWebView *view, const QString &url);
     void onCalmEnabledChanged(NetzacWebView *view, bool enabled);
     void onCalmEvaluationFinished(NetzacWebView *view, const CalmModeController::EvaluationReport &report);
-    void showWebContextMenu(const QPoint &globalPos, QWebEngineContextMenuRequest *request);
+    void showWebContextMenu(const WebContextMenuData &data);
 
     void showBookmarksPopup();
     void addCurrentBookmark();
@@ -144,6 +144,7 @@ private:
         bool showingBuiltin = false;
         bool isLoading = false;
         int loadProgress = 0;
+        qint64 inactiveSinceMs = 0;
         QSet<QPair<QString, int>> oncePermissions;
     };
 
@@ -151,6 +152,7 @@ private:
     bool canAcceptDroppedTabs() const;
     void moveTab(int from, int to);
     void detachTab(int index, const QPoint &globalPos);
+    void detachAllOtherTabsToWindows();
     void transferTabTo(int index, PlatinumTabBar *targetBar, int targetInsertIndex);
     void adoptTab(const BrowserTab &tab, int insertIndex = -1);
     void clearTabsForAdoption();
@@ -159,7 +161,19 @@ private:
     const BrowserTab *currentTab() const;
     void syncUiToCurrentTab();
     void updateTabBarPlacement();
+    void applyPreferences(const NetzacPreferences &prefs, bool resetAll = false);
     void applyPopupRestrictions();
+    bool isHibernationEligible() const;
+    bool canHibernateTab(const BrowserTab &tab) const;
+    void freezeTab(BrowserTab &tab);
+    void discardTab(BrowserTab &tab);
+    void wakeTab(BrowserTab *tab);
+    void onWindowFocusLost();
+    void onWindowFocusGained();
+    void handleFreezeTimeout();
+    void handleDiscardTimeout();
+    void handleLowMemoryPressure();
+    void sweepBackgroundTabs();
 
     void buildMenus();
     void buildToolbars();
@@ -237,12 +251,17 @@ private:
     QTimer m_fsHideTimer;
     QTimer m_fsRevealTimer;
     QTimer m_fsMousePollTimer;
+    bool m_windowFocused = true;
+    QTimer m_freezeTimer;
+    QTimer m_discardTimer;
+    QTimer m_bgTabSweepTimer;
     QMap<QPair<QString, int>, QVector<std::function<void(bool)>>> m_pendingPermissionCallbacks;
     QAction *m_actCalmMode = nullptr;
     QAction *m_actStopMenu = nullptr;
     QAction *m_actFullScreen = nullptr;
     QAction *m_actNewTab = nullptr;
     QAction *m_actCloseTab = nullptr;
+    QAction *m_actCloseWindow = nullptr;
     QAction *m_actLinkModeTabs = nullptr;
     QAction *m_actLinkModeWindows = nullptr;
     QAction *m_actTabStyleLeft = nullptr;

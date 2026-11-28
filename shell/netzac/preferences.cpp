@@ -4,12 +4,15 @@
 #include "bookmarks.h"
 #include "history.h"
 #include "i18n.h"
+#include "platinum.h"
 #include "webview.h"
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 #include <QNetworkProxy>
 #include <QNetworkProxyFactory>
 #include <QPointer>
@@ -17,7 +20,9 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QTimer>
 #include <QUrl>
+#include <QUuid>
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
@@ -149,9 +154,10 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.rememberPasswords = true;
     prefs.showNavButtonText = true;
     prefs.disableGpuAcceleration = false;
+    prefs.energySaverMode = false;
     prefs.enablePlatinumScrollbars = true;
     prefs.scrollbarAccent = QStringLiteral("system");
-    prefs.uiTheme = UiTheme::ZacosDefault;
+    prefs.uiTheme = UiTheme::Platinum;
     prefs.forceCustomFonts = false;
     prefs.proportionalFontStyle = ProportionalFontStyle::SansSerif;
     prefs.serifFont.clear();
@@ -215,6 +221,7 @@ NetzacPreferences NetzacPreferences::load()
     prefs.rememberPasswords = s.value(QStringLiteral("navigator/rememberPasswords"), prefs.rememberPasswords).toBool();
     prefs.showNavButtonText = s.value(QStringLiteral("navigator/showNavButtonText"), prefs.showNavButtonText).toBool();
     prefs.disableGpuAcceleration = s.value(QStringLiteral("navigator/disableGpuAcceleration"), prefs.disableGpuAcceleration).toBool();
+    prefs.energySaverMode = s.value(QStringLiteral("navigator/energySaverMode"), prefs.energySaverMode).toBool();
 
     prefs.enablePlatinumScrollbars = s.value(
         QStringLiteral("appearance/enablePlatinumScrollbars"),
@@ -233,7 +240,7 @@ NetzacPreferences NetzacPreferences::load()
     const int themeVal = qBound(
         0,
         s.value(QStringLiteral("appearance/uiTheme"), int(prefs.uiTheme)).toInt(),
-        2);
+        3);
     prefs.uiTheme = static_cast<UiTheme>(themeVal);
     prefs.forceCustomFonts = s.value(
         QStringLiteral("appearance/forceCustomFonts"),
@@ -372,6 +379,7 @@ void NetzacPreferences::save() const
         s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
         s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
         s.setValue(QStringLiteral("navigator/disableGpuAcceleration"), disableGpuAcceleration);
+        s.setValue(QStringLiteral("navigator/energySaverMode"), energySaverMode);
 
         s.setValue(QStringLiteral("appearance/enablePlatinumScrollbars"), enablePlatinumScrollbars);
         s.setValue(QStringLiteral("appearance/scrollbarAccent"), scrollbarAccent);
@@ -1292,4 +1300,102 @@ void NetzacPreferences::upsertSitePermission(
     if (!found && policy != PermissionPolicy::Ask)
         rules.append({clean, type, policy});
     saveSitePermissions(rules);
+}
+
+PreferencesBus *PreferencesBus::instance()
+{
+    static QPointer<PreferencesBus> s_bus;
+    if (!s_bus)
+        s_bus = new PreferencesBus(QCoreApplication::instance());
+    return s_bus.data();
+}
+
+PreferencesBus::PreferencesBus(QObject *parent)
+    : QObject(parent)
+    , m_instanceId(QUuid::createUuid().toString(QUuid::Id128))
+{
+    QString configRoot = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+    if (configRoot.isEmpty())
+        configRoot = QDir::homePath() + QStringLiteral("/.config");
+    m_syncDir = configRoot + QStringLiteral("/zacos9");
+    m_syncFilePath = m_syncDir + QStringLiteral("/netzac-sync.rev");
+
+    QFile existing(m_syncFilePath);
+    if (existing.open(QIODevice::ReadOnly | QIODevice::Text))
+        m_lastToken = QString::fromUtf8(existing.readAll()).trimmed();
+
+    m_reloadTimer = new QTimer(this);
+    m_reloadTimer->setSingleShot(true);
+    m_reloadTimer->setInterval(50);
+    connect(m_reloadTimer, &QTimer::timeout, this, &PreferencesBus::handleExternalSync);
+
+    m_watcher = new QFileSystemWatcher(this);
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, [this]() {
+        if (m_reloadTimer)
+            m_reloadTimer->start();
+    });
+    connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this]() {
+        if (m_reloadTimer)
+            m_reloadTimer->start();
+    });
+    ensureWatcher();
+}
+
+void PreferencesBus::ensureWatcher()
+{
+    if (!m_watcher)
+        return;
+    if (!m_syncDir.isEmpty()) {
+        QDir().mkpath(m_syncDir);
+        if (QFileInfo::exists(m_syncDir) && !m_watcher->directories().contains(m_syncDir))
+            m_watcher->addPath(m_syncDir);
+    }
+    if (!m_syncFilePath.isEmpty()
+        && QFileInfo::exists(m_syncFilePath)
+        && !m_watcher->files().contains(m_syncFilePath)) {
+        m_watcher->addPath(m_syncFilePath);
+    }
+}
+
+void PreferencesBus::writeSyncToken(bool resetAll)
+{
+    QDir().mkpath(m_syncDir);
+    const QString token = QStringLiteral("%1:%2:%3")
+        .arg(m_instanceId)
+        .arg(++m_localSeq)
+        .arg(resetAll ? 1 : 0);
+    QFile f(m_syncFilePath);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        f.write(token.toUtf8());
+        f.close();
+        m_lastToken = token;
+    }
+    ensureWatcher();
+}
+
+void PreferencesBus::broadcast(const NetzacPreferences &prefs, bool resetAll)
+{
+    writeSyncToken(resetAll);
+    emit preferencesChanged(prefs, resetAll);
+}
+
+void PreferencesBus::handleExternalSync()
+{
+    ensureWatcher();
+    QFile f(m_syncFilePath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+    const QString token = QString::fromUtf8(f.readAll()).trimmed();
+    if (token.isEmpty() || token == m_lastToken || token.startsWith(m_instanceId + QLatin1Char(':')))
+        return;
+
+    m_lastToken = token;
+    const bool remoteResetAll = token.endsWith(QStringLiteral(":1"));
+    const NetzacPreferences loaded = NetzacPreferences::load();
+    loaded.apply(netzacProfile());
+    if (auto *app = qobject_cast<QApplication *>(QApplication::instance())) {
+        if (loaded.uiTheme != activeUiTheme() || remoteResetAll)
+            applyZacos9Theme(*app, loaded.uiTheme);
+    }
+    emit preferencesChanged(loaded, remoteResetAll);
 }

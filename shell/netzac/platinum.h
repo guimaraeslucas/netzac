@@ -31,7 +31,8 @@ QFont zacosMonoFont(int pixelSize = 12);
 bool hasZacos9Style();
 void applyZacos9Theme(
     QApplication &app,
-    NetzacPreferences::UiTheme theme = NetzacPreferences::UiTheme::ZacosDefault);
+    NetzacPreferences::UiTheme theme = NetzacPreferences::UiTheme::Platinum);
+NetzacPreferences::UiTheme activeUiTheme();
 PlatinumColors platinumColors(const QPalette &palette);
 
 QPixmap makeDisabledPixmap(const QPixmap &pm);
@@ -45,4 +46,5 @@ void drawPlatinumBevelButton(
     const QPalette &palette,
     bool enabled,
     bool down,
-    bool hovered);
+    bool hovered,
+    const QWidget *widget = nullptr);

@@ -1,5 +1,5 @@
 moc_files = qt6.compile_moc(
-  headers: ['adblocker.h', 'calmmode.h', 'widgets.h', 'dialogs.h', 'webview.h', 'netzacwindow.h'],
+  headers: ['adblocker.h', 'calmmode.h', 'hibernation.h', 'preferences.h', 'widgets.h', 'dialogs.h', 'webview.h', 'netzacwindow.h'],
   dependencies: qt6_dep,
 )
 
@@ -26,6 +26,7 @@ netzac_sources = [
   'adblocker.cpp',
   'bookmarks.cpp',
   'calmmode.cpp',
+  'hibernation.cpp',
   'history.cpp',
   'platinum.cpp',
   'preferences.cpp',

@@ -1666,7 +1666,11 @@ msgid "Application Theme:"
 msgstr ""
 
 #: shell/netzac/dialogs.cpp
-msgid "ZacOS 9 Default"
+msgid "Platinum"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "ZacOS 9"
 msgstr ""
 
 #: shell/netzac/dialogs.cpp
@@ -1931,4 +1935,12 @@ msgstr ""
 
 #: shell/netzac/dialogs.cpp
 msgid "Wrap lines"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable Energy Saver mode (freeze and discard inactive windows)"
+msgstr ""
+
+#: shell/netzac/dialogs.cpp
+msgid "Freezes unfocused windows after 5 minutes and discards them after 2 hours (or when available memory drops below 15%). Also activates automatically when system energy saving mode is on."
 msgstr ""

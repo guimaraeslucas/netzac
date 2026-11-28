@@ -147,7 +147,7 @@ void PlatinumNavButton::paintEvent(QPaintEvent * /*event*/)
     QPainter painter(this);
     const bool pressed = isDown() || isChecked();
     drawPlatinumBevelButton(
-        painter, rect(), palette(), isEnabled(), pressed, m_hovered);
+        painter, rect(), palette(), isEnabled(), pressed, m_hovered, this);
 
     const int offset = pressed ? 1 : 0;
     const QPixmap &pm = isEnabled() ? m_iconPm : m_disabledPm;
@@ -320,7 +320,7 @@ void NetzacThrobber::paintEvent(QPaintEvent * /*event*/)
     const bool showDown = m_interactive && isDown();
     const bool showHover = m_interactive && underMouse();
     drawPlatinumBevelButton(
-        painter, rect(), palette(), isEnabled(), showDown, showHover);
+        painter, rect(), palette(), isEnabled(), showDown, showHover, this);
 
     const QRect inner = rect().adjusted(4, 4, -4, -4);
     if (inner.width() <= 2 || inner.height() <= 2)
@@ -496,7 +496,7 @@ void PlatinumDropArrowButton::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
     drawPlatinumBevelButton(
-        painter, rect(), palette(), isEnabled(), isDown(), m_hovered);
+        painter, rect(), palette(), isEnabled(), isDown(), m_hovered, this);
 
     const int offset = isDown() ? 1 : 0;
     const int cx = width() / 2 + offset;
@@ -1915,7 +1915,7 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
         }
 
         // "+ New Tab" Platinum bevel button
-        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab);
+        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab, this);
         p.setFont(font());
         p.setPen(c.text);
         p.drawText(newTabRect, Qt::AlignCenter, QStringLiteral("+ ") + ztr("New Tab"));
@@ -1995,7 +1995,7 @@ void PlatinumTabBar::paintEvent(QPaintEvent * /*event*/)
         }
 
         // "+" button
-        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab);
+        drawPlatinumBevelButton(p, newTabRect, palette(), true, false, m_hoveredNewTab, this);
         p.setFont(font());
         p.setPen(c.text);
         p.drawText(newTabRect, Qt::AlignCenter, QStringLiteral("+"));

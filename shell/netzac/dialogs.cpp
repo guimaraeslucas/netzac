@@ -233,9 +233,13 @@ AboutDialog::AboutDialog(QWidget *parent)
     lay->addLayout(btnRow);
 }
 
-BookmarksDialog::BookmarksDialog(QVector<QPair<QString, QString>> *bookmarks, QWidget *parent)
+BookmarksDialog::BookmarksDialog(
+    QVector<QPair<QString, QString>> *bookmarks,
+    const QVector<NetzacPreferences::PersonalToolbarItem> &personalToolbar,
+    QWidget *parent)
     : PlatinumDialog(parent)
     , m_bookmarks(bookmarks)
+    , m_personalToolbar(personalToolbar)
 {
     setWindowTitle(ztr("Bookmarks"));
     resize(440, 300);
@@ -359,15 +363,25 @@ void BookmarksDialog::exportBookmarks()
 {
     if (!m_bookmarks)
         return;
+
+    QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    if (defaultDir.isEmpty())
+        defaultDir = QDir::homePath();
+    const QString suggestedPath = QDir(defaultDir).filePath(QStringLiteral("netzac-bookmarks.html"));
+
     const QString path = platinumSaveFileName(
         this,
         ztr("Export Bookmarks (Chrome / Firefox HTML)"),
-        QStringLiteral("netzac-bookmarks.html"),
+        suggestedPath,
         ztr("HTML Bookmarks (*.html *.htm);;All Files (*)"));
     if (path.isEmpty())
         return;
 
-    if (!BookmarkStorage::exportToHtmlFile(*m_bookmarks, path)) {
+    QString exportPath = path;
+    if (QFileInfo(exportPath).suffix().isEmpty())
+        exportPath += QStringLiteral(".html");
+
+    if (!BookmarkStorage::exportToHtmlFile(*m_bookmarks, m_personalToolbar, exportPath)) {
         PlatinumAlertDialog(
             ztr("Export Bookmarks"),
             ztr("Could not write bookmarks to the selected file."),
@@ -556,6 +570,16 @@ QWidget *PreferencesDialog::buildNavigatorPage(const QString &currentUrl)
         ztr("Enable only on incompatible virtual machines or drivers. "
             "Keeping GPU acceleration enabled provides faster web rendering."));
     lay->addWidget(m_disableGpuChk);
+
+    m_energySaverChk = new QCheckBox(
+        ztr("Enable Energy Saver mode (freeze and discard inactive windows)"),
+        page);
+    m_energySaverChk->setChecked(m_prefs.energySaverMode);
+    m_energySaverChk->setToolTip(
+        ztr("Freezes unfocused windows after 5 minutes and discards them after 2 hours "
+            "(or when available memory drops below 15%). Also activates automatically "
+            "when system energy saving mode is on."));
+    lay->addWidget(m_energySaverChk);
 
     lay->addSpacing(8);
     lay->addWidget(new QLabel(ztr("Default Browser:"), page));
@@ -757,16 +781,18 @@ QWidget *PreferencesDialog::buildAppearancePage()
     m_uiThemePopup = new PlatinumPopupButton(page);
     m_uiThemePopup->setMinimumWidth(180);
     if (hasZacos9Style()) {
-        m_uiThemePopup->addItem(ztr("ZacOS 9 Default"), int(NetzacPreferences::UiTheme::ZacosDefault));
+        m_uiThemePopup->addItem(ztr("Platinum"), int(NetzacPreferences::UiTheme::Platinum));
+        m_uiThemePopup->addItem(ztr("ZacOS 9"), int(NetzacPreferences::UiTheme::Zacos9));
         m_uiThemePopup->addItem(ztr("Light"), int(NetzacPreferences::UiTheme::Light));
         m_uiThemePopup->addItem(ztr("Dark"), int(NetzacPreferences::UiTheme::Dark));
         m_uiThemePopup->setCurrentData(int(m_prefs.uiTheme));
     } else {
+        m_uiThemePopup->addItem(ztr("ZacOS 9"), int(NetzacPreferences::UiTheme::Zacos9));
         m_uiThemePopup->addItem(ztr("Light"), int(NetzacPreferences::UiTheme::Light));
         m_uiThemePopup->addItem(ztr("Dark"), int(NetzacPreferences::UiTheme::Dark));
-        const auto effective = (m_prefs.uiTheme == NetzacPreferences::UiTheme::Dark)
-            ? NetzacPreferences::UiTheme::Dark
-            : NetzacPreferences::UiTheme::Light;
+        const auto effective = (m_prefs.uiTheme == NetzacPreferences::UiTheme::Platinum)
+            ? NetzacPreferences::UiTheme::Zacos9
+            : m_prefs.uiTheme;
         m_uiThemePopup->setCurrentData(int(effective));
     }
     themeRow->addWidget(m_uiThemePopup);
@@ -1934,6 +1960,7 @@ NetzacPreferences PreferencesDialog::preferences() const
     out.enableJavaScript = m_jsChk->isChecked();
     out.rememberPasswords = m_rememberPasswordsChk->isChecked();
     out.disableGpuAcceleration = m_disableGpuChk->isChecked();
+    out.energySaverMode = m_energySaverChk->isChecked();
 
     out.uiTheme = static_cast<NetzacPreferences::UiTheme>(m_uiThemePopup->currentData().toInt());
     out.enablePlatinumScrollbars = m_scrollbarsChk->isChecked();
