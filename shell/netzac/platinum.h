@@ -27,6 +27,7 @@ struct PlatinumColors {
 };
 
 QFont zacosFont(const QString &preferred, int pixelSize, bool bold = false);
+QFont zacosMonoFont(int pixelSize = 12);
 bool hasZacos9Style();
 void applyZacos9Theme(
     QApplication &app,

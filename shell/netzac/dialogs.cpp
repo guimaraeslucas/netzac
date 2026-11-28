@@ -7,6 +7,7 @@
 #include "platinum.h"
 #include "widgets.h"
 
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCheckBox>
@@ -24,6 +25,7 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QRegularExpression>
 #include <QIcon>
 #include <QLabel>
@@ -44,6 +46,9 @@
 #include <QSslSocket>
 #include <QStackedWidget>
 #include <QStandardPaths>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QTextStream>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWebEngineCookieStore>
@@ -179,7 +184,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     auto *top = new QHBoxLayout();
     top->setSpacing(12);
     auto *badge = new NetzacThrobber(this);
-    badge->setEnabled(false);
+    badge->setInteractive(false);
     badge->setFixedSize(56, 56);
     top->addWidget(badge, 0, Qt::AlignTop);
 
@@ -412,6 +417,7 @@ PreferencesDialog::PreferencesDialog(
     m_categoryList->addItem(ztr("Personal Toolbar"));
     m_categoryList->addItem(ztr("Quick Links"));
     m_categoryList->addItem(ztr("Cookies"));
+    m_categoryList->addItem(ztr("Permissions"));
     m_categoryList->addItem(ztr("Cache"));
     m_categoryList->addItem(ztr("Proxies"));
     m_categoryList->addItem(ztr("User Agent"));
@@ -439,6 +445,7 @@ PreferencesDialog::PreferencesDialog(
     m_stack->addWidget(buildPersonalToolbarPage());
     m_stack->addWidget(buildQuickLinksPage());
     m_stack->addWidget(buildCookiesPage());
+    m_stack->addWidget(buildPermissionsPage());
     m_stack->addWidget(buildCachePage());
     m_stack->addWidget(buildProxiesPage());
     m_stack->addWidget(buildUserAgentPage());
@@ -1357,6 +1364,194 @@ QWidget *PreferencesDialog::buildCookiesPage()
     return page;
 }
 
+QWidget *PreferencesDialog::buildPermissionsPage()
+{
+    auto *page = new QWidget(this);
+    auto *lay = new QVBoxLayout(page);
+    lay->setContentsMargins(6, 4, 6, 4);
+    lay->setSpacing(6);
+
+    auto *mediaHdr = new QLabel(ztr("Multimedia Playback:"), page);
+    mediaHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(mediaHdr);
+
+    m_autoplayMediaChk = new QCheckBox(
+        ztr("Always start multimedia without requiring interaction"), page);
+    m_autoplayMediaChk->setChecked(m_prefs.autoplayMedia);
+    lay->addWidget(m_autoplayMediaChk);
+
+    auto *autoplayHint = new QLabel(
+        ztr("Allows websites to automatically play audio and video without a click first."),
+        page);
+    autoplayHint->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    autoplayHint->setWordWrap(true);
+    lay->addWidget(autoplayHint);
+
+    auto *sep = new QFrame(page);
+    sep->setFrameShape(QFrame::HLine);
+    lay->addWidget(sep);
+
+    auto *defHdr = new QLabel(ztr("Default Policy for Website Permission Requests:"), page);
+    defHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(defHdr);
+
+    const QVector<NetzacPreferences::PermissionType> permTypes =
+        NetzacPreferences::allPermissionTypes();
+    const QFontMetrics permFm(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
+    const int maxPolicyLabelW = qMax(
+        permFm.horizontalAdvance(ztr("Ask every time")),
+        qMax(permFm.horizontalAdvance(ztr("Always allow")),
+             permFm.horizontalAdvance(ztr("Always block"))));
+    const int popupWidth = qMax(152, maxPolicyLabelW + 44);
+
+    m_defaultPermTable = new QTableWidget(int(permTypes.size()), 2, page);
+    m_defaultPermTable->setHorizontalHeaderLabels({ztr("Permission"), ztr("Default Action")});
+    m_defaultPermTable->verticalHeader()->setVisible(false);
+    m_defaultPermTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_defaultPermTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+    m_defaultPermTable->setColumnWidth(1, popupWidth + 6);
+    m_defaultPermTable->setSelectionMode(QAbstractItemView::NoSelection);
+    m_defaultPermTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_defaultPermTable->setFixedHeight(156);
+
+    m_defaultPermPopups.clear();
+    m_defaultPermPopups.reserve(permTypes.size());
+    for (int row = 0; row < permTypes.size(); ++row) {
+        const auto type = permTypes.at(row);
+        auto *nameItem = new QTableWidgetItem(NetzacPreferences::permissionTypeLabel(type));
+        nameItem->setFlags(Qt::ItemIsEnabled);
+        m_defaultPermTable->setItem(row, 0, nameItem);
+
+        auto *popup = new PlatinumPopupButton(m_defaultPermTable);
+        popup->setFixedHeight(24);
+        popup->setMinimumWidth(popupWidth);
+        popup->addItem(ztr("Ask every time"), int(NetzacPreferences::PermissionPolicy::Ask));
+        popup->addItem(ztr("Always allow"), int(NetzacPreferences::PermissionPolicy::Allow));
+        popup->addItem(ztr("Always block"), int(NetzacPreferences::PermissionPolicy::Deny));
+        popup->setCurrentData(int(m_prefs.defaultPolicyFor(type)));
+        m_defaultPermTable->setCellWidget(row, 1, popup);
+        m_defaultPermTable->setRowHeight(row, 26);
+        m_defaultPermPopups.append(popup);
+    }
+    lay->addWidget(m_defaultPermTable);
+
+    auto *siteHdr = new QLabel(ztr("Existing Website Permissions:"), page);
+    siteHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    lay->addWidget(siteHdr);
+
+    m_sitePermissions = NetzacPreferences::loadSitePermissions();
+    m_sitePermTable = new QTableWidget(0, 3, page);
+    m_sitePermTable->setHorizontalHeaderLabels({ztr("Website"), ztr("Permission"), ztr("Status")});
+    m_sitePermTable->verticalHeader()->setVisible(false);
+    m_sitePermTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    m_sitePermTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    m_sitePermTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    m_sitePermTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_sitePermTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_sitePermTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_sitePermTable->setMinimumHeight(100);
+    lay->addWidget(m_sitePermTable, 1);
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(4);
+    m_permAllowBtn = makeDialogButton(ztr("Allow"), false, page);
+    m_permDenyBtn = makeDialogButton(ztr("Block"), false, page);
+    m_permRemoveBtn = makeDialogButton(ztr("Remove"), false, page);
+    m_permClearBtn = makeDialogButton(ztr("Clear All"), false, page);
+    for (QPushButton *b : {m_permAllowBtn, m_permDenyBtn, m_permRemoveBtn, m_permClearBtn})
+        b->setMinimumWidth(72);
+
+    connect(m_permAllowBtn, &QPushButton::clicked, page, [this]() {
+        const int row = m_sitePermTable->currentRow();
+        if (row >= 0 && row < m_sitePermissions.size()) {
+            m_sitePermissions[row].policy = NetzacPreferences::PermissionPolicy::Allow;
+            refreshSitePermissionsTable();
+            m_sitePermTable->selectRow(row);
+        }
+    });
+    connect(m_permDenyBtn, &QPushButton::clicked, page, [this]() {
+        const int row = m_sitePermTable->currentRow();
+        if (row >= 0 && row < m_sitePermissions.size()) {
+            m_sitePermissions[row].policy = NetzacPreferences::PermissionPolicy::Deny;
+            refreshSitePermissionsTable();
+            m_sitePermTable->selectRow(row);
+        }
+    });
+    connect(m_permRemoveBtn, &QPushButton::clicked, page, [this]() {
+        const int row = m_sitePermTable->currentRow();
+        if (row >= 0 && row < m_sitePermissions.size()) {
+            m_sitePermissions.removeAt(row);
+            refreshSitePermissionsTable();
+            if (!m_sitePermissions.isEmpty())
+                m_sitePermTable->selectRow(qMin(row, int(m_sitePermissions.size()) - 1));
+        }
+    });
+    connect(m_permClearBtn, &QPushButton::clicked, page, [this]() {
+        m_sitePermissions.clear();
+        refreshSitePermissionsTable();
+    });
+    connect(m_sitePermTable, &QTableWidget::itemSelectionChanged, this, [this]() {
+        updateSitePermissionButtons();
+    });
+    connect(m_sitePermTable, &QTableWidget::itemDoubleClicked, page, [this](QTableWidgetItem *item) {
+        if (!item)
+            return;
+        const int row = item->row();
+        if (row >= 0 && row < m_sitePermissions.size()) {
+            m_sitePermissions[row].policy =
+                (m_sitePermissions[row].policy == NetzacPreferences::PermissionPolicy::Allow)
+                    ? NetzacPreferences::PermissionPolicy::Deny
+                    : NetzacPreferences::PermissionPolicy::Allow;
+            refreshSitePermissionsTable();
+            m_sitePermTable->selectRow(row);
+        }
+    });
+
+    btnRow->addWidget(m_permAllowBtn);
+    btnRow->addWidget(m_permDenyBtn);
+    btnRow->addWidget(m_permRemoveBtn);
+    btnRow->addStretch(1);
+    btnRow->addWidget(m_permClearBtn);
+    lay->addLayout(btnRow);
+
+    refreshSitePermissionsTable();
+    return page;
+}
+
+void PreferencesDialog::refreshSitePermissionsTable()
+{
+    if (!m_sitePermTable)
+        return;
+    m_sitePermTable->setRowCount(int(m_sitePermissions.size()));
+    for (int row = 0; row < m_sitePermissions.size(); ++row) {
+        const auto &rule = m_sitePermissions.at(row);
+        const QString statusText = (rule.policy == NetzacPreferences::PermissionPolicy::Allow)
+            ? ztr("Always allow")
+            : ztr("Always block");
+        m_sitePermTable->setItem(row, 0, new QTableWidgetItem(rule.origin));
+        m_sitePermTable->setItem(row, 1, new QTableWidgetItem(NetzacPreferences::permissionTypeLabel(rule.type)));
+        m_sitePermTable->setItem(row, 2, new QTableWidgetItem(statusText));
+        m_sitePermTable->setRowHeight(row, 22);
+    }
+    updateSitePermissionButtons();
+}
+
+void PreferencesDialog::updateSitePermissionButtons()
+{
+    const int row = m_sitePermTable ? m_sitePermTable->currentRow() : -1;
+    const bool hasRow = (row >= 0 && row < m_sitePermissions.size());
+    if (m_permAllowBtn)
+        m_permAllowBtn->setEnabled(
+            hasRow && m_sitePermissions.at(row).policy != NetzacPreferences::PermissionPolicy::Allow);
+    if (m_permDenyBtn)
+        m_permDenyBtn->setEnabled(
+            hasRow && m_sitePermissions.at(row).policy != NetzacPreferences::PermissionPolicy::Deny);
+    if (m_permRemoveBtn)
+        m_permRemoveBtn->setEnabled(hasRow);
+    if (m_permClearBtn)
+        m_permClearBtn->setEnabled(!m_sitePermissions.isEmpty());
+}
+
 QWidget *PreferencesDialog::buildCachePage()
 {
     auto *page = new QWidget(this);
@@ -1784,6 +1979,19 @@ NetzacPreferences PreferencesDialog::preferences() const
     else
         out.cookiePolicy = NetzacPreferences::CookiePolicy::AllowAll;
     out.sessionCookiesOnly = m_cookieSessionChk->isChecked();
+
+    if (m_autoplayMediaChk)
+        out.autoplayMedia = m_autoplayMediaChk->isChecked();
+    const QVector<NetzacPreferences::PermissionType> permTypes =
+        NetzacPreferences::allPermissionTypes();
+    for (int i = 0; i < permTypes.size() && i < m_defaultPermPopups.size(); ++i) {
+        if (PlatinumPopupButton *popup = m_defaultPermPopups.at(i)) {
+            out.setDefaultPolicyFor(
+                permTypes.at(i),
+                static_cast<NetzacPreferences::PermissionPolicy>(popup->currentData().toInt()));
+        }
+    }
+    out.sitePermissions = m_sitePermissions;
 
     out.cacheMode = static_cast<NetzacPreferences::CacheMode>(m_cachePopup->currentData().toInt());
     out.cacheMaxMb = m_cacheMaxSpin->value();
@@ -2819,4 +3027,258 @@ void CertificateInfoDialog::displayCertificateResult()
     }
 
     m_detailsEdit->setPlainText(lines.join(QLatin1Char('\n')));
+}
+
+namespace {
+
+QString permissionPromptText(const QString &host, NetzacPreferences::PermissionType type)
+{
+    using PT = NetzacPreferences::PermissionType;
+    switch (type) {
+    case PT::Geolocation:
+        return ztr("%1 wants to know your location.").arg(host);
+    case PT::Notifications:
+        return ztr("%1 wants to show notifications.").arg(host);
+    case PT::MediaAudioCapture:
+        return ztr("%1 wants to use your microphone.").arg(host);
+    case PT::MediaVideoCapture:
+        return ztr("%1 wants to use your camera.").arg(host);
+    case PT::MediaAudioVideoCapture:
+        return ztr("%1 wants to use your camera and microphone.").arg(host);
+    case PT::ClipboardReadWrite:
+        return ztr("%1 wants to read and write your clipboard.").arg(host);
+    case PT::DesktopVideoCapture:
+        return ztr("%1 wants to share your screen.").arg(host);
+    case PT::DesktopAudioVideoCapture:
+        return ztr("%1 wants to share your screen and audio.").arg(host);
+    case PT::MouseLock:
+        return ztr("%1 wants to lock your mouse pointer.").arg(host);
+    case PT::LocalFontsAccess:
+        return ztr("%1 wants to access your installed fonts.").arg(host);
+    }
+    return ztr("%1 is requesting a website permission.").arg(host);
+}
+
+}  // namespace
+
+PermissionPromptDialog::PermissionPromptDialog(
+    const QUrl &origin,
+    NetzacPreferences::PermissionType permissionType,
+    QWidget *parent)
+    : PlatinumDialog(parent)
+{
+    setModal(false);
+    setAttribute(Qt::WA_DeleteOnClose, true);
+    setAttribute(Qt::WA_QuitOnClose, false);
+    setWindowTitle(ztr("Website Permission Request"));
+    setFixedWidth(440);
+
+    const QString host = origin.host().isEmpty()
+        ? origin.toDisplayString()
+        : origin.host();
+
+    auto *lay = new QVBoxLayout(this);
+    lay->setContentsMargins(14, 14, 14, 12);
+    lay->setSpacing(10);
+
+    auto *top = new QHBoxLayout();
+    top->setSpacing(12);
+
+    auto *iconLbl = new QLabel(this);
+    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("question"), 32));
+    iconLbl->setFixedSize(32, 32);
+    top->addWidget(iconLbl, 0, Qt::AlignTop);
+
+    auto *textCol = new QVBoxLayout();
+    textCol->setSpacing(4);
+
+    auto *msgLbl = new QLabel(permissionPromptText(host, permissionType), this);
+    msgLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    msgLbl->setWordWrap(true);
+    textCol->addWidget(msgLbl);
+
+    auto *originLbl = new QLabel(
+        ztr("Origin: %1").arg(NetzacPreferences::normalizePermissionOrigin(origin)),
+        this);
+    originLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    originLbl->setWordWrap(true);
+    textCol->addWidget(originLbl);
+
+    top->addLayout(textCol, 1);
+    lay->addLayout(top);
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(6);
+    btnRow->addStretch(1);
+
+    QPushButton *neverBtn = makeDialogButton(ztr("Never"), false, this);
+    QPushButton *justNowBtn = makeDialogButton(ztr("Just Now"), false, this);
+    QPushButton *alwaysBtn = makeDialogButton(ztr("Always"), true, this);
+
+    connect(neverBtn, &QPushButton::clicked, this, [this]() {
+        m_decision = Decision::Never;
+        reject();
+    });
+    connect(justNowBtn, &QPushButton::clicked, this, [this]() {
+        m_decision = Decision::JustNow;
+        accept();
+    });
+    connect(alwaysBtn, &QPushButton::clicked, this, [this]() {
+        m_decision = Decision::Always;
+        accept();
+    });
+
+    btnRow->addWidget(neverBtn);
+    btnRow->addWidget(justNowBtn);
+    btnRow->addWidget(alwaysBtn);
+    lay->addLayout(btnRow);
+
+    connect(this, &QDialog::finished, this, [this](int) {
+        emit decided(m_decision);
+    });
+
+    adjustSize();
+}
+
+PageSourceDialog::PageSourceDialog(
+    const QString &title,
+    const QString &url,
+    const QString &sourceHtml,
+    QWidget *parent)
+    : PlatinumDialog(parent)
+    , m_sourceHtml(sourceHtml)
+{
+    setWindowTitle(ztr("Page Source"));
+    const QPixmap srcPm = makeAlertIcon(QStringLiteral("source"), 48);
+    setWindowIcon(QIcon(srcPm));
+    setMinimumSize(620, 460);
+    resize(760, 540);
+
+    auto *lay = new QVBoxLayout(this);
+    lay->setContentsMargins(14, 14, 14, 12);
+    lay->setSpacing(10);
+
+    auto *topRow = new QHBoxLayout();
+    topRow->setSpacing(12);
+
+    auto *iconLbl = new QLabel(this);
+    iconLbl->setPixmap(srcPm);
+    iconLbl->setFixedSize(48, 48);
+    topRow->addWidget(iconLbl, 0, Qt::AlignTop);
+
+    auto *metaCol = new QVBoxLayout();
+    metaCol->setSpacing(4);
+
+    auto *titleLbl = new QLabel(title.isEmpty() ? ztr("(Untitled)") : title, this);
+    titleLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    titleLbl->setWordWrap(true);
+    metaCol->addWidget(titleLbl);
+
+    auto *locLbl = new QLabel(ztr("Location: %1").arg(url), this);
+    locLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    locLbl->setWordWrap(true);
+    locLbl->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    metaCol->addWidget(locLbl);
+
+    const int lineCount = sourceHtml.isEmpty() ? 0 : (sourceHtml.count(QLatin1Char('\n')) + 1);
+    auto *statsLbl = new QLabel(
+        ztr("%1 lines — %2 characters").arg(lineCount).arg(sourceHtml.size()),
+        this);
+    statsLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    metaCol->addWidget(statsLbl);
+
+    topRow->addLayout(metaCol, 1);
+    lay->addLayout(topRow);
+
+    auto *sep = new QFrame(this);
+    sep->setFrameShape(QFrame::HLine);
+    lay->addWidget(sep);
+
+    auto *codeBar = new QHBoxLayout();
+    auto *codeHdr = new QLabel(ztr("HTML Source Code:"), this);
+    codeHdr->setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12, true));
+    codeBar->addWidget(codeHdr);
+    codeBar->addStretch(1);
+
+    auto *wrapChk = new QCheckBox(ztr("Wrap lines"), this);
+    wrapChk->setChecked(true);
+    codeBar->addWidget(wrapChk);
+    lay->addLayout(codeBar);
+
+    m_sourceEdit = new QPlainTextEdit(this);
+    m_sourceEdit->setReadOnly(true);
+    m_sourceEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_sourceEdit->setFont(zacosMonoFont(12));
+    m_sourceEdit->setPlainText(m_sourceHtml);
+    lay->addWidget(m_sourceEdit, 1);
+
+    connect(wrapChk, &QCheckBox::toggled, this, [this](bool wrap) {
+        m_sourceEdit->setLineWrapMode(wrap ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
+    });
+
+    auto *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(6);
+
+    m_copyAllBtn = makeDialogButton(ztr("Copy All"), false, this);
+    m_copyAllBtn->setMinimumWidth(96);
+    connect(m_copyAllBtn, &QPushButton::clicked, this, [this]() {
+        if (QClipboard *cb = QApplication::clipboard())
+            cb->setText(m_sourceHtml);
+        if (m_feedbackLbl)
+            m_feedbackLbl->setText(ztr("Copied all source code to clipboard."));
+    });
+    btnRow->addWidget(m_copyAllBtn);
+
+    m_copySelBtn = makeDialogButton(ztr("Copy Selection"), false, this);
+    m_copySelBtn->setMinimumWidth(116);
+    m_copySelBtn->setEnabled(false);
+    connect(m_sourceEdit, &QPlainTextEdit::copyAvailable, m_copySelBtn, &QWidget::setEnabled);
+    connect(m_copySelBtn, &QPushButton::clicked, this, [this]() {
+        m_sourceEdit->copy();
+        if (m_feedbackLbl)
+            m_feedbackLbl->setText(ztr("Copied selection to clipboard."));
+    });
+    btnRow->addWidget(m_copySelBtn);
+
+    const QUrl parsedUrl(url);
+    QString suggestedName = parsedUrl.host().trimmed();
+    if (suggestedName.isEmpty())
+        suggestedName = QStringLiteral("page-source.html");
+    else
+        suggestedName += QStringLiteral("-source.html");
+
+    m_saveBtn = makeDialogButton(ztr("Save As..."), false, this);
+    m_saveBtn->setMinimumWidth(96);
+    connect(m_saveBtn, &QPushButton::clicked, this, [this, suggestedName]() {
+        const QString path = platinumSaveFileName(
+            this,
+            ztr("Save Source As"),
+            suggestedName,
+            ztr("HTML Files (*.html *.htm);;All Files (*)"));
+        if (path.isEmpty())
+            return;
+
+        QFile f(path);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+            PlatinumAlertDialog(ztr("Save Error"), f.errorString(), QStringLiteral("warning"), this).exec();
+            return;
+        }
+        QTextStream out(&f);
+        out << m_sourceHtml;
+        f.close();
+
+        if (m_feedbackLbl)
+            m_feedbackLbl->setText(ztr("Saved: %1").arg(path));
+        emit sourceSaved(path);
+    });
+    btnRow->addWidget(m_saveBtn);
+
+    m_feedbackLbl = new QLabel(this);
+    m_feedbackLbl->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
+    btnRow->addWidget(m_feedbackLbl, 1);
+
+    QPushButton *closeBtn = makeDialogButton(ztr("Close"), true, this);
+    connect(closeBtn, &QPushButton::clicked, this, &QDialog::accept);
+    btnRow->addWidget(closeBtn);
+    lay->addLayout(btnRow);
 }

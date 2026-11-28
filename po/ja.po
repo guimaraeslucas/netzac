@@ -1704,3 +1704,227 @@ msgstr "%1 の保存済みパスワード"
 #: shell/netzac/netzacwindow.cpp
 msgid "Saved password for %1 in Windows Credential Manager"
 msgstr "%1 のパスワードを Windows 資格情報マネージャーに保存しました"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 is requesting a website permission."
+msgstr "%1 がウェブサイトの権限を要求しています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to access your installed fonts."
+msgstr "%1 がインストール済みフォントへのアクセスを求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to know your location."
+msgstr "%1 が現在地情報の取得を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to lock your mouse pointer."
+msgstr "%1 がマウスポインターのロックを求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to read and write your clipboard."
+msgstr "%1 がクリップボードの読み取りと書き込みを求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen and audio."
+msgstr "%1 が画面と音声の共有を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen."
+msgstr "%1 が画面の共有を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to show notifications."
+msgstr "%1 が通知の表示を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera and microphone."
+msgstr "%1 がカメラとマイクの使用を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera."
+msgstr "%1 がカメラの使用を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your microphone."
+msgstr "%1 がマイクの使用を求めています。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Allows websites to automatically play audio and video without a click first."
+msgstr "最初のクリックなしでウェブサイトが音声や動画を自動再生できるようにします。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always"
+msgstr "常に許可"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always allow"
+msgstr "常に許可"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always block"
+msgstr "常にブロック"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always start multimedia without requiring interaction"
+msgstr "操作を要求せずにマルチメディアを常に自動再生する"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ask every time"
+msgstr "毎回確認する"
+
+#: shell/netzac/dialogs.cpp
+msgid "Block"
+msgstr "ブロック"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera"
+msgstr "カメラ"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera & Microphone"
+msgstr "カメラとマイク"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clear All"
+msgstr "すべて消去"
+
+#: shell/netzac/preferences.cpp
+msgid "Clipboard"
+msgstr "クリップボード"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Action"
+msgstr "既定の動作"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Policy for Website Permission Requests:"
+msgstr "ウェブサイトの権限要求に対する既定のポリシー:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Existing Website Permissions:"
+msgstr "既存のウェブサイトの権限:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Just Now"
+msgstr "今回のみ"
+
+#: shell/netzac/preferences.cpp
+msgid "Local Fonts"
+msgstr "ローカルフォント"
+
+#: shell/netzac/preferences.cpp
+msgid "Location (Geolocation)"
+msgstr "位置情報 (ジオロケーション)"
+
+#: shell/netzac/preferences.cpp
+msgid "Microphone"
+msgstr "マイク"
+
+#: shell/netzac/preferences.cpp
+msgid "Mouse Lock"
+msgstr "マウスロック"
+
+#: shell/netzac/dialogs.cpp
+msgid "Multimedia Playback:"
+msgstr "マルチメディア再生:"
+
+#: shell/netzac/preferences.cpp
+msgid "Notifications"
+msgstr "通知"
+
+#: shell/netzac/dialogs.cpp
+msgid "Origin: %1"
+msgstr "生成元: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permission"
+msgstr "権限"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permissions"
+msgstr "権限"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen & Audio Capture"
+msgstr "画面と音声のキャプチャ"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen Capture"
+msgstr "画面キャプチャ"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status"
+msgstr "状態"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website"
+msgstr "ウェブサイト"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website Permission Request"
+msgstr "ウェブサイトの権限要求"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "PDF"
+msgstr "PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page sent to printer"
+msgstr "ページをプリンターに送信しました"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing failed"
+msgstr "印刷に失敗しました"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing page..."
+msgstr "ページを印刷中..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF"
+msgstr "ページを PDF として保存"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF..."
+msgstr "ページを PDF として保存..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save this page as PDF"
+msgstr "このページを PDF として保存"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved PDF: %1"
+msgstr "PDF を保存しました: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 lines — %2 characters"
+msgstr "%1 行 — %2 文字"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied all source code to clipboard."
+msgstr "すべてのソースコードをクリップボードにコピーしました。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied selection to clipboard."
+msgstr "選択部分をクリップボードにコピーしました。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy All"
+msgstr "すべてコピー"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Selection"
+msgstr "選択範囲をコピー"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTML Source Code:"
+msgstr "HTML ソースコード:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Save Source As"
+msgstr "ソースを名前を付けて保存"
+
+#: shell/netzac/dialogs.cpp
+msgid "Wrap lines"
+msgstr "行を折り返す"

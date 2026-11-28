@@ -1,9 +1,16 @@
-# Missing features
+# Features
 
 [x] Support to copy via javascript
-[ ] Disable ZacOS css scrollbars option7
+[x] Disable ZacOS css scrollbars option
 [x] Download dialog
+[x] Webengine permissions
+[x] Javascript Fullscreen support
+[x] Geolocation support
+[x] Select Webengine permissions
+[x] More consistent dialogs
+[x] New NetzacThrobber
+[x] Support to printing X pdf
+[x] New ZacOS logo
 
 # Bugs
-
 [?] Sometimes when resizing, the WM breaks or the Webengine stops working - probably fixed

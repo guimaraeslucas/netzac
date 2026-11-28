@@ -23,6 +23,9 @@ class QMenu;
 class QMimeData;
 class QMouseEvent;
 class QPaintEvent;
+class QPropertyAnimation;
+class QResizeEvent;
+class QVBoxLayout;
 
 class PlatinumNavButton : public QPushButton {
     Q_OBJECT
@@ -102,6 +105,7 @@ public:
 
     void setLoading(bool loading);
     void setCompact(bool compact);
+    void setInteractive(bool interactive);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -112,6 +116,7 @@ private slots:
 private:
     bool m_animating = false;
     bool m_compact = false;
+    bool m_interactive = true;
     int m_frame = 0;
     QTimer m_timer;
 };
@@ -256,8 +261,58 @@ class PlatinumViewportFrame : public QFrame {
 public:
     explicit PlatinumViewportFrame(QWidget *child, QWidget *parent = nullptr);
 
+    void setBorderless(bool borderless);
+    bool isBorderless() const { return m_borderless; }
+
 protected:
     void paintEvent(QPaintEvent *event) override;
+
+private:
+    bool m_borderless = false;
+};
+
+class SlideChromeContainer : public QWidget {
+    Q_OBJECT
+    Q_PROPERTY(qreal revealProgress READ revealProgress WRITE setRevealProgress)
+
+public:
+    enum class Edge {
+        Top,
+        Bottom,
+    };
+
+    explicit SlideChromeContainer(Edge edge, QWidget *parent = nullptr);
+
+    QWidget *contentWidget() const { return m_content; }
+    QVBoxLayout *contentLayout() const { return m_contentLayout; }
+    void addWidget(QWidget *widget);
+
+    void slideTo(bool visible, int durationMs = 260);
+    void resetImmediate(bool visible = true);
+    bool isHiddenOrHiding() const;
+
+    qreal revealProgress() const { return m_progress; }
+    void setRevealProgress(qreal progress);
+
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
+private:
+    int naturalContentHeight() const;
+    void updateContentGeometry();
+
+    Edge m_edge;
+    QWidget *m_content = nullptr;
+    QVBoxLayout *m_contentLayout = nullptr;
+    QPropertyAnimation *m_anim = nullptr;
+    qreal m_progress = 1.0;
+    int m_capturedHeight = 0;
+    bool m_animating = false;
+    bool m_targetVisible = true;
 };
 
 class PlatinumProgressBar : public QWidget {

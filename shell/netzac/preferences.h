@@ -2,8 +2,10 @@
 
 #include "calmmode.h"
 
+#include <QMap>
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 #include <QVector>
 
 class QWebEngineProfile;
@@ -57,6 +59,31 @@ struct NetzacPreferences {
         ZacosDefault = 0,
         Light = 1,
         Dark = 2,
+    };
+
+    enum class PermissionType {
+        Geolocation = 0,
+        Notifications = 1,
+        MediaAudioCapture = 2,
+        MediaVideoCapture = 3,
+        MediaAudioVideoCapture = 4,
+        ClipboardReadWrite = 5,
+        DesktopVideoCapture = 6,
+        DesktopAudioVideoCapture = 7,
+        MouseLock = 8,
+        LocalFontsAccess = 9,
+    };
+
+    enum class PermissionPolicy {
+        Ask = 0,
+        Allow = 1,
+        Deny = 2,
+    };
+
+    struct SitePermissionRule {
+        QString origin;
+        PermissionType type = PermissionType::Geolocation;
+        PermissionPolicy policy = PermissionPolicy::Allow;
     };
 
     struct AccentEntry {
@@ -131,6 +158,10 @@ struct NetzacPreferences {
     bool adBlockEnabled = false;
     QStringList adBlockSubscriptions;
 
+    bool autoplayMedia = false;
+    QMap<int, PermissionPolicy> defaultPermissionPolicies;
+    QVector<SitePermissionRule> sitePermissions;
+
     static NetzacPreferences defaults();
     static NetzacPreferences load();
     static bool isGpuAccelerationDisabled();
@@ -152,6 +183,21 @@ struct NetzacPreferences {
     static QVector<PersonalToolbarItem> defaultPersonalToolbar();
     static QString defaultChromeUserAgent();
     static QString userAgentForPreset(const QString &presetId);
+
+    static QVector<PermissionType> allPermissionTypes();
+    static QString permissionTypeKey(PermissionType type);
+    static bool permissionTypeFromKey(const QString &key, PermissionType *out);
+    static QString permissionTypeLabel(PermissionType type);
+    static QString normalizePermissionOrigin(const QUrl &origin);
+
+    PermissionPolicy defaultPolicyFor(PermissionType type) const;
+    void setDefaultPolicyFor(PermissionType type, PermissionPolicy policy);
+    PermissionPolicy sitePolicyFor(const QString &origin, PermissionType type, bool *found = nullptr) const;
+    void setSitePolicy(const QString &origin, PermissionType type, PermissionPolicy policy);
+
+    static QVector<SitePermissionRule> loadSitePermissions();
+    static void saveSitePermissions(const QVector<SitePermissionRule> &rules);
+    static void upsertSitePermission(const QString &origin, PermissionType type, PermissionPolicy policy);
 };
 
 class PasswordStorage {

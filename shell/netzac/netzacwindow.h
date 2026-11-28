@@ -5,15 +5,21 @@
 #include "preferences.h"
 
 #include <QMainWindow>
+#include <QMap>
 #include <QPair>
+#include <QPointer>
 #include <QPoint>
 #include <QRect>
+#include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QUrl>
 #include <QVector>
+#include <QWebEngineFullScreenRequest>
 #include <QWebEnginePage>
 #include <QtGlobal>
+#include <functional>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
 #include <QWebEnginePermission>
 #endif
@@ -28,6 +34,7 @@ class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QMenu;
+class QMenuBar;
 class QStackedWidget;
 class QStatusBar;
 class QVBoxLayout;
@@ -46,6 +53,7 @@ class PlatinumNavButton;
 class PlatinumProgressBar;
 class PlatinumTabBar;
 class PlatinumViewportFrame;
+class SlideChromeContainer;
 
 class NetzacWindow : public QMainWindow {
     Q_OBJECT
@@ -68,6 +76,7 @@ public:
         QWidget *parent,
         bool loadInitial,
         const PopupOptions &popupOpts);
+    ~NetzacWindow() override;
 
     NetzacWebView *webView() const;
     NetzacWebPage *webPage() const;
@@ -81,6 +90,8 @@ public slots:
     void switchToTab(int index);
 
 protected:
+    void changeEvent(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
@@ -107,6 +118,7 @@ private slots:
     void newWindow();
     void openLocationDialog();
     void savePage();
+    void savePageAsPdf();
     void printPage();
     void showFindBar();
     void hideFindBar();
@@ -132,6 +144,7 @@ private:
         bool showingBuiltin = false;
         bool isLoading = false;
         int loadProgress = 0;
+        QSet<QPair<QString, int>> oncePermissions;
     };
 
     int createTabInternal(const QString &url, bool switchTo, bool loadInitial);
@@ -165,6 +178,19 @@ private:
     void fillCredentialInPage(NetzacWebPage *page, const QString &username, const QString &password);
     void writeSavedHtml(const QString &path, const QString &htmlText);
     QWebEngineView *createBrowserWindow(NetzacWebView *opener, QWebEnginePage::WebWindowType type);
+    void handleFullScreenRequested(
+        NetzacWebView *view,
+        NetzacWebPage *page,
+        QWebEngineFullScreenRequest request);
+    void enterFullScreenMode(bool fromHtmlApi);
+    void exitFullScreenMode();
+    void slideFullScreenChrome(bool visible);
+    void updateFullScreenMouseState(const QPoint &localPos);
+    void handleWebPermissionRequest(
+        NetzacWebPage *page,
+        const QUrl &origin,
+        NetzacPreferences::PermissionType type,
+        std::function<void(bool)> responder);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     void handlePermissionRequested(QWebEnginePermission permission);
 #else
@@ -200,6 +226,18 @@ private:
     QAction *m_actShowStatus = nullptr;
     bool m_preFsShowPers = true;
     bool m_preFsShowNavText = true;
+    bool m_userFullScreen = false;
+    bool m_htmlFullScreenActive = false;
+    QPointer<NetzacWebPage> m_htmlFullScreenPage;
+    Qt::WindowStates m_preFsWindowState = Qt::WindowNoState;
+    bool m_fsChromeHidden = false;
+    bool m_fsEventFilterInstalled = false;
+    bool m_enteringFullScreen = false;
+    QPoint m_fsLastMousePos = QPoint(-1, -1);
+    QTimer m_fsHideTimer;
+    QTimer m_fsRevealTimer;
+    QTimer m_fsMousePollTimer;
+    QMap<QPair<QString, int>, QVector<std::function<void(bool)>>> m_pendingPermissionCallbacks;
     QAction *m_actCalmMode = nullptr;
     QAction *m_actStopMenu = nullptr;
     QAction *m_actFullScreen = nullptr;
@@ -214,6 +252,7 @@ private:
     PlatinumNavButton *m_btnForward = nullptr;
     PlatinumNavButton *m_btnHome = nullptr;
     PlatinumNavButton *m_btnReload = nullptr;
+    PlatinumNavButton *m_btnPdf = nullptr;
     PlatinumNavButton *m_btnPrint = nullptr;
     PlatinumNavButton *m_btnFind = nullptr;
     PlatinumNavButton *m_btnStop = nullptr;
@@ -230,6 +269,11 @@ private:
     CollapsibleToolbar *m_persToolbar = nullptr;
     QWidget *m_persBody = nullptr;
     QHBoxLayout *m_persLay = nullptr;
+#if defined(Q_OS_WIN)
+    QMenuBar *m_menuBar = nullptr;
+#endif
+    SlideChromeContainer *m_topChrome = nullptr;
+    SlideChromeContainer *m_bottomChrome = nullptr;
 
     QWidget *m_findBar = nullptr;
     QLineEdit *m_findInput = nullptr;

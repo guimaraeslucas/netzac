@@ -1704,3 +1704,227 @@ msgstr "Contraseñas guardadas para %1"
 #: shell/netzac/netzacwindow.cpp
 msgid "Saved password for %1 in Windows Credential Manager"
 msgstr "Contraseña guardada para %1 en el Administrador de credenciales de Windows"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 is requesting a website permission."
+msgstr "%1 está solicitando un permiso del sitio web."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to access your installed fonts."
+msgstr "%1 quiere acceder a las fuentes instaladas."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to know your location."
+msgstr "%1 quiere conocer tu ubicación."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to lock your mouse pointer."
+msgstr "%1 quiere bloquear el puntero del ratón."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to read and write your clipboard."
+msgstr "%1 quiere leer y escribir en el portapapeles."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen and audio."
+msgstr "%1 quiere compartir tu pantalla y audio."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen."
+msgstr "%1 quiere compartir tu pantalla."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to show notifications."
+msgstr "%1 quiere mostrar notificaciones."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera and microphone."
+msgstr "%1 quiere usar tu cámara y micrófono."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera."
+msgstr "%1 quiere usar tu cámara."
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your microphone."
+msgstr "%1 quiere usar tu micrófono."
+
+#: shell/netzac/dialogs.cpp
+msgid "Allows websites to automatically play audio and video without a click first."
+msgstr "Permite que los sitios web reproduzcan audio y vídeo automáticamente sin hacer clic primero."
+
+#: shell/netzac/dialogs.cpp
+msgid "Always"
+msgstr "Siempre"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always allow"
+msgstr "Permitir siempre"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always block"
+msgstr "Bloquear siempre"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always start multimedia without requiring interaction"
+msgstr "Iniciar siempre los contenidos multimedia sin requerir interacción"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ask every time"
+msgstr "Preguntar siempre"
+
+#: shell/netzac/dialogs.cpp
+msgid "Block"
+msgstr "Bloquear"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera"
+msgstr "Cámara"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera & Microphone"
+msgstr "Cámara y micrófono"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clear All"
+msgstr "Borrar todo"
+
+#: shell/netzac/preferences.cpp
+msgid "Clipboard"
+msgstr "Portapapeles"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Action"
+msgstr "Acción predeterminada"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Policy for Website Permission Requests:"
+msgstr "Política predeterminada para solicitudes de permisos:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Existing Website Permissions:"
+msgstr "Permisos existentes de sitios web:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Just Now"
+msgstr "Solo ahora"
+
+#: shell/netzac/preferences.cpp
+msgid "Local Fonts"
+msgstr "Fuentes locales"
+
+#: shell/netzac/preferences.cpp
+msgid "Location (Geolocation)"
+msgstr "Ubicación (Geolocalización)"
+
+#: shell/netzac/preferences.cpp
+msgid "Microphone"
+msgstr "Micrófono"
+
+#: shell/netzac/preferences.cpp
+msgid "Mouse Lock"
+msgstr "Bloqueo del ratón"
+
+#: shell/netzac/dialogs.cpp
+msgid "Multimedia Playback:"
+msgstr "Reproducción multimedia:"
+
+#: shell/netzac/preferences.cpp
+msgid "Notifications"
+msgstr "Notificaciones"
+
+#: shell/netzac/dialogs.cpp
+msgid "Origin: %1"
+msgstr "Origen: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permission"
+msgstr "Permiso"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permissions"
+msgstr "Permisos"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen & Audio Capture"
+msgstr "Captura de pantalla y audio"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen Capture"
+msgstr "Captura de pantalla"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status"
+msgstr "Estado"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website"
+msgstr "Sitio web"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website Permission Request"
+msgstr "Solicitud de permiso del sitio web"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "PDF"
+msgstr "PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page sent to printer"
+msgstr "Página enviada a la impresora"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing failed"
+msgstr "Error al imprimir"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing page..."
+msgstr "Imprimiendo página..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF"
+msgstr "Guardar página como PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF..."
+msgstr "Guardar página como PDF..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save this page as PDF"
+msgstr "Guardar esta página como PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved PDF: %1"
+msgstr "PDF guardado: %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 lines — %2 characters"
+msgstr "%1 líneas — %2 caracteres"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied all source code to clipboard."
+msgstr "Se copió todo el código fuente al portapapeles."
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied selection to clipboard."
+msgstr "Se copió la selección al portapapeles."
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy All"
+msgstr "Copiar todo"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Selection"
+msgstr "Copiar selección"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTML Source Code:"
+msgstr "Código fuente HTML:"
+
+#: shell/netzac/dialogs.cpp
+msgid "Save Source As"
+msgstr "Guardar código fuente como"
+
+#: shell/netzac/dialogs.cpp
+msgid "Wrap lines"
+msgstr "Ajustar líneas"

@@ -13,14 +13,17 @@
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QColor>
+#include <QCursor>
 #include <QDateTime>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QEvent>
 #include <QFile>
 #include <QFont>
 #include <QHBoxLayout>
+#include <QHoverEvent>
 #include <QIcon>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -31,8 +34,11 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QPointer>
+#include <QPrintDialog>
+#include <QPrinter>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSignalBlocker>
@@ -49,6 +55,7 @@
 #include <QWebEngineSettings>
 
 #include <functional>
+#include <memory>
 #include <utility>
 
 namespace {
@@ -282,6 +289,19 @@ NetzacWindow::PopupOptions parsePopupFeatures(
     return opts;
 }
 
+QString stripNetzacInjectedHtml(QString html)
+{
+    static const QRegularExpression kInjectedStylesRe(
+        QStringLiteral("<style\\b[^>]*\\bid\\s*=\\s*[\"'](?:zacos9-platinum-scrollbars|zacos9-custom-fonts)[\"'][^>]*>[\\s\\S]*?</style>\\s*"),
+        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression kInjectedPopupRe(
+        QStringLiteral("<div\\b[^>]*\\bid\\s*=\\s*[\"']zacos9-pw-autofill-popup[\"'][^>]*>[\\s\\S]*?</div>\\s*"),
+        QRegularExpression::CaseInsensitiveOption);
+    html.remove(kInjectedStylesRe);
+    html.remove(kInjectedPopupRe);
+    return html;
+}
+
 }  // namespace
 
 NetzacWindow::NetzacWindow(
@@ -333,6 +353,27 @@ NetzacWindow::NetzacWindow(
     buildCentralArea();
     buildStatusBar();
 
+    m_fsHideTimer.setSingleShot(true);
+    m_fsHideTimer.setInterval(2000);
+    connect(&m_fsHideTimer, &QTimer::timeout, this, [this]() {
+        if (isFullScreen())
+            slideFullScreenChrome(false);
+    });
+
+    m_fsRevealTimer.setSingleShot(true);
+    m_fsRevealTimer.setInterval(350);
+    connect(&m_fsRevealTimer, &QTimer::timeout, this, [this]() {
+        if (isFullScreen() && m_fsChromeHidden)
+            slideFullScreenChrome(true);
+    });
+
+    m_fsMousePollTimer.setInterval(80);
+    connect(&m_fsMousePollTimer, &QTimer::timeout, this, [this]() {
+        if (!isFullScreen())
+            return;
+        updateFullScreenMouseState(mapFromGlobal(QCursor::pos()));
+    });
+
     if (loadInitial && initialUrl.isEmpty() && !m_popupOpts.isPopup
         && m_prefs.startupMode == NetzacPreferences::StartupMode::RestoreLastPage
         && !m_prefs.lastTabs.isEmpty()) {
@@ -358,6 +399,17 @@ NetzacWindow::NetzacWindow(
 
     if (!m_popupOpts.isPopup && !m_prefs.defaultBrowserPrompted) {
         QTimer::singleShot(350, this, &NetzacWindow::promptDefaultBrowserIfNeeded);
+    }
+}
+
+NetzacWindow::~NetzacWindow()
+{
+    m_fsHideTimer.stop();
+    m_fsRevealTimer.stop();
+    m_fsMousePollTimer.stop();
+    if (m_fsEventFilterInstalled && QApplication::instance()) {
+        QApplication::instance()->removeEventFilter(this);
+        m_fsEventFilterInstalled = false;
     }
 }
 
@@ -482,8 +534,10 @@ void NetzacWindow::dropEvent(QDropEvent *event)
 QAction *NetzacWindow::addMenuAction(QMenu *menu, const QString &text, const QKeySequence &shortcut)
 {
     auto *act = new QAction(text, this);
-    if (!shortcut.isEmpty())
+    if (!shortcut.isEmpty()) {
         act->setShortcut(shortcut);
+        addAction(act);
+    }
     menu->addAction(act);
     return act;
 }
@@ -499,7 +553,12 @@ QAction *NetzacWindow::addCheckableAction(QMenu *menu, const QString &text, bool
 
 void NetzacWindow::buildMenus()
 {
+#if defined(Q_OS_WIN)
+    m_menuBar = new QMenuBar(this);
+    QMenuBar *mb = m_menuBar;
+#else
     QMenuBar *mb = menuBar();
+#endif
 
     // File
     QMenu *fileMenu = mb->addMenu(ztr("File"));
@@ -520,6 +579,8 @@ void NetzacWindow::buildMenus()
             &QAction::triggered, this, &NetzacWindow::openLocationDialog);
     connect(addMenuAction(fileMenu, ztr("Save As..."), QKeySequence::Save),
             &QAction::triggered, this, &NetzacWindow::savePage);
+    connect(addMenuAction(fileMenu, ztr("Save Page as PDF..."), QKeySequence(QStringLiteral("Ctrl+Shift+P"))),
+            &QAction::triggered, this, &NetzacWindow::savePageAsPdf);
     fileMenu->addSeparator();
     connect(addMenuAction(fileMenu, ztr("Print..."), QKeySequence::Print),
             &QAction::triggered, this, &NetzacWindow::printPage);
@@ -555,6 +616,7 @@ void NetzacWindow::buildMenus()
     editMenu->addSeparator();
     QAction *findAct = addMenuAction(editMenu, ztr("Find in Page..."));
     findAct->setShortcuts({QKeySequence::Find, QKeySequence(QStringLiteral("F4"))});
+    addAction(findAct);
     connect(findAct, &QAction::triggered, this, &NetzacWindow::showFindBar);
     connect(addMenuAction(editMenu, ztr("Find Again"), QKeySequence(QStringLiteral("Ctrl+G"))),
             &QAction::triggered, this, &NetzacWindow::findNext);
@@ -622,20 +684,27 @@ void NetzacWindow::buildMenus()
     viewMenu->addSeparator();
     m_actStopMenu = addMenuAction(viewMenu, ztr("Stop"), QKeySequence(QStringLiteral("Esc")));
     connect(m_actStopMenu, &QAction::triggered, this, [this]() {
+        if (m_htmlFullScreenActive && m_htmlFullScreenPage) {
+            m_htmlFullScreenPage->triggerAction(QWebEnginePage::ExitFullScreen);
+            return;
+        }
         if (auto *v = webView()) v->stop();
     });
     QAction *reloadAct = addMenuAction(viewMenu, ztr("Reload"));
     reloadAct->setShortcuts({QKeySequence(QStringLiteral("Ctrl+R")), QKeySequence(QStringLiteral("F5"))});
+    addAction(reloadAct);
     connect(reloadAct, &QAction::triggered, this, [this]() {
         if (auto *v = webView()) v->reload();
     });
     m_actFullScreen = addCheckableAction(viewMenu, ztr("Full Screen"), false);
     m_actFullScreen->setShortcut(QKeySequence(QStringLiteral("F11")));
+    addAction(m_actFullScreen);
     connect(m_actFullScreen, &QAction::triggered, this, &NetzacWindow::toggleFullScreen);
 
     QMenu *zoomMenu = viewMenu->addMenu(ztr("Zoom"));
     QAction *zoomInAct = addMenuAction(zoomMenu, ztr("Zoom In"));
     zoomInAct->setShortcuts({QKeySequence::ZoomIn, QKeySequence(QStringLiteral("Ctrl+="))});
+    addAction(zoomInAct);
     connect(zoomInAct, &QAction::triggered, this, &NetzacWindow::zoomIn);
     QAction *zoomOutAct = addMenuAction(zoomMenu, ztr("Zoom Out"), QKeySequence::ZoomOut);
     connect(zoomOutAct, &QAction::triggered, this, &NetzacWindow::zoomOut);
@@ -646,6 +715,7 @@ void NetzacWindow::buildMenus()
     viewMenu->addSeparator();
     m_actCalmMode = addCheckableAction(viewMenu, ztr("Calm Mode"), false);
     m_actCalmMode->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+C")));
+    addAction(m_actCalmMode);
     connect(m_actCalmMode, &QAction::toggled, this, [this](bool enabled) {
         if (auto *c = calmController()) c->setEnabled(enabled);
     });
@@ -784,6 +854,10 @@ void NetzacWindow::buildToolbars()
         if (auto *v = webView()) v->reload();
     });
 
+    m_btnPdf = new PlatinumNavButton(ztr("PDF"), QStringLiteral("pdf"));
+    m_btnPdf->setToolTip(ztr("Save this page as PDF"));
+    connect(m_btnPdf, &QPushButton::clicked, this, &NetzacWindow::savePageAsPdf);
+
     m_btnPrint = new PlatinumNavButton(ztr("Print"), QStringLiteral("print"));
     m_btnPrint->setToolTip(ztr("Print this page"));
     connect(m_btnPrint, &QPushButton::clicked, this, &NetzacWindow::printPage);
@@ -811,6 +885,7 @@ void NetzacWindow::buildToolbars()
     navLay->addWidget(m_btnHome);
     navLay->addSpacing(12);
     navLay->addWidget(m_btnReload);
+    navLay->addWidget(m_btnPdf);
     navLay->addWidget(m_btnPrint);
     navLay->addWidget(m_btnFind);
     navLay->addSpacing(12);
@@ -929,9 +1004,15 @@ void NetzacWindow::buildCentralArea()
     m_rootLayout->setContentsMargins(0, 0, 0, 0);
     m_rootLayout->setSpacing(0);
 
-    m_rootLayout->addWidget(m_navToolbar);
-    m_rootLayout->addWidget(m_locToolbar);
-    m_rootLayout->addWidget(m_persToolbar);
+    m_topChrome = new SlideChromeContainer(SlideChromeContainer::Edge::Top, central);
+#if defined(Q_OS_WIN)
+    if (m_menuBar)
+        m_topChrome->addWidget(m_menuBar);
+#endif
+    m_topChrome->addWidget(m_navToolbar);
+    m_topChrome->addWidget(m_locToolbar);
+    m_topChrome->addWidget(m_persToolbar);
+    m_rootLayout->addWidget(m_topChrome);
 
     auto *workspace = new QWidget(central);
     m_workspaceLayout = new QHBoxLayout(workspace);
@@ -964,15 +1045,21 @@ void NetzacWindow::buildCentralArea()
     m_rootLayout->addWidget(workspace, 1);
     m_rootLayout->addWidget(m_findBar);
 
+    m_bottomChrome = new SlideChromeContainer(SlideChromeContainer::Edge::Bottom, central);
+    m_rootLayout->addWidget(m_bottomChrome);
+
     setCentralWidget(central);
 }
 
 void NetzacWindow::buildStatusBar()
 {
-    m_status = new QStatusBar(this);
+    m_status = new QStatusBar(m_bottomChrome ? m_bottomChrome->contentWidget() : this);
     m_status->setSizeGripEnabled(true);
     m_status->setFont(zacosFont(QStringLiteral("ZacOS 9 Views"), 9));
-    setStatusBar(m_status);
+    if (m_bottomChrome)
+        m_bottomChrome->addWidget(m_status);
+    else
+        setStatusBar(m_status);
 
     m_statusSecurity = new PlatinumMiniIconButton(
         QStringLiteral("security_open"), ztr("Security Info"), m_status);
@@ -1039,6 +1126,9 @@ int NetzacWindow::createTabInternal(const QString &url, bool switchTo, bool load
     page->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
     page->settings()->setAttribute(QWebEngineSettings::LocalStorageEnabled, true);
     page->settings()->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
+    page->settings()->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, !m_prefs.autoplayMedia);
     m_prefs.applyFontSettings(page->settings());
     if (m_popupOpts.hideScrollbars)
         page->settings()->setAttribute(QWebEngineSettings::ShowScrollBars, false);
@@ -1099,6 +1189,13 @@ void NetzacWindow::detachTab(int index, const QPoint &globalPos)
         return;
 
     BrowserTab tab = m_tabs.at(index);
+    if (m_htmlFullScreenActive && m_htmlFullScreenPage == tab.page) {
+        tab.page->triggerAction(QWebEnginePage::ExitFullScreen);
+        m_htmlFullScreenActive = false;
+        m_htmlFullScreenPage = nullptr;
+        if (!m_userFullScreen)
+            exitFullScreenMode();
+    }
     disconnect(tab.view, nullptr, this, nullptr);
     disconnect(tab.page, nullptr, this, nullptr);
     disconnect(tab.calm, nullptr, this, nullptr);
@@ -1139,6 +1236,13 @@ void NetzacWindow::transferTabTo(int index, PlatinumTabBar *targetBar, int targe
         return;
 
     BrowserTab tab = m_tabs.at(index);
+    if (m_htmlFullScreenActive && m_htmlFullScreenPage == tab.page) {
+        tab.page->triggerAction(QWebEnginePage::ExitFullScreen);
+        m_htmlFullScreenActive = false;
+        m_htmlFullScreenPage = nullptr;
+        if (!m_userFullScreen)
+            exitFullScreenMode();
+    }
     disconnect(tab.view, nullptr, this, nullptr);
     disconnect(tab.page, nullptr, this, nullptr);
     disconnect(tab.calm, nullptr, this, nullptr);
@@ -1219,6 +1323,14 @@ void NetzacWindow::closeTab(int index)
         return;
     }
 
+    if (m_htmlFullScreenActive && m_htmlFullScreenPage == m_tabs.at(index).page) {
+        m_tabs.at(index).page->triggerAction(QWebEnginePage::ExitFullScreen);
+        m_htmlFullScreenActive = false;
+        m_htmlFullScreenPage = nullptr;
+        if (!m_userFullScreen)
+            exitFullScreenMode();
+    }
+
     BrowserTab removed = m_tabs.takeAt(index);
     m_tabStack->removeWidget(removed.view);
     m_tabBar->removeTab(index);
@@ -1238,6 +1350,13 @@ void NetzacWindow::switchToTab(int index)
 {
     if (index < 0 || index >= m_tabs.size() || index == m_currentTabIndex)
         return;
+    if (m_htmlFullScreenActive && m_htmlFullScreenPage && m_tabs.at(index).page != m_htmlFullScreenPage) {
+        m_htmlFullScreenPage->triggerAction(QWebEnginePage::ExitFullScreen);
+        m_htmlFullScreenActive = false;
+        m_htmlFullScreenPage = nullptr;
+        if (!m_userFullScreen)
+            exitFullScreenMode();
+    }
     m_currentTabIndex = index;
     m_tabStack->setCurrentWidget(m_tabs[index].view);
     m_tabBar->setCurrentIndex(index);
@@ -1299,6 +1418,7 @@ void NetzacWindow::updateTabBarPlacement()
 
     const bool showTabs = !m_popupOpts.isPopup
         && !m_popupOpts.hideToolbar
+        && !m_htmlFullScreenActive
         && (m_prefs.linkOpenMode == NetzacPreferences::LinkOpenMode::Tabs);
 
     if (m_actTabStyleLeft)
@@ -1323,8 +1443,8 @@ void NetzacWindow::updateTabBarPlacement()
         m_workspaceLayout->insertWidget(0, m_tabBar);
     } else {
         m_tabBar->setTabStyle(PlatinumTabBar::TabStyle::ChromeTop);
-        const int persIdx = m_rootLayout->indexOf(m_persToolbar);
-        m_rootLayout->insertWidget(persIdx >= 0 ? persIdx + 1 : 3, m_tabBar);
+        const int topIdx = m_topChrome ? m_rootLayout->indexOf(m_topChrome) : -1;
+        m_rootLayout->insertWidget(topIdx >= 0 ? topIdx + 1 : 1, m_tabBar);
     }
     m_tabBar->show();
 }
@@ -1375,7 +1495,7 @@ void NetzacWindow::applyNavToolbarCompact(bool showText)
 {
     const QVector<PlatinumNavButton *> navButtons = {
         m_btnBack, m_btnForward, m_btnHome, m_btnReload,
-        m_btnPrint, m_btnFind, m_btnStop, m_btnCalm,
+        m_btnPdf, m_btnPrint, m_btnFind, m_btnStop, m_btnCalm,
     };
     for (PlatinumNavButton *btn : navButtons) {
         if (btn)
@@ -1388,32 +1508,221 @@ void NetzacWindow::applyNavToolbarCompact(bool showText)
 void NetzacWindow::toggleFullScreen()
 {
     if (isFullScreen()) {
-        showNormal();
-        if (m_actFullScreen) {
-            const QSignalBlocker b(m_actFullScreen);
-            m_actFullScreen->setChecked(false);
-        }
-        if (m_actShowPers)
-            m_actShowPers->setChecked(m_preFsShowPers);
-        applyNavToolbarCompact(m_preFsShowNavText);
-        if (m_actShowNavText) {
-            const QSignalBlocker b(m_actShowNavText);
-            m_actShowNavText->setChecked(m_preFsShowNavText);
-        }
+        m_userFullScreen = false;
+        if (m_htmlFullScreenActive && m_htmlFullScreenPage)
+            m_htmlFullScreenPage->triggerAction(QWebEnginePage::ExitFullScreen);
+        exitFullScreenMode();
     } else {
+        m_userFullScreen = true;
+        enterFullScreenMode(false);
+    }
+}
+
+void NetzacWindow::enterFullScreenMode(bool fromHtmlApi)
+{
+    const bool alreadyFs = isFullScreen();
+    if (!alreadyFs) {
+        m_preFsWindowState = windowState();
         m_preFsShowPers = m_actShowPers ? m_actShowPers->isChecked() : true;
         m_preFsShowNavText = m_prefs.showNavButtonText;
+    }
+
+    if (m_actFullScreen) {
+        const QSignalBlocker b(m_actFullScreen);
+        m_actFullScreen->setChecked(true);
+    }
+    if (m_actShowPers)
+        m_actShowPers->setChecked(false);
+    applyNavToolbarCompact(false);
+    if (m_actShowNavText) {
+        const QSignalBlocker b(m_actShowNavText);
+        m_actShowNavText->setChecked(false);
+    }
+
+    if (fromHtmlApi && m_tabBar)
+        m_tabBar->hide();
+
+    if (m_topChrome)
+        m_topChrome->resetImmediate(true);
+    if (m_bottomChrome)
+        m_bottomChrome->resetImmediate(true);
+    m_fsChromeHidden = false;
+    if (m_viewportFrame)
+        m_viewportFrame->setBorderless(false);
+
+    if (!alreadyFs) {
+        m_enteringFullScreen = true;
         showFullScreen();
-        if (m_actFullScreen) {
-            const QSignalBlocker b(m_actFullScreen);
-            m_actFullScreen->setChecked(true);
+        m_enteringFullScreen = false;
+    }
+
+    if (!m_fsEventFilterInstalled && QApplication::instance()) {
+        QApplication::instance()->installEventFilter(this);
+        m_fsEventFilterInstalled = true;
+    }
+    m_fsRevealTimer.stop();
+    m_fsMousePollTimer.start();
+    m_fsHideTimer.start(2000);
+}
+
+void NetzacWindow::exitFullScreenMode()
+{
+    m_fsHideTimer.stop();
+    m_fsRevealTimer.stop();
+    m_fsMousePollTimer.stop();
+
+    if (m_fsEventFilterInstalled && QApplication::instance()) {
+        QApplication::instance()->removeEventFilter(this);
+        m_fsEventFilterInstalled = false;
+    }
+
+    m_fsChromeHidden = false;
+    m_htmlFullScreenActive = false;
+    m_htmlFullScreenPage = nullptr;
+    m_userFullScreen = false;
+
+    if (m_viewportFrame)
+        m_viewportFrame->setBorderless(false);
+    if (m_topChrome)
+        m_topChrome->resetImmediate(true);
+    if (m_bottomChrome)
+        m_bottomChrome->resetImmediate(true);
+
+    if (isFullScreen()) {
+        if (m_preFsWindowState & Qt::WindowMaximized)
+            showMaximized();
+        else
+            showNormal();
+    }
+
+    if (m_actFullScreen) {
+        const QSignalBlocker b(m_actFullScreen);
+        m_actFullScreen->setChecked(false);
+    }
+    if (m_actShowPers)
+        m_actShowPers->setChecked(m_preFsShowPers);
+    applyNavToolbarCompact(m_preFsShowNavText);
+    if (m_actShowNavText) {
+        const QSignalBlocker b(m_actShowNavText);
+        m_actShowNavText->setChecked(m_preFsShowNavText);
+    }
+    updateTabBarPlacement();
+}
+
+void NetzacWindow::slideFullScreenChrome(bool visible)
+{
+    if (!isFullScreen())
+        return;
+
+    m_fsChromeHidden = !visible;
+    if (m_topChrome)
+        m_topChrome->slideTo(visible, 260);
+    if (m_bottomChrome)
+        m_bottomChrome->slideTo(visible, 260);
+    if (m_viewportFrame)
+        m_viewportFrame->setBorderless(m_htmlFullScreenActive && !visible);
+
+    if (visible) {
+        m_fsRevealTimer.stop();
+        updateFullScreenMouseState(mapFromGlobal(QCursor::pos()));
+    } else {
+        m_fsHideTimer.stop();
+    }
+}
+
+void NetzacWindow::updateFullScreenMouseState(const QPoint &localPos)
+{
+    if (!isFullScreen())
+        return;
+
+    m_fsLastMousePos = localPos;
+    const bool insideWindow = localPos.x() >= 0 && localPos.x() < width()
+        && localPos.y() >= 0 && localPos.y() < height();
+
+    if (m_fsChromeHidden) {
+        const bool inUpperHotZone = insideWindow && isActiveWindow() && localPos.y() <= 14;
+        if (inUpperHotZone) {
+            if (!m_fsRevealTimer.isActive())
+                m_fsRevealTimer.start();
+        } else {
+            m_fsRevealTimer.stop();
         }
-        if (m_actShowPers)
-            m_actShowPers->setChecked(false);
-        applyNavToolbarCompact(false);
-        if (m_actShowNavText) {
-            const QSignalBlocker b(m_actShowNavText);
-            m_actShowNavText->setChecked(false);
+        return;
+    }
+
+    const int topH = (m_topChrome && m_topChrome->isVisible()) ? m_topChrome->height() : 0;
+    const int botH = (m_bottomChrome && m_bottomChrome->isVisible()) ? m_bottomChrome->height() : 0;
+    const bool overTop = insideWindow && localPos.y() <= topH + 8;
+    const bool overBottom = insideWindow && botH > 0 && localPos.y() >= height() - botH - 8;
+    const bool popupOpen = (QApplication::activePopupWidget() != nullptr);
+    const QWidget *fw = QApplication::focusWidget();
+    const bool editingChrome = fw && ((m_urlBar && m_urlBar->isAncestorOf(fw))
+        || (m_findBar && m_findBar->isVisible() && m_findBar->isAncestorOf(fw)));
+
+    if (overTop || overBottom || popupOpen || editingChrome) {
+        m_fsHideTimer.stop();
+    } else if (!m_fsHideTimer.isActive()) {
+        m_fsHideTimer.start(2000);
+    }
+}
+
+void NetzacWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+    if (event && event->type() == QEvent::WindowStateChange && !m_enteringFullScreen) {
+        if (!isFullScreen() && (m_userFullScreen || m_htmlFullScreenActive || m_fsEventFilterInstalled)) {
+            if (m_htmlFullScreenActive && m_htmlFullScreenPage)
+                m_htmlFullScreenPage->triggerAction(QWebEnginePage::ExitFullScreen);
+            exitFullScreenMode();
+        }
+    }
+}
+
+bool NetzacWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (isFullScreen() && event) {
+        if (event->type() == QEvent::MouseMove) {
+            if (QWidget *w = qobject_cast<QWidget *>(watched)) {
+                if (w->window() == this) {
+                    const auto *me = static_cast<const QMouseEvent *>(event);
+                    updateFullScreenMouseState(mapFromGlobal(me->globalPosition().toPoint()));
+                }
+            }
+        } else if (event->type() == QEvent::HoverMove) {
+            if (QWidget *w = qobject_cast<QWidget *>(watched)) {
+                if (w->window() == this) {
+                    const auto *he = static_cast<const QHoverEvent *>(event);
+                    updateFullScreenMouseState(mapFromGlobal(he->globalPosition().toPoint()));
+                }
+            }
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
+void NetzacWindow::handleFullScreenRequested(
+    NetzacWebView *view,
+    NetzacWebPage *page,
+    QWebEngineFullScreenRequest request)
+{
+    if (request.toggleOn()) {
+        const int idx = indexOfView(view);
+        if (idx >= 0 && idx != m_currentTabIndex)
+            switchToTab(idx);
+        request.accept();
+        m_htmlFullScreenActive = true;
+        m_htmlFullScreenPage = page;
+        enterFullScreenMode(true);
+    } else {
+        request.accept();
+        m_htmlFullScreenActive = false;
+        m_htmlFullScreenPage = nullptr;
+        if (!m_userFullScreen) {
+            exitFullScreenMode();
+        } else {
+            if (m_viewportFrame)
+                m_viewportFrame->setBorderless(m_fsChromeHidden);
+            updateTabBarPlacement();
         }
     }
 }
@@ -1467,7 +1776,7 @@ void NetzacWindow::promptDefaultBrowserIfNeeded()
 
     auto *topRow = new QHBoxLayout();
     auto *iconLbl = new QLabel(&dlg);
-    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
+    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("question"), 32));
     iconLbl->setAlignment(Qt::AlignTop);
     auto *msgLbl = new QLabel(
         ztr("Netzac Navigator is not currently set as your default web browser.\n\n"
@@ -1532,6 +1841,14 @@ void NetzacWindow::connectTabSignals(NetzacWebView *view, NetzacWebPage *page, C
             resize(w, h);
     });
     connect(view, &NetzacWebView::contextMenuRequested, this, &NetzacWindow::showWebContextMenu);
+    connect(page, &QWebEnginePage::printRequested, this, [this, view]() {
+        if (view == webView())
+            printPage();
+    });
+    connect(page, &QWebEnginePage::fullScreenRequested, this,
+        [this, view, page](QWebEngineFullScreenRequest request) {
+            handleFullScreenRequested(view, page, request);
+        });
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     connect(page, &QWebEnginePage::permissionRequested, this, &NetzacWindow::handlePermissionRequested);
 #else
@@ -1623,6 +1940,10 @@ void NetzacWindow::onTabUrlChanged(NetzacWebView *view, const QUrl &qurl)
     } else if (urlStr.startsWith(QLatin1String("data:")) || urlStr == QLatin1String("about:blank")) {
         urlStr = tab.currentUrl;
     } else {
+        const QString prevOrigin = NetzacPreferences::normalizePermissionOrigin(QUrl(tab.currentUrl));
+        const QString nextOrigin = NetzacPreferences::normalizePermissionOrigin(QUrl(urlStr));
+        if (prevOrigin != nextOrigin)
+            tab.oncePermissions.clear();
         tab.showingBuiltin = false;
         tab.currentUrl = urlStr;
     }
@@ -2247,7 +2568,7 @@ void NetzacWindow::savePage()
         ztr("HTML Files (*.html *.htm);;All Files (*)"));
     if (!path.isEmpty()) {
         page->toHtml([this, path](const QString &htmlText) {
-            writeSavedHtml(path, htmlText);
+            writeSavedHtml(path, stripNetzacInjectedHtml(htmlText));
         });
     }
 }
@@ -2265,20 +2586,50 @@ void NetzacWindow::writeSavedHtml(const QString &path, const QString &htmlText)
     m_statusLabel->setStatusText(ztr("Saved: %1").arg(path));
 }
 
-void NetzacWindow::printPage()
+void NetzacWindow::savePageAsPdf()
 {
     NetzacWebPage *page = webPage();
     if (!page)
         return;
     const QString path = platinumSaveFileName(
         this,
-        ztr("Print Page to PDF"),
+        ztr("Save Page as PDF"),
         QStringLiteral("netzac-page.pdf"),
         ztr("PDF Files (*.pdf)"));
     if (!path.isEmpty()) {
         page->printToPdf(path);
-        m_statusLabel->setStatusText(ztr("Printed PDF: %1").arg(path));
+        if (m_statusLabel)
+            m_statusLabel->setStatusText(ztr("Saved PDF: %1").arg(path));
     }
+}
+
+void NetzacWindow::printPage()
+{
+    NetzacWebView *view = webView();
+    if (!view)
+        return;
+
+    auto printer = std::make_shared<QPrinter>(QPrinter::HighResolution);
+    QPrintDialog dlg(printer.get(), this);
+    dlg.setWindowTitle(ztr("Print"));
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    if (m_statusLabel)
+        m_statusLabel->setStatusText(ztr("Printing page..."));
+
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    QPointer<NetzacWindow> winPtr(this);
+    *conn = connect(view, &QWebEngineView::printFinished, this,
+        [winPtr, printer, conn](bool ok) {
+            QObject::disconnect(*conn);
+            if (winPtr && winPtr->m_statusLabel) {
+                winPtr->m_statusLabel->setStatusText(
+                    ok ? ztr("Page sent to printer") : ztr("Printing failed"));
+            }
+        });
+
+    view->print(printer.get());
 }
 
 void NetzacWindow::showFindBar()
@@ -2315,27 +2666,16 @@ void NetzacWindow::viewPageSource()
     if (!tab || !tab->page)
         return;
     const QString sourceUrl = tab->currentUrl;
-    tab->page->toHtml([this, sourceUrl](const QString &sourceText) {
-        PlatinumDialog dlg(this);
-        dlg.setWindowTitle(ztr("Source of: %1").arg(sourceUrl));
-        dlg.resize(680, 480);
-
-        auto *lay = new QVBoxLayout(&dlg);
-        lay->setContentsMargins(10, 10, 10, 10);
-        lay->setSpacing(8);
-
-        auto *view = new QPlainTextEdit(&dlg);
-        view->setReadOnly(true);
-        view->setFont(QFont(QStringLiteral("Nimbus Mono PS"), 11));
-        view->setPlainText(sourceText);
-        lay->addWidget(view, 1);
-
-        auto *btnRow = new QHBoxLayout();
-        btnRow->addStretch(1);
-        QPushButton *closeBtn = makeDialogButton(ztr("Close"), true, &dlg);
-        connect(closeBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
-        btnRow->addWidget(closeBtn);
-        lay->addLayout(btnRow);
+    const QString pageTitle = (tab->view && !tab->view->title().isEmpty())
+        ? tab->view->title()
+        : ztr("(Untitled)");
+    tab->page->toHtml([this, sourceUrl, pageTitle](const QString &sourceText) {
+        const QString cleanSource = stripNetzacInjectedHtml(sourceText);
+        PageSourceDialog dlg(pageTitle, sourceUrl, cleanSource, this);
+        connect(&dlg, &PageSourceDialog::sourceSaved, this, [this](const QString &path) {
+            if (m_statusLabel)
+                m_statusLabel->setStatusText(ztr("Saved: %1").arg(path));
+        });
         dlg.exec();
     });
 }
@@ -2480,6 +2820,8 @@ void NetzacWindow::openPreferences()
                     QWebEngineSettings::AutoLoadImages, m_prefs.autoloadImages);
                 tab.page->settings()->setAttribute(
                     QWebEngineSettings::JavascriptEnabled, m_prefs.enableJavaScript);
+                tab.page->settings()->setAttribute(
+                    QWebEngineSettings::PlaybackRequiresUserGesture, !m_prefs.autoplayMedia);
                 applyAppearanceToPage(tab.page, m_prefs);
             }
             if (tab.calm)
@@ -2813,7 +3155,7 @@ void NetzacWindow::handleCredentialSubmitted(const QString &host, const QString 
 
     auto *top = new QHBoxLayout();
     auto *iconLbl = new QLabel(&dlg);
-    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
+    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("question"), 32));
     iconLbl->setAlignment(Qt::AlignTop);
 #if defined(Q_OS_WIN)
     const QString promptText =
@@ -2864,53 +3206,196 @@ void NetzacWindow::showAbout()
 
 namespace {
 
-void promptClipboardPermission(
-    QWidget *parent,
-    const QUrl &origin,
-    std::function<void(bool allowed)> onDecided)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+bool mapWebEnginePermissionType(
+    QWebEnginePermission::PermissionType qtType,
+    NetzacPreferences::PermissionType *out)
 {
-    const QString host = origin.host().isEmpty() ? origin.toDisplayString() : origin.host();
-    auto *dlg = new PlatinumDialog(parent);
-    dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->setWindowTitle(ztr("Clipboard Access"));
-    dlg->setFixedWidth(380);
+    using QT = QWebEnginePermission::PermissionType;
+    using PT = NetzacPreferences::PermissionType;
+    switch (qtType) {
+    case QT::Geolocation:
+        *out = PT::Geolocation;
+        return true;
+    case QT::Notifications:
+        *out = PT::Notifications;
+        return true;
+    case QT::MediaAudioCapture:
+        *out = PT::MediaAudioCapture;
+        return true;
+    case QT::MediaVideoCapture:
+        *out = PT::MediaVideoCapture;
+        return true;
+    case QT::MediaAudioVideoCapture:
+        *out = PT::MediaAudioVideoCapture;
+        return true;
+    case QT::ClipboardReadWrite:
+        *out = PT::ClipboardReadWrite;
+        return true;
+    case QT::DesktopVideoCapture:
+        *out = PT::DesktopVideoCapture;
+        return true;
+    case QT::DesktopAudioVideoCapture:
+        *out = PT::DesktopAudioVideoCapture;
+        return true;
+    case QT::MouseLock:
+        *out = PT::MouseLock;
+        return true;
+    case QT::LocalFontsAccess:
+        *out = PT::LocalFontsAccess;
+        return true;
+    case QT::Unsupported:
+        return false;
+    }
+    return false;
+}
+#else
+bool mapLegacyFeatureType(
+    QWebEnginePage::Feature feature,
+    NetzacPreferences::PermissionType *out)
+{
+    using PT = NetzacPreferences::PermissionType;
+    switch (feature) {
+    case QWebEnginePage::Geolocation:
+        *out = PT::Geolocation;
+        return true;
+    case QWebEnginePage::Notifications:
+        *out = PT::Notifications;
+        return true;
+    case QWebEnginePage::MediaAudioCapture:
+        *out = PT::MediaAudioCapture;
+        return true;
+    case QWebEnginePage::MediaVideoCapture:
+        *out = PT::MediaVideoCapture;
+        return true;
+    case QWebEnginePage::MediaAudioVideoCapture:
+        *out = PT::MediaAudioVideoCapture;
+        return true;
+    case QWebEnginePage::ClipboardReadWrite:
+        *out = PT::ClipboardReadWrite;
+        return true;
+    case QWebEnginePage::DesktopVideoCapture:
+        *out = PT::DesktopVideoCapture;
+        return true;
+    case QWebEnginePage::DesktopAudioVideoCapture:
+        *out = PT::DesktopAudioVideoCapture;
+        return true;
+    case QWebEnginePage::MouseLock:
+        *out = PT::MouseLock;
+        return true;
+    case QWebEnginePage::LocalFontsAccess:
+        *out = PT::LocalFontsAccess;
+        return true;
+    }
+    return false;
+}
+#endif
 
-    auto *lay = new QVBoxLayout(dlg);
-    lay->setContentsMargins(12, 12, 12, 12);
-    lay->setSpacing(10);
+}  // namespace
 
-    auto *top = new QHBoxLayout();
-    auto *iconLbl = new QLabel(dlg);
-    iconLbl->setPixmap(makeAlertIcon(QStringLiteral("info"), 32));
-    iconLbl->setAlignment(Qt::AlignTop);
-    auto *msgLbl = new QLabel(
-        ztr("Do you want to allow %1 to read and write your clipboard?").arg(host),
-        dlg);
-    msgLbl->setWordWrap(true);
-    top->addWidget(iconLbl);
-    top->addWidget(msgLbl, 1);
-    lay->addLayout(top);
+void NetzacWindow::handleWebPermissionRequest(
+    NetzacWebPage *page,
+    const QUrl &origin,
+    NetzacPreferences::PermissionType type,
+    std::function<void(bool)> responder)
+{
+    const QString normOrigin = NetzacPreferences::normalizePermissionOrigin(origin);
+    if (normOrigin.isEmpty()) {
+        responder(false);
+        return;
+    }
 
-    auto *btnRow = new QHBoxLayout();
-    btnRow->addStretch(1);
-    QPushButton *denyBtn = makeDialogButton(ztr("Deny"), false, dlg);
-    QPushButton *allowBtn = makeDialogButton(ztr("Allow"), true, dlg);
-    QObject::connect(denyBtn, &QPushButton::clicked, dlg, &QDialog::reject);
-    QObject::connect(allowBtn, &QPushButton::clicked, dlg, &QDialog::accept);
-    btnRow->addWidget(denyBtn);
-    btnRow->addWidget(allowBtn);
-    lay->addLayout(btnRow);
+    // 1. Check saved per-website rules (Always / Never / Preferences)
+    const QVector<NetzacPreferences::SitePermissionRule> savedRules =
+        NetzacPreferences::loadSitePermissions();
+    m_prefs.sitePermissions = savedRules;
+    bool hasSiteRule = false;
+    const auto sitePolicy = m_prefs.sitePolicyFor(normOrigin, type, &hasSiteRule);
+    if (hasSiteRule) {
+        responder(sitePolicy == NetzacPreferences::PermissionPolicy::Allow);
+        return;
+    }
 
-    QObject::connect(dlg, &QDialog::finished, dlg, [onDecided = std::move(onDecided)](int result) {
-        onDecided(result == QDialog::Accepted);
-    });
+    // 2. Check tab-scoped "Just Now" grants
+    const QPair<QString, int> permKey(normOrigin, int(type));
+    BrowserTab *targetTab = nullptr;
+    for (BrowserTab &tab : m_tabs) {
+        if (tab.page == page) {
+            targetTab = &tab;
+            break;
+        }
+    }
+    if (!targetTab)
+        targetTab = currentTab();
+    if (targetTab && targetTab->oncePermissions.contains(permKey)) {
+        responder(true);
+        return;
+    }
+
+    // 3. Check global default policy for this permission type
+    const auto defPolicy = m_prefs.defaultPolicyFor(type);
+    if (defPolicy == NetzacPreferences::PermissionPolicy::Allow) {
+        responder(true);
+        return;
+    }
+    if (defPolicy == NetzacPreferences::PermissionPolicy::Deny) {
+        responder(false);
+        return;
+    }
+
+    // 4. Coalesce concurrent requests for the same (origin, type) into one prompt dialog
+    const bool alreadyOpen = m_pendingPermissionCallbacks.contains(permKey);
+    m_pendingPermissionCallbacks[permKey].append(std::move(responder));
+    if (alreadyOpen)
+        return;
+
+    QPointer<NetzacWebPage> pagePtr(page);
+    auto *dlg = new PermissionPromptDialog(origin, type, this);
+    connect(dlg, &PermissionPromptDialog::decided, this,
+        [this, permKey, normOrigin, type, pagePtr](PermissionPromptDialog::Decision decision) {
+            const QVector<std::function<void(bool)>> callbacks =
+                m_pendingPermissionCallbacks.take(permKey);
+
+            bool allowed = false;
+            switch (decision) {
+            case PermissionPromptDialog::Decision::Always:
+                NetzacPreferences::upsertSitePermission(
+                    normOrigin, type, NetzacPreferences::PermissionPolicy::Allow);
+                m_prefs.sitePermissions = NetzacPreferences::loadSitePermissions();
+                allowed = true;
+                break;
+            case PermissionPromptDialog::Decision::Never:
+                NetzacPreferences::upsertSitePermission(
+                    normOrigin, type, NetzacPreferences::PermissionPolicy::Deny);
+                m_prefs.sitePermissions = NetzacPreferences::loadSitePermissions();
+                allowed = false;
+                break;
+            case PermissionPromptDialog::Decision::JustNow:
+                if (pagePtr) {
+                    for (BrowserTab &tab : m_tabs) {
+                        if (tab.page == pagePtr) {
+                            tab.oncePermissions.insert(permKey);
+                            break;
+                        }
+                    }
+                }
+                allowed = true;
+                break;
+            case PermissionPromptDialog::Decision::Dismissed:
+                allowed = false;
+                break;
+            }
+
+            for (const auto &cb : callbacks) {
+                if (cb)
+                    cb(allowed);
+            }
+        });
 
     dlg->show();
     dlg->raise();
     dlg->activateWindow();
 }
-
-}  // namespace
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
 void NetzacWindow::handlePermissionRequested(QWebEnginePermission permission)
@@ -2918,12 +3403,14 @@ void NetzacWindow::handlePermissionRequested(QWebEnginePermission permission)
     if (!permission.isValid())
         return;
 
-    if (permission.permissionType() != QWebEnginePermission::PermissionType::ClipboardReadWrite) {
+    NetzacPreferences::PermissionType mapped = NetzacPreferences::PermissionType::Geolocation;
+    if (!mapWebEnginePermissionType(permission.permissionType(), &mapped)) {
         permission.deny();
         return;
     }
 
-    promptClipboardPermission(this, permission.origin(), [permission](bool allowed) {
+    auto *reqPage = qobject_cast<NetzacWebPage *>(sender());
+    handleWebPermissionRequest(reqPage, permission.origin(), mapped, [permission](bool allowed) {
         if (!permission.isValid())
             return;
         if (allowed)
@@ -2941,15 +3428,14 @@ void NetzacWindow::handleFeaturePermissionRequested(
     if (!page)
         return;
 
-    if (feature != QWebEnginePage::ClipboardReadWrite) {
+    NetzacPreferences::PermissionType mapped = NetzacPreferences::PermissionType::Geolocation;
+    if (!mapLegacyFeatureType(feature, &mapped)) {
         page->setFeaturePermission(securityOrigin, feature, QWebEnginePage::PermissionDeniedByUser);
         return;
     }
 
     QPointer<NetzacWebPage> pagePtr(page);
-    promptClipboardPermission(
-        this,
-        securityOrigin,
+    handleWebPermissionRequest(page, securityOrigin, mapped,
         [pagePtr, securityOrigin, feature](bool allowed) {
             if (!pagePtr)
                 return;

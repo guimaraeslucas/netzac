@@ -10,6 +10,7 @@
 #include <QStringList>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUrl>
 #include <QVector>
 
 class QButtonGroup;
@@ -24,6 +25,7 @@ class QRadioButton;
 class QSpinBox;
 class QSslSocket;
 class QStackedWidget;
+class QTableWidget;
 class QWebEngineDownloadRequest;
 
 class AccentSwatchWidget;
@@ -111,6 +113,7 @@ private:
     QWidget *buildPersonalToolbarPage();
     QWidget *buildQuickLinksPage();
     QWidget *buildCookiesPage();
+    QWidget *buildPermissionsPage();
     QWidget *buildCachePage();
     QWidget *buildProxiesPage();
     QWidget *buildUserAgentPage();
@@ -119,6 +122,8 @@ private:
     void refreshAdBlockList();
     void addAdBlockListUrl();
     void updateAdBlockStatus();
+    void refreshSitePermissionsTable();
+    void updateSitePermissionButtons();
 
     NetzacPreferences m_prefs;
     QListWidget *m_categoryList = nullptr;
@@ -178,6 +183,17 @@ private:
     QRadioButton *m_cookieBlockAll = nullptr;
     QCheckBox *m_cookieSessionChk = nullptr;
     QLabel *m_cookieStatusLbl = nullptr;
+
+    // Permissions
+    QCheckBox *m_autoplayMediaChk = nullptr;
+    QTableWidget *m_defaultPermTable = nullptr;
+    QVector<PlatinumPopupButton *> m_defaultPermPopups;
+    QVector<NetzacPreferences::SitePermissionRule> m_sitePermissions;
+    QTableWidget *m_sitePermTable = nullptr;
+    QPushButton *m_permAllowBtn = nullptr;
+    QPushButton *m_permDenyBtn = nullptr;
+    QPushButton *m_permRemoveBtn = nullptr;
+    QPushButton *m_permClearBtn = nullptr;
 
     // Cache
     PlatinumPopupButton *m_cachePopup = nullptr;
@@ -295,4 +311,49 @@ private:
     bool m_lookupFinished = false;
     QString m_host;
     quint16 m_port = 443;
+};
+
+class PermissionPromptDialog : public PlatinumDialog {
+    Q_OBJECT
+
+public:
+    enum class Decision {
+        Dismissed = 0,
+        Never,
+        JustNow,
+        Always,
+    };
+
+    PermissionPromptDialog(
+        const QUrl &origin,
+        NetzacPreferences::PermissionType permissionType,
+        QWidget *parent = nullptr);
+
+signals:
+    void decided(PermissionPromptDialog::Decision decision);
+
+private:
+    Decision m_decision = Decision::Dismissed;
+};
+
+class PageSourceDialog : public PlatinumDialog {
+    Q_OBJECT
+
+public:
+    PageSourceDialog(
+        const QString &title,
+        const QString &url,
+        const QString &sourceHtml,
+        QWidget *parent = nullptr);
+
+signals:
+    void sourceSaved(const QString &path);
+
+private:
+    QString m_sourceHtml;
+    QPlainTextEdit *m_sourceEdit = nullptr;
+    QPushButton *m_copySelBtn = nullptr;
+    QPushButton *m_copyAllBtn = nullptr;
+    QPushButton *m_saveBtn = nullptr;
+    QLabel *m_feedbackLbl = nullptr;
 };

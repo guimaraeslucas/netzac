@@ -27,6 +27,8 @@
 #include <QPaintEvent>
 #include <QPointer>
 #include <QPolygon>
+#include <QPropertyAnimation>
+#include <QResizeEvent>
 #include <QSizePolicy>
 #include <QStyle>
 #include <QStyleOptionButton>
@@ -270,7 +272,7 @@ NetzacThrobber::NetzacThrobber(QWidget *parent)
     setFixedSize(44, 44);
     setFocusPolicy(Qt::NoFocus);
     setToolTip(ztr("Netzac Home"));
-    m_timer.setInterval(75);
+    m_timer.setInterval(50);
     connect(&m_timer, &QTimer::timeout, this, &NetzacThrobber::advanceFrame);
 }
 
@@ -280,6 +282,15 @@ void NetzacThrobber::setCompact(bool compact)
         return;
     m_compact = compact;
     setFixedSize(m_compact ? QSize(28, 28) : QSize(44, 44));
+    update();
+}
+
+void NetzacThrobber::setInteractive(bool interactive)
+{
+    if (m_interactive == interactive)
+        return;
+    m_interactive = interactive;
+    setAttribute(Qt::WA_TransparentForMouseEvents, !interactive);
     update();
 }
 
@@ -299,73 +310,164 @@ void NetzacThrobber::setLoading(bool loading)
 
 void NetzacThrobber::advanceFrame()
 {
-    m_frame = (m_frame + 1) % 16;
+    m_frame = (m_frame + 1) % 48;
     update();
 }
 
 void NetzacThrobber::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
+    const bool showDown = m_interactive && isDown();
+    const bool showHover = m_interactive && underMouse();
     drawPlatinumBevelButton(
-        painter, rect(), palette(), isEnabled(), isDown(), underMouse());
+        painter, rect(), palette(), isEnabled(), showDown, showHover);
 
     const QRect inner = rect().adjusted(4, 4, -4, -4);
-    const PlatinumColors c = platinumColors(palette());
-    painter.setPen(c.shadow);
+    if (inner.width() <= 2 || inner.height() <= 2)
+        return;
+
+    painter.setPen(QColor(QStringLiteral("#000000")));
     painter.drawRect(inner.adjusted(-1, -1, 0, 0));
-
-    QLinearGradient grad(inner.left(), inner.top(), inner.left(), inner.bottom());
-    grad.setColorAt(0.0, QColor(QStringLiteral("#040b24")));
-    grad.setColorAt(0.62, QColor(QStringLiteral("#0b3a4a")));
-    grad.setColorAt(1.0, QColor(QStringLiteral("#1e7874")));
-    painter.fillRect(inner, grad);
-
-    if (m_animating) {
-        painter.save();
-        painter.setClipRect(inner);
-        static constexpr int kStars[6][2] = {
-            {6, 7}, {15, 5}, {27, 9}, {33, 14}, {10, 17}, {29, 20}
-        };
-        for (int idx = 0; idx < 6; ++idx) {
-            const int sx = kStars[idx][0];
-            const int sy = kStars[idx][1];
-            const int px = inner.left() + (sx + m_frame * (idx % 2 + 2)) % inner.width();
-            const int py = inner.top() + (sy + m_frame) % qMax(1, inner.height() - 10);
-            painter.setPen(QColor(QStringLiteral("#aaffee")));
-            painter.drawLine(px, py, px - 4, py + 2);
-            painter.setPen(QColor(QStringLiteral("#ffffff")));
-            painter.drawPoint(px, py);
-        }
-        painter.restore();
-    } else {
-        painter.setPen(QColor(QStringLiteral("#88bbbb")));
-        static constexpr int kIdleStars[4][2] = {{8, 9}, {31, 8}, {12, 16}, {30, 18}};
-        for (const auto &pt : kIdleStars)
-            painter.drawPoint(inner.left() + pt[0], inner.top() + pt[1]);
-    }
 
     painter.save();
     painter.setClipRect(inner);
+
+    // 1. Deep cosmic starry-night sky
+    QLinearGradient skyGrad(inner.left(), inner.top(), inner.left(), inner.bottom());
+    skyGrad.setColorAt(0.0, QColor(QStringLiteral("#020510")));
+    skyGrad.setColorAt(0.48, QColor(QStringLiteral("#051326")));
+    skyGrad.setColorAt(0.75, QColor(QStringLiteral("#0c2f42")));
+    skyGrad.setColorAt(1.0, QColor(QStringLiteral("#020710")));
+    painter.fillRect(inner, skyGrad);
+
+    // 2. Subtle starry sky in upper ~64% of the frame
+    struct StarSpec {
+        qreal nx;
+        qreal ny;
+        int phase;
+        bool bright;
+    };
+    static constexpr StarSpec kStars[] = {
+        {0.16, 0.14, 0, false}, {0.34, 0.10, 8, true},  {0.62, 0.12, 16, false},
+        {0.82, 0.16, 24, true}, {0.22, 0.28, 32, true}, {0.48, 0.24, 40, false},
+        {0.73, 0.29, 12, false},{0.90, 0.34, 28, false},{0.12, 0.44, 20, false},
+        {0.39, 0.42, 36, true}, {0.66, 0.46, 4, false}, {0.84, 0.52, 44, true},
+    };
+    for (const StarSpec &st : kStars) {
+        const int sx = inner.left() + qRound(st.nx * inner.width());
+        const int sy = inner.top() + qRound(st.ny * inner.height());
+        QColor starCol;
+        if (m_animating) {
+            const int step = (m_frame + st.phase) % 48;
+            const int dist = qAbs(step - 24);
+            if (dist > 18)
+                starCol = QColor(QStringLiteral("#e6f7ff"));
+            else if (dist > 10)
+                starCol = QColor(QStringLiteral("#85b8cc"));
+            else
+                starCol = QColor(QStringLiteral("#365d73"));
+        } else {
+            starCol = st.bright
+                ? QColor(QStringLiteral("#9ccfe0"))
+                : QColor(QStringLiteral("#467388"));
+        }
+        painter.setPen(starCol);
+        painter.drawPoint(sx, sy);
+    }
+
+    // 3. Subtle streaking comets under the starry sky while navigating
+    if (m_animating) {
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        struct CometSpec {
+            qreal startX;
+            qreal startY;
+            int offset;
+            qreal tailLen;
+        };
+        static constexpr CometSpec kComets[] = {
+            {0.94, 0.12, 0, 0.24},
+            {1.04, 0.26, 12, 0.20},
+            {0.78, 0.06, 24, 0.22},
+            {1.06, 0.40, 36, 0.18},
+        };
+        const qreal strokeW = qMax<qreal>(1.1, inner.width() * 0.032);
+        for (const CometSpec &cm : kComets) {
+            const qreal t = qreal((m_frame + cm.offset) % 48) / 48.0;
+            qreal fade = 1.0;
+            if (t < 0.15)
+                fade = t / 0.15;
+            else if (t > 0.85)
+                fade = (1.0 - t) / 0.15;
+            fade = qBound<qreal>(0.0, fade, 1.0);
+
+            const qreal hx = inner.left() + (cm.startX - 1.15 * t) * inner.width();
+            const qreal hy = inner.top() + (cm.startY + 0.56 * t) * inner.height();
+            const qreal tx = hx + cm.tailLen * inner.width();
+            const qreal ty = hy - cm.tailLen * 0.49 * inner.height();
+
+            QLinearGradient tailGrad(hx, hy, tx, ty);
+            tailGrad.setColorAt(0.0, QColor(200, 246, 255, int(205 * fade)));
+            tailGrad.setColorAt(0.45, QColor(100, 200, 230, int(90 * fade)));
+            tailGrad.setColorAt(1.0, QColor(40, 120, 160, 0));
+
+            painter.setPen(QPen(QBrush(tailGrad), strokeW, Qt::SolidLine, Qt::RoundCap));
+            painter.drawLine(QPointF(hx, hy), QPointF(tx, ty));
+
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(255, 255, 255, int(235 * fade)));
+            const qreal r = strokeW * 0.68;
+            painter.drawEllipse(QPointF(hx, hy), r, r);
+        }
+        painter.restore();
+    }
+
+    // 4. Darker curved planet ground / horizon at the bottom
+    const int horizonTop = inner.top() + qRound(inner.height() * 0.67);
+    const QRect domeRect(
+        inner.left() - inner.width() / 3,
+        horizonTop,
+        inner.width() + (inner.width() * 2) / 3,
+        inner.height());
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    QLinearGradient groundGrad(0, horizonTop, 0, inner.bottom());
+    groundGrad.setColorAt(0.0, QColor(QStringLiteral("#0a2530")));
+    groundGrad.setColorAt(0.4, QColor(QStringLiteral("#05131c")));
+    groundGrad.setColorAt(1.0, QColor(QStringLiteral("#02060c")));
     painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(QStringLiteral("#114b4b")));
-    painter.drawChord(inner.left() - 6, inner.bottom() - 10, inner.width() + 12, 22, 0, 180 * 16);
-    painter.setPen(QColor(QStringLiteral("#66cccc")));
-    painter.drawArc(inner.left() - 6, inner.bottom() - 10, inner.width() + 12, 22, 20 * 16, 140 * 16);
+    painter.setBrush(groundGrad);
+    painter.drawEllipse(domeRect);
+
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(QStringLiteral("#3c8d94")), 1));
+    painter.drawArc(domeRect, 20 * 16, 140 * 16);
+    painter.setPen(QPen(QColor(QStringLiteral("#78d4d8")), 1));
+    painter.drawArc(domeRect.adjusted(0, 1, 0, 1), 45 * 16, 90 * 16);
     painter.restore();
 
-    const int offset = isDown() ? 1 : 0;
+    // 5. Monumental serif "Z" grounded squarely on the dark horizon
+    const int offset = showDown ? 1 : 0;
 #if defined(Q_OS_WIN)
     QFont nFont(QStringLiteral("Times New Roman"));
 #else
     QFont nFont(QStringLiteral("Nimbus Roman"));
 #endif
-    nFont.setPixelSize(m_compact ? 17 : 27);
+    nFont.setPixelSize(qMax(14, qRound(inner.height() * 0.74)));
     nFont.setBold(true);
     painter.setFont(nFont);
+    const QFontMetrics fm(nFont);
+    const QRect zRect(
+        inner.left(),
+        inner.top(),
+        inner.width(),
+        qMax(1, (horizonTop - inner.top()) + fm.descent() + 3));
     painter.setPen(QColor(QStringLiteral("#000000")));
-    painter.drawText(inner.adjusted(1 + offset, offset, 1, m_compact ? -1 : -2), Qt::AlignCenter, QStringLiteral("Z"));
+    painter.drawText(zRect.translated(1 + offset, 1 + offset), Qt::AlignHCenter | Qt::AlignBottom, QStringLiteral("Z"));
     painter.setPen(QColor(QStringLiteral("#ffffff")));
-    painter.drawText(inner.adjusted(offset, -1 + offset, 0, m_compact ? -2 : -3), Qt::AlignCenter, QStringLiteral("Z"));
+    painter.drawText(zRect.translated(offset, offset), Qt::AlignHCenter | Qt::AlignBottom, QStringLiteral("Z"));
+
+    painter.restore();
 }
 
 PlatinumDropArrowButton::PlatinumDropArrowButton(QWidget *parent)
@@ -765,8 +867,23 @@ PlatinumViewportFrame::PlatinumViewportFrame(QWidget *child, QWidget *parent)
     lay->addWidget(child);
 }
 
+void PlatinumViewportFrame::setBorderless(bool borderless)
+{
+    if (m_borderless == borderless)
+        return;
+    m_borderless = borderless;
+    if (QLayout *lay = layout()) {
+        const int m = m_borderless ? 0 : 2;
+        lay->setContentsMargins(m, m, m, m);
+    }
+    update();
+}
+
 void PlatinumViewportFrame::paintEvent(QPaintEvent * /*event*/)
 {
+    if (m_borderless)
+        return;
+
     QPainter p(this);
     const PlatinumColors c = platinumColors(palette());
     const int w = width();
@@ -780,6 +897,183 @@ void PlatinumViewportFrame::paintEvent(QPaintEvent * /*event*/)
     p.drawLine(w - 1, 0, w - 1, h - 1);
     p.setPen(c.shadow);
     p.drawRect(1, 1, w - 3, h - 3);
+}
+
+SlideChromeContainer::SlideChromeContainer(Edge edge, QWidget *parent)
+    : QWidget(parent)
+    , m_edge(edge)
+{
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    m_content = new QWidget(this);
+    m_contentLayout = new QVBoxLayout(m_content);
+    m_contentLayout->setContentsMargins(0, 0, 0, 0);
+    m_contentLayout->setSpacing(0);
+    m_content->installEventFilter(this);
+
+    m_anim = new QPropertyAnimation(this, "revealProgress", this);
+    connect(m_anim, &QPropertyAnimation::finished, this, [this]() {
+        m_animating = false;
+        if (m_targetVisible) {
+            m_progress = 1.0;
+            setMinimumHeight(0);
+            setMaximumHeight(QWIDGETSIZE_MAX);
+            updateGeometry();
+            updateContentGeometry();
+        } else {
+            m_progress = 0.0;
+            setFixedHeight(0);
+            hide();
+        }
+    });
+}
+
+void SlideChromeContainer::addWidget(QWidget *widget)
+{
+    if (!widget || !m_contentLayout)
+        return;
+    widget->setParent(m_content);
+    m_contentLayout->addWidget(widget);
+    updateGeometry();
+    updateContentGeometry();
+}
+
+int SlideChromeContainer::naturalContentHeight() const
+{
+    if (!m_contentLayout)
+        return 0;
+    bool hasShownChild = false;
+    for (int i = 0; i < m_contentLayout->count(); ++i) {
+        if (QWidget *w = m_contentLayout->itemAt(i)->widget()) {
+            if (!w->isHidden()) {
+                hasShownChild = true;
+                break;
+            }
+        }
+    }
+    if (!hasShownChild)
+        return 0;
+    m_contentLayout->activate();
+    return qMax(0, m_contentLayout->sizeHint().height());
+}
+
+void SlideChromeContainer::updateContentGeometry()
+{
+    if (!m_content)
+        return;
+    const int w = width();
+    const int naturalH = m_animating ? m_capturedHeight : naturalContentHeight();
+    if (naturalH <= 0) {
+        m_content->setGeometry(0, 0, w, 0);
+        return;
+    }
+    if (m_edge == Edge::Top) {
+        // Slide up off the top edge as container height shrinks toward 0.
+        m_content->setGeometry(0, height() - naturalH, w, naturalH);
+    } else {
+        // Slide down off the bottom edge as container height shrinks toward 0.
+        m_content->setGeometry(0, 0, w, naturalH);
+    }
+}
+
+void SlideChromeContainer::slideTo(bool visible, int durationMs)
+{
+    if (m_anim->state() == QAbstractAnimation::Running && m_targetVisible == visible)
+        return;
+    if (!m_animating
+        && ((visible && m_progress >= 0.999 && isVisible())
+            || (!visible && m_progress <= 0.001 && !isVisible()))) {
+        return;
+    }
+
+    m_anim->stop();
+    m_targetVisible = visible;
+    m_capturedHeight = naturalContentHeight();
+    if (m_capturedHeight <= 0) {
+        resetImmediate(visible);
+        return;
+    }
+
+    if (visible && !isVisible()) {
+        m_progress = 0.0;
+        setFixedHeight(0);
+        show();
+    }
+
+    m_animating = true;
+    m_anim->setDuration(qMax(1, durationMs));
+    m_anim->setEasingCurve(visible ? QEasingCurve::OutCubic : QEasingCurve::InOutCubic);
+    m_anim->setStartValue(m_progress);
+    m_anim->setEndValue(visible ? 1.0 : 0.0);
+    m_anim->start();
+}
+
+void SlideChromeContainer::resetImmediate(bool visible)
+{
+    if (m_anim)
+        m_anim->stop();
+    m_animating = false;
+    m_targetVisible = visible;
+    m_progress = visible ? 1.0 : 0.0;
+    if (visible) {
+        setMinimumHeight(0);
+        setMaximumHeight(QWIDGETSIZE_MAX);
+        setVisible(true);
+    } else {
+        setFixedHeight(0);
+        setVisible(false);
+    }
+    updateGeometry();
+    updateContentGeometry();
+}
+
+bool SlideChromeContainer::isHiddenOrHiding() const
+{
+    if (m_animating)
+        return !m_targetVisible;
+    return !isVisible() || m_progress <= 0.001;
+}
+
+void SlideChromeContainer::setRevealProgress(qreal progress)
+{
+    m_progress = qBound<qreal>(0.0, progress, 1.0);
+    const int baseH = m_animating ? m_capturedHeight : naturalContentHeight();
+    const int targetH = qMax(0, qRound(baseH * m_progress));
+    setFixedHeight(targetH);
+    updateContentGeometry();
+}
+
+QSize SlideChromeContainer::sizeHint() const
+{
+    const int w = m_content ? m_content->sizeHint().width() : 0;
+    const int h = m_animating
+        ? qRound(m_capturedHeight * m_progress)
+        : qRound(naturalContentHeight() * m_progress);
+    return QSize(w, qMax(0, h));
+}
+
+QSize SlideChromeContainer::minimumSizeHint() const
+{
+    if (m_animating || m_progress < 0.999 || !isVisible())
+        return QSize(0, 0);
+    return QSize(0, naturalContentHeight());
+}
+
+void SlideChromeContainer::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    updateContentGeometry();
+}
+
+bool SlideChromeContainer::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_content && event->type() == QEvent::LayoutRequest) {
+        if (!m_animating && m_progress >= 0.999) {
+            updateGeometry();
+            updateContentGeometry();
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 PlatinumProgressBar::PlatinumProgressBar(QWidget *parent)

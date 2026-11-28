@@ -21,6 +21,9 @@
 #include <QWebEngineCookieStore>
 #include <QWebEngineProfile>
 #include <QWebEngineSettings>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+#include <QWebEnginePermission>
+#endif
 
 #if defined(Q_OS_WIN)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -172,6 +175,10 @@ NetzacPreferences NetzacPreferences::defaults()
     prefs.userAgent = defaultChromeUserAgent();
     prefs.adBlockEnabled = false;
     prefs.adBlockSubscriptions = defaultAdBlockSubscriptions();
+    prefs.autoplayMedia = false;
+    for (PermissionType type : allPermissionTypes())
+        prefs.defaultPermissionPolicies.insert(int(type), PermissionPolicy::Ask);
+    prefs.sitePermissions.clear();
     return prefs;
 }
 
@@ -337,86 +344,103 @@ NetzacPreferences NetzacPreferences::load()
                 prefs.adBlockSubscriptions.append(url);
         }
     }
+
+    prefs.autoplayMedia = s.value(QStringLiteral("permissions/autoplayMedia"), prefs.autoplayMedia).toBool();
+    for (PermissionType type : allPermissionTypes()) {
+        const QString key = QStringLiteral("permissions/default/") + permissionTypeKey(type);
+        const int rawPolicy = qBound(0, s.value(key, int(PermissionPolicy::Ask)).toInt(), 2);
+        prefs.defaultPermissionPolicies.insert(int(type), static_cast<PermissionPolicy>(rawPolicy));
+    }
+    prefs.sitePermissions = loadSitePermissions();
     return prefs;
 }
 
 void NetzacPreferences::save() const
 {
-    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
-    s.setValue(QStringLiteral("navigator/homeUrl"), homeUrl);
-    s.setValue(QStringLiteral("navigator/startupMode"), int(startupMode));
-    s.setValue(QStringLiteral("navigator/linkOpenMode"), int(linkOpenMode));
-    s.setValue(QStringLiteral("navigator/tabBarStyle"), int(tabBarStyle));
-    s.setValue(QStringLiteral("navigator/defaultBrowserPrompted"), defaultBrowserPrompted);
-    if (!lastUrl.isEmpty())
-        s.setValue(QStringLiteral("navigator/lastUrl"), lastUrl);
-    s.setValue(QStringLiteral("navigator/searchEngine"), searchEngineId);
-    s.setValue(QStringLiteral("navigator/autoloadImages"), autoloadImages);
-    s.setValue(QStringLiteral("navigator/enableJavaScript"), enableJavaScript);
-    s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
-    s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
-    s.setValue(QStringLiteral("navigator/disableGpuAcceleration"), disableGpuAcceleration);
+    {
+        QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+        s.setValue(QStringLiteral("navigator/homeUrl"), homeUrl);
+        s.setValue(QStringLiteral("navigator/startupMode"), int(startupMode));
+        s.setValue(QStringLiteral("navigator/linkOpenMode"), int(linkOpenMode));
+        s.setValue(QStringLiteral("navigator/tabBarStyle"), int(tabBarStyle));
+        s.setValue(QStringLiteral("navigator/defaultBrowserPrompted"), defaultBrowserPrompted);
+        if (!lastUrl.isEmpty())
+            s.setValue(QStringLiteral("navigator/lastUrl"), lastUrl);
+        s.setValue(QStringLiteral("navigator/searchEngine"), searchEngineId);
+        s.setValue(QStringLiteral("navigator/autoloadImages"), autoloadImages);
+        s.setValue(QStringLiteral("navigator/enableJavaScript"), enableJavaScript);
+        s.setValue(QStringLiteral("navigator/rememberPasswords"), rememberPasswords);
+        s.setValue(QStringLiteral("navigator/showNavButtonText"), showNavButtonText);
+        s.setValue(QStringLiteral("navigator/disableGpuAcceleration"), disableGpuAcceleration);
 
-    s.setValue(QStringLiteral("appearance/enablePlatinumScrollbars"), enablePlatinumScrollbars);
-    s.setValue(QStringLiteral("appearance/scrollbarAccent"), scrollbarAccent);
-    s.setValue(QStringLiteral("appearance/uiTheme"), int(uiTheme));
-    s.setValue(QStringLiteral("appearance/forceCustomFonts"), forceCustomFonts);
-    s.setValue(QStringLiteral("appearance/proportionalFontStyle"), int(proportionalFontStyle));
-    s.setValue(QStringLiteral("appearance/serifFont"), serifFont);
-    s.setValue(QStringLiteral("appearance/sansSerifFont"), sansSerifFont);
-    s.setValue(QStringLiteral("appearance/fixedFont"), fixedFont);
-    s.setValue(QStringLiteral("appearance/defaultFontSize"), defaultFontSize);
+        s.setValue(QStringLiteral("appearance/enablePlatinumScrollbars"), enablePlatinumScrollbars);
+        s.setValue(QStringLiteral("appearance/scrollbarAccent"), scrollbarAccent);
+        s.setValue(QStringLiteral("appearance/uiTheme"), int(uiTheme));
+        s.setValue(QStringLiteral("appearance/forceCustomFonts"), forceCustomFonts);
+        s.setValue(QStringLiteral("appearance/proportionalFontStyle"), int(proportionalFontStyle));
+        s.setValue(QStringLiteral("appearance/serifFont"), serifFont);
+        s.setValue(QStringLiteral("appearance/sansSerifFont"), sansSerifFont);
+        s.setValue(QStringLiteral("appearance/fixedFont"), fixedFont);
+        s.setValue(QStringLiteral("appearance/defaultFontSize"), defaultFontSize);
 
-    s.setValue(QStringLiteral("calm/jsDetection"), int(calm.jsDetection));
-    s.setValue(QStringLiteral("calm/layoutMode"), int(calm.layoutMode));
-    s.setValue(QStringLiteral("calm/removeScripts"), calm.removeScripts);
-    s.setValue(QStringLiteral("calm/removeIframes"), calm.removeIframes);
-    s.setValue(QStringLiteral("calm/removeVideos"), calm.removeVideos);
-    s.setValue(QStringLiteral("calm/removeAds"), calm.removeAds);
-    s.setValue(QStringLiteral("calm/normalizeTables"), calm.normalizeTables);
-    s.setValue(QStringLiteral("calm/maxImageWidth"), calm.maxImageWidth);
-    s.setValue(QStringLiteral("calm/excludedHosts"), calm.excludedHosts);
+        s.setValue(QStringLiteral("calm/jsDetection"), int(calm.jsDetection));
+        s.setValue(QStringLiteral("calm/layoutMode"), int(calm.layoutMode));
+        s.setValue(QStringLiteral("calm/removeScripts"), calm.removeScripts);
+        s.setValue(QStringLiteral("calm/removeIframes"), calm.removeIframes);
+        s.setValue(QStringLiteral("calm/removeVideos"), calm.removeVideos);
+        s.setValue(QStringLiteral("calm/removeAds"), calm.removeAds);
+        s.setValue(QStringLiteral("calm/normalizeTables"), calm.normalizeTables);
+        s.setValue(QStringLiteral("calm/maxImageWidth"), calm.maxImageWidth);
+        s.setValue(QStringLiteral("calm/excludedHosts"), calm.excludedHosts);
 
-    s.beginWriteArray(QStringLiteral("personalToolbar"), int(personalToolbar.size()));
-    for (int i = 0; i < personalToolbar.size(); ++i) {
-        s.setArrayIndex(i);
-        const PersonalToolbarItem &entry = personalToolbar.at(i);
-        s.setValue(QStringLiteral("title"), entry.title);
-        s.setValue(QStringLiteral("url"), entry.url);
-        s.setValue(QStringLiteral("icon"), entry.icon);
-        s.setValue(QStringLiteral("isFolder"), entry.isFolder);
-        if (entry.isFolder) {
-            s.beginWriteArray(QStringLiteral("children"), int(entry.children.size()));
-            for (int j = 0; j < entry.children.size(); ++j) {
-                s.setArrayIndex(j);
-                s.setValue(QStringLiteral("title"), entry.children.at(j).title);
-                s.setValue(QStringLiteral("url"), entry.children.at(j).url);
+        s.beginWriteArray(QStringLiteral("personalToolbar"), int(personalToolbar.size()));
+        for (int i = 0; i < personalToolbar.size(); ++i) {
+            s.setArrayIndex(i);
+            const PersonalToolbarItem &entry = personalToolbar.at(i);
+            s.setValue(QStringLiteral("title"), entry.title);
+            s.setValue(QStringLiteral("url"), entry.url);
+            s.setValue(QStringLiteral("icon"), entry.icon);
+            s.setValue(QStringLiteral("isFolder"), entry.isFolder);
+            if (entry.isFolder) {
+                s.beginWriteArray(QStringLiteral("children"), int(entry.children.size()));
+                for (int j = 0; j < entry.children.size(); ++j) {
+                    s.setArrayIndex(j);
+                    s.setValue(QStringLiteral("title"), entry.children.at(j).title);
+                    s.setValue(QStringLiteral("url"), entry.children.at(j).url);
+                }
+                s.endArray();
             }
-            s.endArray();
+        }
+        s.endArray();
+
+        s.setValue(QStringLiteral("quickLinks/mailUrl"), mailUrl);
+        s.setValue(QStringLiteral("quickLinks/chatUrl"), chatUrl);
+        s.setValue(QStringLiteral("quickLinks/gitUrl"), gitUrl);
+
+        s.setValue(QStringLiteral("cookies/policy"), int(cookiePolicy));
+        s.setValue(QStringLiteral("cookies/sessionOnly"), sessionCookiesOnly);
+
+        s.setValue(QStringLiteral("cache/mode"), int(cacheMode));
+        s.setValue(QStringLiteral("cache/maxMb"), cacheMaxMb);
+
+        s.setValue(QStringLiteral("proxy/mode"), int(proxyMode));
+        s.setValue(QStringLiteral("proxy/type"), int(proxyType));
+        s.setValue(QStringLiteral("proxy/host"), proxyHost);
+        s.setValue(QStringLiteral("proxy/port"), proxyPort);
+
+        s.setValue(QStringLiteral("userAgent/preset"), userAgentPreset);
+        s.setValue(QStringLiteral("userAgent/value"), userAgent);
+
+        s.setValue(QStringLiteral("adblock/enabled"), adBlockEnabled);
+        s.setValue(QStringLiteral("adblock/lists"), adBlockSubscriptions);
+
+        s.setValue(QStringLiteral("permissions/autoplayMedia"), autoplayMedia);
+        for (PermissionType type : allPermissionTypes()) {
+            const QString key = QStringLiteral("permissions/default/") + permissionTypeKey(type);
+            s.setValue(key, int(defaultPolicyFor(type)));
         }
     }
-    s.endArray();
-
-    s.setValue(QStringLiteral("quickLinks/mailUrl"), mailUrl);
-    s.setValue(QStringLiteral("quickLinks/chatUrl"), chatUrl);
-    s.setValue(QStringLiteral("quickLinks/gitUrl"), gitUrl);
-
-    s.setValue(QStringLiteral("cookies/policy"), int(cookiePolicy));
-    s.setValue(QStringLiteral("cookies/sessionOnly"), sessionCookiesOnly);
-
-    s.setValue(QStringLiteral("cache/mode"), int(cacheMode));
-    s.setValue(QStringLiteral("cache/maxMb"), cacheMaxMb);
-
-    s.setValue(QStringLiteral("proxy/mode"), int(proxyMode));
-    s.setValue(QStringLiteral("proxy/type"), int(proxyType));
-    s.setValue(QStringLiteral("proxy/host"), proxyHost);
-    s.setValue(QStringLiteral("proxy/port"), proxyPort);
-
-    s.setValue(QStringLiteral("userAgent/preset"), userAgentPreset);
-    s.setValue(QStringLiteral("userAgent/value"), userAgent);
-
-    s.setValue(QStringLiteral("adblock/enabled"), adBlockEnabled);
-    s.setValue(QStringLiteral("adblock/lists"), adBlockSubscriptions);
+    saveSitePermissions(sitePermissions);
 }
 
 bool NetzacPreferences::isGpuAccelerationDisabled()
@@ -442,6 +466,10 @@ void NetzacPreferences::resetAll()
     if (QWebEngineProfile *profile = netzacProfile()) {
         if (QWebEngineCookieStore *cookies = profile->cookieStore())
             cookies->deleteAllCookies();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        for (const QWebEnginePermission &perm : profile->listAllPermissions())
+            perm.reset();
+#endif
         profile->clearHttpCache();
     }
     defaults().save();
@@ -847,10 +875,16 @@ QWebEngineProfile *netzacProfile()
         const QString cachePath = cacheDir + QStringLiteral("/zacos9/netzac/cache");
         QDir().mkpath(cachePath);
         s_profile->setCachePath(cachePath);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+        // Route all website permission requests through Netzac's Ask/Always/Never manager.
         s_profile->setPersistentPermissionsPolicy(
-            QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk);
-        if (QWebEngineSettings *ws = s_profile->settings())
+            QWebEngineProfile::PersistentPermissionsPolicy::AskEveryTime);
+#endif
+        if (QWebEngineSettings *ws = s_profile->settings()) {
             ws->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
+            ws->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
+            ws->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, true);
+        }
         installNetzacScripts(s_profile, NetzacPreferences::load());
     }
     return s_profile;
@@ -949,8 +983,10 @@ void NetzacPreferences::apply(QWebEngineProfile *profile) const
         if (profile->cachePath() != cachePath)
             profile->setCachePath(cachePath);
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
         profile->setPersistentPermissionsPolicy(
-            QWebEngineProfile::PersistentPermissionsPolicy::StoreOnDisk);
+            QWebEngineProfile::PersistentPermissionsPolicy::AskEveryTime);
+#endif
     }
 
     // User Agent
@@ -993,7 +1029,13 @@ void NetzacPreferences::apply(QWebEngineProfile *profile) const
         });
     }
 
-    applyFontSettings(profile->settings());
+    if (QWebEngineSettings *ws = profile->settings()) {
+        ws->setAttribute(QWebEngineSettings::FullScreenSupportEnabled, true);
+        ws->setAttribute(QWebEngineSettings::ScreenCaptureEnabled, true);
+        ws->setAttribute(QWebEngineSettings::PlaybackRequiresUserGesture, !autoplayMedia);
+        ws->setAttribute(QWebEngineSettings::JavascriptCanAccessClipboard, true);
+        applyFontSettings(ws);
+    }
     installNetzacScripts(profile, *this);
 
     NetzacAdBlocker *blocker = NetzacAdBlocker::instance();
@@ -1011,4 +1053,243 @@ QString NetzacPreferences::searchUrlFor(const QString &query) const
         }
     }
     return tmpl.arg(QString::fromUtf8(QUrl::toPercentEncoding(query)));
+}
+
+QVector<NetzacPreferences::PermissionType> NetzacPreferences::allPermissionTypes()
+{
+    return {
+        PermissionType::Geolocation,
+        PermissionType::Notifications,
+        PermissionType::MediaAudioCapture,
+        PermissionType::MediaVideoCapture,
+        PermissionType::MediaAudioVideoCapture,
+        PermissionType::ClipboardReadWrite,
+        PermissionType::DesktopVideoCapture,
+        PermissionType::DesktopAudioVideoCapture,
+        PermissionType::MouseLock,
+        PermissionType::LocalFontsAccess,
+    };
+}
+
+QString NetzacPreferences::permissionTypeKey(PermissionType type)
+{
+    switch (type) {
+    case PermissionType::Geolocation:
+        return QStringLiteral("geolocation");
+    case PermissionType::Notifications:
+        return QStringLiteral("notifications");
+    case PermissionType::MediaAudioCapture:
+        return QStringLiteral("microphone");
+    case PermissionType::MediaVideoCapture:
+        return QStringLiteral("camera");
+    case PermissionType::MediaAudioVideoCapture:
+        return QStringLiteral("camera_microphone");
+    case PermissionType::ClipboardReadWrite:
+        return QStringLiteral("clipboard");
+    case PermissionType::DesktopVideoCapture:
+        return QStringLiteral("screen_capture");
+    case PermissionType::DesktopAudioVideoCapture:
+        return QStringLiteral("screen_audio_capture");
+    case PermissionType::MouseLock:
+        return QStringLiteral("mouse_lock");
+    case PermissionType::LocalFontsAccess:
+        return QStringLiteral("local_fonts");
+    }
+    return QStringLiteral("geolocation");
+}
+
+bool NetzacPreferences::permissionTypeFromKey(const QString &key, PermissionType *out)
+{
+    const QString clean = key.trimmed().toLower();
+    for (PermissionType type : allPermissionTypes()) {
+        if (permissionTypeKey(type) == clean) {
+            if (out)
+                *out = type;
+            return true;
+        }
+    }
+    return false;
+}
+
+QString NetzacPreferences::permissionTypeLabel(PermissionType type)
+{
+    switch (type) {
+    case PermissionType::Geolocation:
+        return ztr("Location (Geolocation)");
+    case PermissionType::Notifications:
+        return ztr("Notifications");
+    case PermissionType::MediaAudioCapture:
+        return ztr("Microphone");
+    case PermissionType::MediaVideoCapture:
+        return ztr("Camera");
+    case PermissionType::MediaAudioVideoCapture:
+        return ztr("Camera & Microphone");
+    case PermissionType::ClipboardReadWrite:
+        return ztr("Clipboard");
+    case PermissionType::DesktopVideoCapture:
+        return ztr("Screen Capture");
+    case PermissionType::DesktopAudioVideoCapture:
+        return ztr("Screen & Audio Capture");
+    case PermissionType::MouseLock:
+        return ztr("Mouse Lock");
+    case PermissionType::LocalFontsAccess:
+        return ztr("Local Fonts");
+    }
+    return ztr("Unknown");
+}
+
+QString NetzacPreferences::normalizePermissionOrigin(const QUrl &origin)
+{
+    if (!origin.isValid())
+        return origin.toString().trimmed().toLower();
+    const QString scheme = origin.scheme().trimmed().toLower();
+    const QString host = origin.host().trimmed().toLower();
+    if (!scheme.isEmpty() && !host.isEmpty()) {
+        const int port = origin.port();
+        return port >= 0
+            ? QStringLiteral("%1://%2:%3").arg(scheme, host).arg(port)
+            : QStringLiteral("%1://%2").arg(scheme, host);
+    }
+    return origin.toString(QUrl::RemovePath | QUrl::RemoveQuery | QUrl::RemoveFragment).trimmed();
+}
+
+NetzacPreferences::PermissionPolicy NetzacPreferences::defaultPolicyFor(PermissionType type) const
+{
+    return defaultPermissionPolicies.value(int(type), PermissionPolicy::Ask);
+}
+
+void NetzacPreferences::setDefaultPolicyFor(PermissionType type, PermissionPolicy policy)
+{
+    defaultPermissionPolicies.insert(int(type), policy);
+}
+
+NetzacPreferences::PermissionPolicy NetzacPreferences::sitePolicyFor(
+    const QString &origin,
+    PermissionType type,
+    bool *found) const
+{
+    const QString clean = origin.trimmed().toLower();
+    for (const SitePermissionRule &rule : sitePermissions) {
+        if (rule.origin.trimmed().toLower() == clean && rule.type == type) {
+            if (found)
+                *found = true;
+            return rule.policy;
+        }
+    }
+    if (found)
+        *found = false;
+    return PermissionPolicy::Ask;
+}
+
+void NetzacPreferences::setSitePolicy(
+    const QString &origin,
+    PermissionType type,
+    PermissionPolicy policy)
+{
+    const QString clean = origin.trimmed();
+    if (clean.isEmpty())
+        return;
+
+    for (int i = 0; i < sitePermissions.size(); ++i) {
+        if (sitePermissions.at(i).origin.compare(clean, Qt::CaseInsensitive) == 0
+            && sitePermissions.at(i).type == type) {
+            if (policy == PermissionPolicy::Ask) {
+                sitePermissions.removeAt(i);
+            } else {
+                sitePermissions[i].origin = clean;
+                sitePermissions[i].policy = policy;
+            }
+            return;
+        }
+    }
+    if (policy != PermissionPolicy::Ask)
+        sitePermissions.append({clean, type, policy});
+}
+
+QVector<NetzacPreferences::SitePermissionRule> NetzacPreferences::loadSitePermissions()
+{
+    QVector<SitePermissionRule> rules;
+    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+    const int count = s.beginReadArray(QStringLiteral("permissions/sites"));
+    for (int i = 0; i < count; ++i) {
+        s.setArrayIndex(i);
+        const QString origin = s.value(QStringLiteral("origin")).toString().trimmed();
+        const QString typeKey = s.value(QStringLiteral("type")).toString();
+        const int rawPolicy = s.value(QStringLiteral("policy"), int(PermissionPolicy::Ask)).toInt();
+        PermissionType type = PermissionType::Geolocation;
+        if (origin.isEmpty() || !permissionTypeFromKey(typeKey, &type))
+            continue;
+        if (rawPolicy != int(PermissionPolicy::Allow) && rawPolicy != int(PermissionPolicy::Deny))
+            continue;
+        const auto policy = static_cast<PermissionPolicy>(rawPolicy);
+
+        bool updated = false;
+        for (SitePermissionRule &existing : rules) {
+            if (existing.origin.compare(origin, Qt::CaseInsensitive) == 0 && existing.type == type) {
+                existing.origin = origin;
+                existing.policy = policy;
+                updated = true;
+                break;
+            }
+        }
+        if (!updated)
+            rules.append({origin, type, policy});
+    }
+    s.endArray();
+    return rules;
+}
+
+void NetzacPreferences::saveSitePermissions(const QVector<SitePermissionRule> &rules)
+{
+    QSettings s(QStringLiteral("zacos9"), QStringLiteral("netzac"));
+    s.remove(QStringLiteral("permissions/sites"));
+
+    QVector<SitePermissionRule> clean;
+    clean.reserve(rules.size());
+    for (const SitePermissionRule &rule : rules) {
+        const QString origin = rule.origin.trimmed();
+        if (origin.isEmpty())
+            continue;
+        if (rule.policy != PermissionPolicy::Allow && rule.policy != PermissionPolicy::Deny)
+            continue;
+        clean.append({origin, rule.type, rule.policy});
+    }
+
+    s.beginWriteArray(QStringLiteral("permissions/sites"), int(clean.size()));
+    for (int i = 0; i < clean.size(); ++i) {
+        s.setArrayIndex(i);
+        s.setValue(QStringLiteral("origin"), clean.at(i).origin);
+        s.setValue(QStringLiteral("type"), permissionTypeKey(clean.at(i).type));
+        s.setValue(QStringLiteral("policy"), int(clean.at(i).policy));
+    }
+    s.endArray();
+}
+
+void NetzacPreferences::upsertSitePermission(
+    const QString &origin,
+    PermissionType type,
+    PermissionPolicy policy)
+{
+    QVector<SitePermissionRule> rules = loadSitePermissions();
+    const QString clean = origin.trimmed();
+    if (clean.isEmpty())
+        return;
+
+    bool found = false;
+    for (int i = 0; i < rules.size(); ++i) {
+        if (rules.at(i).origin.compare(clean, Qt::CaseInsensitive) == 0
+            && rules.at(i).type == type) {
+            if (policy == PermissionPolicy::Ask) {
+                rules.removeAt(i);
+            } else {
+                rules[i].origin = clean;
+                rules[i].policy = policy;
+            }
+            found = true;
+            break;
+        }
+    }
+    if (!found && policy != PermissionPolicy::Ask)
+        rules.append({clean, type, policy});
+    saveSitePermissions(rules);
 }

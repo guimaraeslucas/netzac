@@ -18,7 +18,7 @@ qt6 = import('qt6')
 i18n = import('i18n')
 
 qt6_dep = dependency('qt6',
-  modules: ['Core', 'Gui', 'Network', 'Widgets', 'WebEngineCore', 'WebEngineWidgets'])
+  modules: ['Core', 'Gui', 'Network', 'Widgets', 'PrintSupport', 'WebEngineCore', 'WebEngineWidgets'])
 
 subdir('shell/netzac')
 subdir('po')
