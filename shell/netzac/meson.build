@@ -31,6 +31,7 @@ netzac_sources = [
   'platinum.cpp',
   'preferences.cpp',
   'widgets.cpp',
+  'zacos9theme.cpp',
   'dialogs.cpp',
   'webview.cpp',
   'netzacwindow.cpp',

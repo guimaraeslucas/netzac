@@ -92,10 +92,8 @@ QString runPlatinumFileDialog(
             dlg.selectFile(fi.fileName());
         }
     }
-    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance())) {
-        dlg.setStyle(app->style());
+    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance()))
         dlg.setPalette(app->palette());
-    }
     dlg.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
     if (dlg.exec() != QDialog::Accepted)
         return QString();
@@ -126,10 +124,8 @@ QString platinumSaveFileName(
 PlatinumDialog::PlatinumDialog(QWidget *parent)
     : QDialog(parent)
 {
-    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance())) {
-        setStyle(app->style());
+    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance()))
         setPalette(app->palette());
-    }
     setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
 }
 

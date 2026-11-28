@@ -2,6 +2,7 @@
 
 #include "i18n.h"
 #include "platinum.h"
+#include "zacos9theme.h"
 
 #include <QAction>
 #include <QApplication>
@@ -39,7 +40,7 @@
 // tighter/smaller than on X11, so navigation labels get extra points there.
 static constexpr int kNavLabelSize = 9;
 #else
-static constexpr int kNavLabelSize = 8;
+static constexpr int kNavLabelSize = 9;
 #endif
 
 PlatinumNavButton::PlatinumNavButton(const QString &label, const QString &iconName, QWidget *parent)
@@ -212,8 +213,13 @@ void PlatinumCompactButton::paintEvent(QPaintEvent * /*event*/)
     painter.drawPixmap(x, iy, m_iconPm);
     x += m_iconPm.width() + 4;
 
+    const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
+    const QColor fg = (isDown() && isEnabled() && activeUiTheme() == NetzacPreferences::UiTheme::Zacos9)
+        ? QColor(Qt::white)
+        : palette().color(group, QPalette::ButtonText);
+
     painter.setFont(font());
-    painter.setPen(palette().color(QPalette::ButtonText));
+    painter.setPen(fg);
     const int textW = width() - x - (m_hasArrow ? 12 : 4);
     painter.drawText(
         QRect(x, offset, textW, height()),
@@ -223,7 +229,7 @@ void PlatinumCompactButton::paintEvent(QPaintEvent * /*event*/)
     if (m_hasArrow) {
         const int ax = width() - 9 + offset;
         const int ay = height() / 2 - 1 + offset;
-        painter.setBrush(palette().color(QPalette::ButtonText));
+        painter.setBrush(fg);
         painter.setPen(Qt::NoPen);
         painter.drawPolygon(QPolygon({
             QPoint(ax, ay),
@@ -574,6 +580,25 @@ void PlatinumPopupButton::showPopup()
 void PlatinumPopupButton::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
+    const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
+    const QColor textColor = palette().color(group, QPalette::ButtonText);
+    const QString label = (m_currentIndex >= 0 && m_currentIndex < m_items.size())
+        ? m_items.at(m_currentIndex).label
+        : QString();
+
+    if (activeUiTheme() == NetzacPreferences::UiTheme::Zacos9) {
+        drawZacos9PopupButton(painter, rect(), isEnabled(), isDown());
+        painter.setFont(font());
+        painter.setPen(textColor);
+        const int textW = qMax(10, width() - 29);
+        const QString elided = painter.fontMetrics().elidedText(label, Qt::ElideRight, textW);
+        painter.drawText(
+            QRect(8, 0, textW, height()),
+            Qt::AlignVCenter | Qt::AlignLeft,
+            elided);
+        return;
+    }
+
     QStyleOptionButton opt;
     initStyleOption(&opt);
     opt.text.clear();
@@ -581,11 +606,6 @@ void PlatinumPopupButton::paintEvent(QPaintEvent * /*event*/)
     style()->drawControl(QStyle::CE_PushButtonBevel, &opt, &painter, this);
 
     const int offset = isDown() ? 1 : 0;
-    const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
-    const QColor textColor = palette().color(group, QPalette::ButtonText);
-    const QString label = (m_currentIndex >= 0 && m_currentIndex < m_items.size())
-        ? m_items.at(m_currentIndex).label
-        : QString();
 
     painter.setFont(font());
     painter.setPen(textColor);

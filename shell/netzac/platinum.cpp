@@ -1,5 +1,7 @@
 #include "platinum.h"
 
+#include "zacos9theme.h"
+
 #include <QApplication>
 #include <QFontDatabase>
 #include <QImage>
@@ -176,6 +178,11 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
 
     s_activeTheme = effective;
 
+    for (QWidget *w : QApplication::topLevelWidgets()) {
+        if (w)
+            w->setStyle(nullptr);
+    }
+
     switch (effective) {
     case NetzacPreferences::UiTheme::Platinum:
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
@@ -193,8 +200,14 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
         app.styleHints()->setColorScheme(Qt::ColorScheme::Light);
 #endif
-        app.setStyle(QStringLiteral("Fusion"));
-        app.setPalette(makePlatinumLightPalette());
+        app.setStyle(new NetzacZacos9Style());
+        if (app.style()) {
+            QPalette pal = app.style()->standardPalette();
+            app.style()->polish(pal);
+            app.setPalette(pal);
+        } else {
+            app.setPalette(makePlatinumLightPalette());
+        }
         app.setFont(zacosFont(QStringLiteral("ZacOS 9 System"), 12));
         break;
     case NetzacPreferences::UiTheme::Light:
@@ -225,7 +238,6 @@ void applyZacos9Theme(QApplication &app, NetzacPreferences::UiTheme theme)
     for (QWidget *w : QApplication::topLevelWidgets()) {
         if (!w)
             continue;
-        w->setStyle(app.style());
         w->setPalette(app.palette());
         w->update();
         for (QWidget *child : w->findChildren<QWidget *>())

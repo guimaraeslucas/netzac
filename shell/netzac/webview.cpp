@@ -488,12 +488,15 @@ void installNetzacScripts(QWebEngineProfile *profile, const NetzacPreferences &p
             "  if (window.__netzacCtxGuardInstalled) return;\n"
             "  window.__netzacCtxGuardInstalled = true;\n"
             "  window.__netzacCtxPrevented = false;\n"
+            "  window.__netzacCtxPreventedAt = 0;\n"
             "  var prefix = '%1';\n"
             "  window.addEventListener('contextmenu', function(e) {\n"
             "    window.__netzacCtxPrevented = false;\n"
+            "    window.__netzacCtxPreventedAt = 0;\n"
             "    Promise.resolve().then(function() {\n"
             "      var prevented = !!e.defaultPrevented;\n"
             "      window.__netzacCtxPrevented = prevented;\n"
+            "      window.__netzacCtxPreventedAt = prevented ? performance.now() : 0;\n"
             "      console.debug(prefix + (prevented ? '1' : '0'));\n"
             "    });\n"
             "  }, true);\n"
@@ -643,6 +646,7 @@ bool NetzacWebPage::acceptNavigationRequest(
     bool isMainFrame)
 {
     if (isMainFrame) {
+        resetContextMenuPrevented();
         const QString urlStr = url.toString();
         const QString scheme = url.scheme().toLower();
         if (m_isBuiltInPage) {
@@ -678,14 +682,14 @@ QWebEngineView *NetzacWebView::createWindow(QWebEnginePage::WebWindowType type)
 void NetzacWebView::contextMenuEvent(QContextMenuEvent *event)
 {
     QWebEngineContextMenuRequest *req = lastContextMenuRequest();
-    if (!req || req->isAccepted() || event->spontaneous()) {
+    if (!req || event->spontaneous()) {
         event->ignore();
         return;
     }
 
     auto *netzacPage = qobject_cast<NetzacWebPage *>(page());
     if (netzacPage && netzacPage->wasContextMenuPreventedRecently()) {
-        req->setAccepted(true);
+        netzacPage->resetContextMenuPrevented();
         event->accept();
         return;
     }
@@ -698,7 +702,6 @@ void NetzacWebView::contextMenuEvent(QContextMenuEvent *event)
     data.isContentEditable = req->isContentEditable();
     data.selectedText = req->selectedText();
 
-    req->setAccepted(true);
     event->accept();
 
     if (netzacPage
@@ -707,15 +710,27 @@ void NetzacWebView::contextMenuEvent(QContextMenuEvent *event)
         QPointer<NetzacWebView> viewPtr(this);
         QPointer<NetzacWebPage> pagePtr(netzacPage);
         netzacPage->runJavaScript(
-            QStringLiteral("!!window.__netzacCtxPrevented"),
+            QStringLiteral(
+                "(function(){"
+                "var p = !!window.__netzacCtxPrevented "
+                "&& (performance.now() - (window.__netzacCtxPreventedAt || 0)) < 500;"
+                "window.__netzacCtxPrevented = false;"
+                "window.__netzacCtxPreventedAt = 0;"
+                "return p;"
+                "})()"),
             QWebEngineScript::ApplicationWorld,
             [viewPtr, pagePtr, data](const QVariant &result) {
                 if (!viewPtr)
                     return;
-                if (result.toBool())
+                if (result.toBool()) {
+                    if (pagePtr)
+                        pagePtr->resetContextMenuPrevented();
                     return;
-                if (pagePtr && pagePtr->wasContextMenuPreventedRecently())
+                }
+                if (pagePtr && pagePtr->wasContextMenuPreventedRecently()) {
+                    pagePtr->resetContextMenuPrevented();
                     return;
+                }
                 emit viewPtr->contextMenuRequested(data);
             });
         return;

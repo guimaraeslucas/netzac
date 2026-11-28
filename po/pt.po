@@ -54,7 +54,7 @@ msgstr "<p>Bem-vindo a bordo do <b>Netzac Navigator 1.0</b> rodando no <b>ZacOS 
 
 #: shell/netzac/netzacwindow.cpp
 msgid "<ul class=\"shortcut-list\"><li><span><b>Collapse Toolbars</b></span><span>Click the ribbed grip on the left of any toolbar</span></li><li><span><b>Open Page</b></span><span><code>Ctrl+O</code></span></li><li><span><b>New / Close Tab</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>Find in Page / Find Again</b></span><span><code>Ctrl+F</code> or <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>Zoom In / Out / Reset</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>Add / Manage Bookmarks</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>Reload / Stop</b></span><span><code>Ctrl+R</code> or <code>F5</code> / <code>Esc</code></span></li><li><span><b>Full Screen</b></span><span><code>F11</code></span></li><li><span><b>Calm Mode</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>Page Source / Info</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
-msgstr "<ul class=\"shortcut-list\"><li><span><b>Recolher Barras de Ferramentas</b></span><span>Clique na alça estriada à esquerda de qualquer barra</span></li><li><span><b>Abrir Página</b></span><span><code>Ctrl+O</code></span></li><li><span><b>Nova / Fechar Aba</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>Localizar / Localizar Novamente</b></span><span><code>Ctrl+F</code> ou <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>Aumentar / Diminuir / Redefinir Zoom</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>Adicionar / Gerenciar Favoritos</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>Recarregar / Parar</b></span><span><code>Ctrl+R</code> ou <code>F5</code> / <code>Esc</code></span></li><li><span><b>Tela Cheia</b></span><span><code>F11</code></span></li><li><span><b>Modo Calmo</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>Código-Fonte / Informações da Página</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
+msgstr "<ul class=\"shortcut-list\"><li><span><b>Recolher Barras de Ferramentas</b></span><span>Clique na alça estriada à esquerda de qualquer barra</span></li><li><span><b>Abrir Página</b></span><span><code>Ctrl+O</code></span></li><li><span><b>Nova / Fechar Aba</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>Localizar / Localizar Novamente</b></span><span><code>Ctrl+F</code> ou <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>Aumentar / Diminuir / Redefinir Zoom</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>Adicionar / Gerenciar Favoritos</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>Atualizar / Parar</b></span><span><code>Ctrl+R</code> ou <code>F5</code> / <code>Esc</code></span></li><li><span><b>Tela Cheia</b></span><span><code>F11</code></span></li><li><span><b>Modo Calmo</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>Código-Fonte / Informações da Página</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
 
 #: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
 msgid "About Netzac"
@@ -862,11 +862,11 @@ msgstr "Layout de Leitura:"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Reload"
-msgstr "Recarregar"
+msgstr "Atualizar"
 
 #: shell/netzac/netzacwindow.cpp
 msgid "Reload current page"
-msgstr "Recarregar página atual"
+msgstr "Atualizar página atual"
 
 #: shell/netzac/dialogs.cpp
 msgid "Remove"
