@@ -22,12 +22,15 @@ netzac/
 │   ├── LINGUAS
 │   ├── zacos9-netzac.pot
 │   ├── ar.po
+│   ├── de.po
 │   ├── es.po
 │   ├── fr_CA.po
+│   ├── fr_FR.po
 │   ├── it.po
 │   ├── ja.po
+│   ├── pt.po
 │   ├── ru.po
-│   └── pt.po
+│   └── zh_CN.po
 └── shell/netzac/
     ├── meson.build
     ├── i18n.h
@@ -75,11 +78,14 @@ DESTDIR="$PWD/stage" ninja -C build install
 ZACOS9_LOCALEDIR="$PWD/stage/usr/local/share/locale" ./build/shell/netzac/zacos9-netzac
 ```
 
-## Windows Portable Build
+## Windows Build & Packaging
 
 Windows builds use Meson/Ninja with the MSVC 2022 toolchain and Qt 6 WebEngine;
 `windeployqt` then produces a self-contained folder that runs without a Qt
-installation or the VC++ Redistributable on the target machine.
+installation or the VC++ Redistributable on the target machine. From that folder,
+`scripts\build-windows.ps1` can create both a portable ZIP archive (`-Zip`) and
+a Windows installer executable (`-Installer`, compiled with Inno Setup 6 via
+`scripts\netzac.iss` using `LICENCE`).
 
 Requirements:
 
@@ -91,18 +97,26 @@ Requirements:
   ```
 
 - Meson and Ninja (`python -m pip install meson ninja`).
+- [Inno Setup 6](https://jrsoftware.org/isinfo.php) (optional, only required when passing `-Installer`).
 
 ```powershell
 # Build, deploy the Qt runtime and create a portable ZIP
 scripts\build-windows.ps1 -Zip
 
-# Same, with an explicit Qt location and archive name
-scripts\build-windows.ps1 -QtDir C:\Qt\6.8.3\msvc2022_64 -Zip -ZipPath zacos9-netzac_1.0.0_windows-x64.zip
+# Build both the portable ZIP and the Inno Setup installer
+scripts\build-windows.ps1 -QtDir C:\Qt\6.8.3\msvc2022_64 -Version 1.0.0 -Zip -Installer
+
+# Same, with explicit output filenames
+scripts\build-windows.ps1 -QtDir C:\Qt\6.8.3\msvc2022_64 -Version 1.0.0 `
+  -Zip -ZipPath zacos9-netzac_1.0.0_windows-x64.zip `
+  -Installer -InstallerPath zacos9-netzac_1.0.0_windows-x64-setup.exe
 ```
 
-The deployed folder is written to `build-windows\dist` and, with `-Zip`, the
-archive to `zacos9-netzac-windows-x64.zip` (or the `-ZipPath` value). Use
-`-SkipDeploy` to only compile the executable.
+The deployed folder is written to `build-windows\dist`. With `-Zip`, the archive
+is written to `zacos9-netzac-windows-x64.zip` (or the `-ZipPath` value), and
+with `-Installer`, the setup executable is written to
+`zacos9-netzac_<version>_windows-x64-setup.exe` (or the `-InstallerPath` value).
+Use `-SkipDeploy` to only compile the executable.
 
 ## Credits & Community
 
@@ -140,10 +154,11 @@ The **Release Debian package** GitHub Actions workflow builds
 on Debian Trixie and attaches them, along with SHA-256 checksums, to the matching GitHub
 Release.
 
-The **Release Windows package** workflow builds
-`zacos9-netzac_<version>_windows-x64.zip` (plus its SHA-256 checksum) on
-`windows-latest` with MSVC 2022 and Qt 6 WebEngine, and attaches it to the same
-GitHub Release.
+The **Release Windows package** workflow builds both
+`zacos9-netzac_<version>_windows-x64.zip` (portable archive) and
+`zacos9-netzac_<version>_windows-x64-setup.exe` (Inno Setup installer), along
+with their SHA-256 checksums, on `windows-latest` with MSVC 2022 and Qt 6
+WebEngine, and attaches them to the same GitHub Release.
 
 Publish a release by pushing a version tag:
 

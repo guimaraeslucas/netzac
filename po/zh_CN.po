@@ -1,0 +1,1930 @@
+# Simplified Chinese translations for zacos9-netzac.
+# Copyright (C) 2026 Netzac Navigator Team - G3Pix
+# This file is distributed under the same license as the zacos9-netzac package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: zacos9-netzac 1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/guimaraeslucas/netzac/issues\n"
+"POT-Creation-Date: 2026-11-22 10:30-0300\n"
+"PO-Revision-Date: 2026-11-27 21:45-0300\n"
+"Last-Translator: Netzac Navigator Contributors\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "%1 (%2 item(s))"
+msgstr "%1 (%2 项)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "(Empty folder)"
+msgstr "(空文件夹)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "(Untitled)"
+msgstr "(无标题)"
+
+#: shell/netzac/bookmarks.cpp
+msgid "68k.news - Headlines"
+msgstr "68k.news - Headlines"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac Chat</h2><p style=\"margin-bottom:0;\">To configure this button to open your chat service, open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p></div>"
+msgstr "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac 聊天</h2><p style=\"margin-bottom:0;\">要配置此按钮以打开您的聊天服务，请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>聊天 URL</b>。</p></div>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac Git</h2><p style=\"margin-bottom:0;\">To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p></div>"
+msgstr "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac Git</h2><p style=\"margin-bottom:0;\">要配置此按钮以打开您的 Git 托管平台（例如 GitHub、GitLab 或 Gitea），请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>Git URL</b>。</p></div>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac Mail</h2><p style=\"margin-bottom:0;\">To configure this button to open your mail link (for example Gmail or webmail), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p></div>"
+msgstr "<div class=\"credits-box\" style=\"margin-top:0;\"><h2>Netzac 邮件</h2><p style=\"margin-bottom:0;\">要配置此按钮以打开您的邮箱链接（例如 Gmail 或网页邮箱），请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>邮件 URL</b>。</p></div>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>Unknown built-in Navigator location.</p>"
+msgstr "<p>未知的内置 Navigator 地址。</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>Welcome aboard <b>Netzac Navigator 1.0</b> running on <b>ZacOS 9</b>.</p><p>Quick links to explore the classic &amp; text-friendly Web:</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>Classic search engine for retro browsers</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>Search engine for classic web pages</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>Fast headlines formatted for classic Macs</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>Browse snapshots of the 1990s web</span></a></div><div class=\"credits-box\"><h2>Credits &amp; Community</h2><p>Netzac started as an initial idea by <b>Lucas Guimarães</b>. We hope to count on the full support of the <b>ZacOS 9</b> community for contributions, ideas, and pull requests at <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a>.</p><p style=\"margin-bottom:0;\">Special thanks to <b>Adam Lawson (@chromasystemprofessional)</b> for creating this incredible ZacOS 9 project.</p></div>"
+msgstr "<p>欢迎使用运行在 <b>ZacOS 9</b> 上的 <b>Netzac Navigator 1.0</b>。</p><p>探索经典与纯文本友好网页的快捷链接：</p><div class=\"cards\"><a class=\"card\" href=\"https://frogfind.com\"><strong>FrogFind!</strong><span>面向复古浏览器的经典搜索引擎</span></a><a class=\"card\" href=\"https://wiby.me\"><strong>Wiby</strong><span>经典网页搜索引擎</span></a><a class=\"card\" href=\"http://68k.news\"><strong>68k.news</strong><span>专为经典 Mac 格式化的快速头条新闻</span></a><a class=\"card\" href=\"https://theoldnet.com\"><strong>The Old Net</strong><span>浏览 20 世纪 90 年代的网页快照</span></a></div><div class=\"credits-box\"><h2>致谢与社区</h2><p>Netzac 最初源自 <b>Lucas Guimarães</b> 的构想。我们期待 <b>ZacOS 9</b> 社区在 <a href=\"https://github.com/guimaraeslucas/netzac\">github.com/guimaraeslucas/netzac</a> 提供贡献、创意与 Pull Request。</p><p style=\"margin-bottom:0;\">特别感谢 <b>Adam Lawson (@chromasystemprofessional)</b> 打造了卓越的 ZacOS 9 项目。</p></div>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<ul class=\"shortcut-list\"><li><span><b>Collapse Toolbars</b></span><span>Click the ribbed grip on the left of any toolbar</span></li><li><span><b>Open Page</b></span><span><code>Ctrl+O</code></span></li><li><span><b>New / Close Tab</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>Find in Page / Find Again</b></span><span><code>Ctrl+F</code> or <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>Zoom In / Out / Reset</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>Add / Manage Bookmarks</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>Reload / Stop</b></span><span><code>Ctrl+R</code> or <code>F5</code> / <code>Esc</code></span></li><li><span><b>Full Screen</b></span><span><code>F11</code></span></li><li><span><b>Calm Mode</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>Page Source / Info</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
+msgstr "<ul class=\"shortcut-list\"><li><span><b>折叠工具栏</b></span><span>点击任意工具栏左侧的凹凸条纹手柄</span></li><li><span><b>打开页面</b></span><span><code>Ctrl+O</code></span></li><li><span><b>新建 / 关闭标签页</b></span><span><code>Ctrl+T</code> / <code>Ctrl+W</code></span></li><li><span><b>在页面中查找 / 再次查找</b></span><span><code>Ctrl+F</code> 或 <code>F4</code> / <code>Ctrl+G</code></span></li><li><span><b>放大 / 缩小 / 重置缩放</b></span><span><code>Ctrl++</code> / <code>Ctrl+-</code> / <code>Ctrl+0</code></span></li><li><span><b>添加 / 管理书签</b></span><span><code>Ctrl+D</code> / <code>Ctrl+B</code></span></li><li><span><b>重新加载 / 停止</b></span><span><code>Ctrl+R</code> 或 <code>F5</code> / <code>Esc</code></span></li><li><span><b>全屏</b></span><span><code>F11</code></span></li><li><span><b>宁静模式</b></span><span><code>Ctrl+Shift+C</code></span></li><li><span><b>页面源代码 / 页面信息</b></span><span><code>Ctrl+U</code> / <code>Ctrl+I</code></span></li></ul>"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "About Netzac"
+msgstr "关于 Netzac"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "About Netzac..."
+msgstr "关于 Netzac..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Accept all cookies"
+msgstr "接受所有 Cookie"
+
+#: shell/netzac/dialogs.cpp
+msgid "Accept only cookies from originating server"
+msgstr "仅接受来自原始服务器的 Cookie"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Add Bookmark"
+msgstr "添加书签"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Add Bookmark for Link"
+msgstr "为链接添加书签"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Site to Folder"
+msgstr "将网站添加到文件夹"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Toolbar Button"
+msgstr "添加工具栏按钮"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add"
+msgstr "添加"
+
+#: shell/netzac/dialogs.cpp
+msgid "All cookies cleared."
+msgstr "已清除所有 Cookie。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Apply on all non-excluded sites"
+msgstr "应用于所有未排除的网站"
+
+#: shell/netzac/dialogs.cpp
+msgid "Automatically load images"
+msgstr "自动加载图像"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Back"
+msgstr "后退"
+
+#: shell/netzac/preferences.cpp
+msgid "Bing"
+msgstr "Bing"
+
+#: shell/netzac/dialogs.cpp
+msgid "Bookmark Files (*.html *.htm Bookmarks *.json);;All Files (*)"
+msgstr "书签文件 (*.html *.htm Bookmarks *.json);;所有文件 (*)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Bookmarked: %1"
+msgstr "已加入书签：%1"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Bookmarks"
+msgstr "书签"
+
+#: shell/netzac/dialogs.cpp
+msgid "Bookmarks exported in Chrome/Firefox HTML format."
+msgstr "书签已导出为 Chrome/Firefox HTML 格式。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Browser Cache Storage:"
+msgstr "浏览器缓存存储："
+
+#: shell/netzac/dialogs.cpp
+msgid "Browser Identity Preset:"
+msgstr "浏览器标识预设："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Built-in Netzac Navigator local document."
+msgstr "内置 Netzac Navigator 本地文档。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Button Label:"
+msgstr "按钮标签："
+
+#: shell/netzac/preferences.cpp
+msgid "CNN Lite"
+msgstr "CNN Lite"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cache"
+msgstr "缓存"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Calm"
+msgstr "宁静"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Calm Mode"
+msgstr "宁静模式"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Cancel"
+msgstr "取消"
+
+#: shell/netzac/dialogs.cpp
+msgid "Category:"
+msgstr "分类："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Chat"
+msgstr "聊天"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Chat (Ctrl+3)"
+msgstr "聊天 (Ctrl+3)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Chat URL (e.g. https://app.element.io):"
+msgstr "聊天 URL（例如 https://app.element.io）："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Choose File..."
+msgstr "选择文件..."
+
+#: shell/netzac/preferences.cpp
+msgid "Chrome (Linux) — Default"
+msgstr "Chrome (Linux) — 默认"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Classic Left Tabs"
+msgstr "经典左侧标签页"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clean full page (keep layout, remove distractions)"
+msgstr "清理整页（保留布局，移除干扰内容）"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clear Cache Now"
+msgstr "立即清除缓存"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clear Cookies Now"
+msgstr "立即清除 Cookie"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Clear History"
+msgstr "清除历史记录"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Close"
+msgstr "关闭"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Close Tab"
+msgstr "关闭标签页"
+
+#: shell/netzac/widgets.cpp
+msgid "Collapse %1"
+msgstr "折叠 %1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigator Chat Quick Link"
+msgstr "Navigator 聊天快捷链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigator Git Quick Link"
+msgstr "Navigator Git 快捷链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigator Mail Quick Link"
+msgstr "Navigator 邮件快捷链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigator Platinum Edition on ZacOS 9"
+msgstr "ZacOS 9 上的 Navigator Platinum 版"
+
+#: shell/netzac/dialogs.cpp
+msgid "Configure Proxies to Access the Internet:"
+msgstr "配置访问互联网的代理："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Connecting to %1..."
+msgstr "正在连接到 %1..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Continue where I left off"
+msgstr "从上次退出位置继续"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cookie Permissions:"
+msgstr "Cookie 权限："
+
+#: shell/netzac/dialogs.cpp
+msgid "Cookies"
+msgstr "Cookie"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Copy"
+msgstr "复制"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Copy Image Location"
+msgstr "复制图像地址"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Copy Link Location"
+msgstr "复制链接地址"
+
+#: shell/netzac/dialogs.cpp
+msgid "Could not write bookmarks to the selected file."
+msgstr "无法将书签写入所选文件。"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Current page URL (click to bookmark)"
+msgstr "当前页面 URL（点击添加书签）"
+
+#: shell/netzac/preferences.cpp
+msgid "Custom"
+msgstr "自定义"
+
+#: shell/netzac/dialogs.cpp
+msgid "Customize Personal Toolbar buttons & folders:"
+msgstr "自定义个人工具栏按钮和文件夹："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Cut"
+msgstr "剪切"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Default Browser"
+msgstr "默认浏览器"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Browser:"
+msgstr "默认浏览器："
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Search Engine:"
+msgstr "默认搜索引擎："
+
+#: shell/netzac/dialogs.cpp
+msgid "Delete"
+msgstr "删除"
+
+#: shell/netzac/dialogs.cpp
+msgid "Direct connection to the Internet"
+msgstr "直接连接到互联网"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disable Cache"
+msgstr "禁用缓存"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disable cookies"
+msgstr "禁用 Cookie"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disk Cache"
+msgstr "磁盘缓存"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done"
+msgstr "文档：完成"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Mode active"
+msgstr "文档：完成 — 宁静模式已启用"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Mode skipped (JavaScript page)"
+msgstr "文档：完成 — 已跳过宁静模式（JavaScript 页面）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Mode skipped (built-in page)"
+msgstr "文档：完成 — 已跳过宁静模式（内置页面）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Mode skipped (excluded host)"
+msgstr "文档：完成 — 已跳过宁静模式（已排除的主机）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Mode skipped (interactive web app)"
+msgstr "文档：完成 — 已跳过宁静模式（交互式 Web 应用）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Document: Done — Calm Reader active"
+msgstr "文档：完成 — 宁静阅读器已启用"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Done"
+msgstr "完成"
+
+#: shell/netzac/dialogs.cpp
+msgid "Down"
+msgstr "下移"
+
+#: shell/netzac/preferences.cpp
+msgid "DuckDuckGo"
+msgstr "DuckDuckGo"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Edit"
+msgstr "编辑"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Edit Bookmarks..."
+msgstr "编辑书签..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Edit Folder Site"
+msgstr "编辑文件夹网站"
+
+#: shell/netzac/dialogs.cpp
+msgid "Edit Toolbar Button"
+msgstr "编辑工具栏按钮"
+
+#: shell/netzac/dialogs.cpp
+msgid "Elements to Remove & Clean:"
+msgstr "要移除和清理的元素："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Encrypted connection (HTTPS) — Security padlock is locked."
+msgstr "加密连接 (HTTPS) — 安全挂锁已锁定。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Excluded hosts (comma-separated, includes subdomains):"
+msgstr "排除的主机（以逗号分隔，包含子域名）："
+
+#: shell/netzac/widgets.cpp
+msgid "Expand %1"
+msgstr "展开 %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Export Bookmarks"
+msgstr "导出书签"
+
+#: shell/netzac/dialogs.cpp
+msgid "Export Bookmarks (Chrome / Firefox HTML)"
+msgstr "导出书签 (Chrome / Firefox HTML)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Export..."
+msgstr "导出..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "File"
+msgstr "文件"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Filter by title or URL..."
+msgstr "按标题或 URL 筛选..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find"
+msgstr "查找"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find Again"
+msgstr "再次查找"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find Next"
+msgstr "查找下一个"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find in Page..."
+msgstr "在页面中查找..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find in current page"
+msgstr "在当前页面中查找"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Find:"
+msgstr "查找："
+
+#: shell/netzac/preferences.cpp
+msgid "Firefox (Linux)"
+msgstr "Firefox (Linux)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Focus on main text only (Firefox-style Reader Mode)"
+msgstr "仅聚焦正文内容（阅读模式）"
+
+#: shell/netzac/dialogs.cpp
+msgid "Folder"
+msgstr "文件夹"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Forward"
+msgstr "前进"
+
+#: shell/netzac/preferences.cpp
+msgid "FrogFind"
+msgstr "FrogFind"
+
+#: shell/netzac/preferences.cpp
+msgid "FrogFind!"
+msgstr "FrogFind!"
+
+#: shell/netzac/preferences.cpp
+msgid "FrogFind! (Classic Web)"
+msgstr "FrogFind! (经典网页)"
+
+#: shell/netzac/bookmarks.cpp
+msgid "FrogFind! Search"
+msgstr "FrogFind! 搜索"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Full Screen"
+msgstr "全屏"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Git"
+msgstr "Git"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Git (Ctrl+4)"
+msgstr "Git (Ctrl+4)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Git URL (e.g. https://github.com):"
+msgstr "Git URL（例如 https://github.com）："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Go"
+msgstr "前往"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Go back one page (hold for history)"
+msgstr "后退一页（按住查看历史记录）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Go forward one page (hold for history)"
+msgstr "前进一页（按住查看历史记录）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Go to Home page"
+msgstr "前往主页"
+
+#: shell/netzac/preferences.cpp
+msgid "Google"
+msgstr "Google"
+
+#: shell/netzac/dialogs.cpp
+msgid "Guide"
+msgstr "指南"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTML Bookmarks (*.html *.htm);;All Files (*)"
+msgstr "HTML 书签 (*.html *.htm);;所有文件 (*)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "HTML Files (*.html *.htm);;All Files (*)"
+msgstr "HTML 文件 (*.html *.htm);;所有文件 (*)"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTTP Proxy"
+msgstr "HTTP 代理"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTTP User-Agent String:"
+msgstr "HTTP User-Agent 字符串："
+
+#: shell/netzac/dialogs.cpp
+msgid "HTTP cache cleared."
+msgstr "已清除 HTTP 缓存。"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Help"
+msgstr "帮助"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Help Contents"
+msgstr "帮助内容"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "History"
+msgstr "历史记录"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "History..."
+msgstr "历史记录..."
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp shell/netzac/preferences.cpp
+msgid "Home"
+msgstr "主页"
+
+#: shell/netzac/dialogs.cpp
+msgid "Host:"
+msgstr "主机："
+
+#: shell/netzac/dialogs.cpp
+msgid "Icon:"
+msgstr "图标："
+
+#: shell/netzac/dialogs.cpp
+msgid "Import Bookmarks"
+msgstr "导入书签"
+
+#: shell/netzac/dialogs.cpp
+msgid "Import Bookmarks (Chrome / Firefox)"
+msgstr "导入书签 (Chrome / Firefox)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Import..."
+msgstr "导入..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Imported %1 new bookmark(s)."
+msgstr "已导入 %1 个新书签。"
+
+#: shell/netzac/preferences.cpp
+msgid "Internet"
+msgstr "互联网"
+
+#: shell/netzac/preferences.cpp
+msgid "Internet Archive"
+msgstr "Internet Archive"
+
+#: shell/netzac/dialogs.cpp
+msgid "JavaScript & Page Detection:"
+msgstr "JavaScript 与页面检测："
+
+#: shell/netzac/dialogs.cpp
+msgid "Keep cookies only until Netzac closes"
+msgstr "仅在 Netzac 关闭前保留 Cookie"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Keyboard Shortcuts &amp; Toolbar Guide"
+msgstr "键盘快捷键与工具栏指南"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Loading: %1%"
+msgstr "正在加载：%1%"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Location Toolbar"
+msgstr "地址工具栏"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Location:"
+msgstr "地址："
+
+#: shell/netzac/preferences.cpp
+msgid "Macintosh Repository"
+msgstr "Macintosh Repository"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Mail"
+msgstr "邮件"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Mail (Ctrl+2)"
+msgstr "邮件 (Ctrl+2)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Mail URL (e.g. https://mail.google.com):"
+msgstr "邮件 URL（例如 https://mail.google.com）："
+
+#: shell/netzac/dialogs.cpp
+msgid "Manual proxy configuration"
+msgstr "手动配置代理"
+
+#: shell/netzac/dialogs.cpp
+msgid "Maximum Cache Size (MB):"
+msgstr "最大缓存大小 (MB)："
+
+#: shell/netzac/dialogs.cpp
+msgid "Maximum image width (px):"
+msgstr "最大图像宽度 (px)："
+
+#: shell/netzac/dialogs.cpp
+msgid "Memory Cache"
+msgstr "内存缓存"
+
+#: shell/netzac/preferences.cpp
+msgid "NPR Text"
+msgstr "NPR Text"
+
+#: shell/netzac/bookmarks.cpp
+msgid "NPR Text Only"
+msgstr "NPR 纯文本"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigation Toolbar"
+msgstr "导航工具栏"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Navigator"
+msgstr "Navigator"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Navigator (Ctrl+1)"
+msgstr "Navigator (Ctrl+1)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Navigator Home Page Location:"
+msgstr "Navigator 主页地址："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netsite:"
+msgstr "站点："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac"
+msgstr "Netzac"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac - Chat"
+msgstr "Netzac - 聊天"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac - Git"
+msgstr "Netzac - Git"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac - Mail"
+msgstr "Netzac - 邮件"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac Navigator 1.0 &mdash; ZacOS 9 Platinum Edition"
+msgstr "Netzac Navigator 1.0 &mdash; ZacOS 9 Platinum 版"
+
+#: shell/netzac/widgets.cpp
+msgid "Netzac Home"
+msgstr "Netzac 主页"
+
+#: shell/netzac/dialogs.cpp shell/netzac/preferences.cpp
+msgid "Netzac Navigator"
+msgstr "Netzac Navigator"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac Navigator Help"
+msgstr "Netzac Navigator 帮助"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac is currently your default browser."
+msgstr "Netzac 当前已是您的默认浏览器。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac is not your default browser."
+msgstr "Netzac 当前不是您的默认浏览器。"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac set as default browser"
+msgstr "已将 Netzac 设为默认浏览器"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac: %1"
+msgstr "Netzac：%1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "New Navigator Window"
+msgstr "新建 Navigator 窗口"
+
+#: shell/netzac/netzacwindow.cpp shell/netzac/widgets.cpp
+msgid "New Tab"
+msgstr "新建标签页"
+
+#: shell/netzac/widgets.cpp
+msgid "New Tab (Ctrl+T)"
+msgstr "新建标签页 (Ctrl+T)"
+
+#: shell/netzac/dialogs.cpp
+msgid "No bookmarks could be imported from the selected file."
+msgstr "未能从所选文件导入任何书签。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Normalize tables"
+msgstr "规范化表格"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Not Now"
+msgstr "暂不"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "OK"
+msgstr "确定"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Open"
+msgstr "打开"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open Home Page"
+msgstr "打开主页"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open Link in New Tab"
+msgstr "在新标签页中打开链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open Link in New Window"
+msgstr "在新窗口中打开链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open Local HTML File"
+msgstr "打开本地 HTML 文件"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open New Links in New Windows"
+msgstr "在新窗口中打开新链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open New Links in Tabs"
+msgstr "在标签页中打开新链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open Page"
+msgstr "打开页面"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Open Page..."
+msgstr "打开页面..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "PDF Files (*.pdf)"
+msgstr "PDF 文件 (*.pdf)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Page"
+msgstr "页面"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page & Security Info"
+msgstr "页面与安全信息"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page Info"
+msgstr "页面信息"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page Source"
+msgstr "页面源代码"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Paste"
+msgstr "粘贴"
+
+#: shell/netzac/dialogs.cpp shell/netzac/netzacwindow.cpp
+msgid "Personal Toolbar"
+msgstr "个人工具栏"
+
+#: shell/netzac/dialogs.cpp
+msgid "Port:"
+msgstr "端口："
+
+#: shell/netzac/dialogs.cpp
+msgid "Preferences"
+msgstr "偏好设置"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Preferences..."
+msgstr "偏好设置..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Print"
+msgstr "打印"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Print Page to PDF"
+msgstr "将页面打印为 PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Print this page"
+msgstr "打印此页面"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Print..."
+msgstr "打印..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printed PDF: %1"
+msgstr "已保存 PDF：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Proxies"
+msgstr "代理"
+
+#: shell/netzac/dialogs.cpp
+msgid "Proxy Type:"
+msgstr "代理类型："
+
+#: shell/netzac/dialogs.cpp
+msgid "Quick Links"
+msgstr "快捷链接"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Quit"
+msgstr "退出"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Reader Mode"
+msgstr "阅读模式"
+
+#: shell/netzac/dialogs.cpp
+msgid "Reading Layout:"
+msgstr "阅读布局："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Reload"
+msgstr "重新加载"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Reload current page"
+msgstr "重新加载当前页面"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove"
+msgstr "移除"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove <iframe> embeds"
+msgstr "移除 <iframe> 嵌入内容"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove <script> tags"
+msgstr "移除 <script> 标签"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove <video> elements"
+msgstr "移除 <video> 元素"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove ads, popups and hidden noise"
+msgstr "移除广告、弹窗和隐藏干扰"
+
+#: shell/netzac/dialogs.cpp
+msgid "Reset"
+msgstr "重置"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Reset Zoom"
+msgstr "重置缩放"
+
+#: shell/netzac/dialogs.cpp
+msgid "Reset to Chrome (Linux)"
+msgstr "重置为 Chrome (Linux)"
+
+#: shell/netzac/dialogs.cpp
+msgid "SOCKS5 Proxy"
+msgstr "SOCKS5 代理"
+
+#: shell/netzac/preferences.cpp
+msgid "Safari (macOS)"
+msgstr "Safari (macOS)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save As..."
+msgstr "另存为..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Error"
+msgstr "保存错误"
+
+#: shell/netzac/main.cpp
+msgid "Save File"
+msgstr "保存文件"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Image As..."
+msgstr "图像另存为..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page As"
+msgstr "页面另存为"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved: %1"
+msgstr "已保存：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Search"
+msgstr "搜索"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Search:"
+msgstr "搜索："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Security Info"
+msgstr "安全信息"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Select All"
+msgstr "全选"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Set as Default"
+msgstr "设为默认"
+
+#: shell/netzac/dialogs.cpp
+msgid "Set as Default Browser"
+msgstr "设为默认浏览器"
+
+#: shell/netzac/widgets.cpp
+msgid "Show location history"
+msgstr "显示地址历史记录"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Show/Hide"
+msgstr "显示/隐藏"
+
+#: shell/netzac/dialogs.cpp
+msgid "Site Title:"
+msgstr "网站标题："
+
+#: shell/netzac/dialogs.cpp
+msgid "Sites inside folder:"
+msgstr "文件夹中的网站："
+
+#: shell/netzac/dialogs.cpp
+msgid "Skip interactive JS web apps only (Recommended)"
+msgstr "仅跳过交互式 JS Web 应用（推荐）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Source of: %1"
+msgstr "源代码：%1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Status Bar"
+msgstr "状态栏"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Stop"
+msgstr "停止"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Stop loading"
+msgstr "停止加载"
+
+#: shell/netzac/dialogs.cpp
+msgid "Strict: skip any page with <script> tags"
+msgstr "严格：跳过包含 <script> 标签的任何页面"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Tabs & Links"
+msgstr "标签页与链接"
+
+#: shell/netzac/dialogs.cpp
+msgid "Target URL:"
+msgstr "目标 URL："
+
+#: shell/netzac/bookmarks.cpp shell/netzac/preferences.cpp
+msgid "The Old Net"
+msgstr "The Old Net"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Toggle Calm mode (hold to choose Calm Mode or Reader Mode)"
+msgstr "切换宁静模式（按住可选择宁静模式或阅读模式）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Top Tabs (Below Personal Toolbar)"
+msgstr "顶部标签页（个人工具栏下方）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Transfer interrupted"
+msgstr "传输已中断"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Type the Internet location (URL) or choose a local file:"
+msgstr "输入互联网地址 (URL) 或选择本地文件："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Undo"
+msgstr "撤销"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Unencrypted connection (HTTP) — Information sent over this connection is not encrypted."
+msgstr "未加密连接 (HTTP) — 通过此连接发送的信息未加密。"
+
+#: shell/netzac/widgets.cpp
+msgid "Untitled"
+msgstr "无标题"
+
+#: shell/netzac/dialogs.cpp
+msgid "Up"
+msgstr "上移"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use Current Page"
+msgstr "使用当前页面"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use system proxy settings"
+msgstr "使用系统代理设置"
+
+#: shell/netzac/dialogs.cpp
+msgid "User Agent"
+msgstr "User-Agent"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "View"
+msgstr "查看"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "View Image"
+msgstr "查看图像"
+
+#: shell/netzac/bookmarks.cpp
+msgid "Welcome to Netzac"
+msgstr "欢迎使用 Netzac"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Welcome to Netzac Navigator 1.0"
+msgstr "欢迎使用 Netzac Navigator 1.0"
+
+#: shell/netzac/dialogs.cpp
+msgid "When Netzac Starts:"
+msgstr "Netzac 启动时："
+
+#: shell/netzac/preferences.cpp
+msgid "Wiby"
+msgstr "Wiby"
+
+#: shell/netzac/preferences.cpp
+msgid "Wiby (Old Web)"
+msgstr "Wiby (旧网页)"
+
+#: shell/netzac/bookmarks.cpp
+msgid "Wiby - Old Web Search"
+msgstr "Wiby - 旧网页搜索"
+
+#: shell/netzac/preferences.cpp
+msgid "Wikipedia"
+msgstr "Wikipedia"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Zoom"
+msgstr "缩放"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Zoom In"
+msgstr "放大"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Zoom Out"
+msgstr "缩小"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Zoom: %1%"
+msgstr "缩放：%1%"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Zoom: 100%"
+msgstr "缩放：100%"
+
+msgid "Navigation Button Labels"
+msgstr "导航按钮标签"
+
+msgid "Enable JavaScript"
+msgstr "启用 JavaScript"
+
+msgid "Remember passwords (ZacOS Keychain)"
+msgstr "记住密码（ZacOS 钥匙串）"
+
+msgid "Reset All Settings..."
+msgstr "重置所有设置..."
+
+msgid "Reset All Settings"
+msgstr "重置所有设置"
+
+msgid "This will reset all preferences, bookmarks, history, Personal Toolbar, and saved Netzac passwords back to their defaults.\n\nDo you want to continue?"
+msgstr "此操作会将所有偏好设置、书签、历史记录、个人工具栏以及已保存的 Netzac 密码重置为默认值。\n\n是否要继续？"
+
+msgid "Reset Everything"
+msgstr "全部重置"
+
+msgid "Save Password"
+msgstr "保存密码"
+
+msgid "Do you want Netzac to save the password for \"%1\" on %2 in ZacOS Keychain?"
+msgstr "是否要让 Netzac 将 %2 上“%1”的密码保存在 ZacOS 钥匙串中？"
+
+msgid "Saved password for %1 in ZacOS Keychain"
+msgstr "已在 ZacOS 钥匙串中保存 %1 的密码"
+
+msgid "Netzac Navigator (ZacOS 9)\n\nDeveloped by Lucas Guimarães - G3Pix (@guimaraeslucas). We count on the support of the ZacOS 9 community for contributions at:\n%1\n\nSpecial thanks to Adam Lawson (@chromasystemprofessional) for creating the incredible ZacOS 9 project."
+msgstr "Netzac Navigator (ZacOS 9)\n\n由 Lucas Guimarães - G3Pix (@guimaraeslucas) 开发。我们期待 ZacOS 9 社区通过以下地址提供支持与贡献：\n%1\n\n特别感谢 Adam Lawson (@chromasystemprofessional) 打造了卓越的 ZacOS 9 项目。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker"
+msgstr "广告拦截器"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable the Netzac Ad Blocker"
+msgstr "启用 Netzac 广告拦截器"
+
+#: shell/netzac/dialogs.cpp
+msgid "Netzac blocks advertisements, trackers and malicious addresses using filter lists such as EasyList. Lists are downloaded from the addresses below and stored locally on this computer."
+msgstr "Netzac 使用 EasyList 等过滤列表拦截广告、跟踪器和恶意地址。列表会从下方地址下载并保存在本机。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list addresses:"
+msgstr "过滤列表地址："
+
+#: shell/netzac/dialogs.cpp
+msgid "Add List..."
+msgstr "添加列表..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Remove List"
+msgstr "移除列表"
+
+#: shell/netzac/dialogs.cpp
+msgid "Restore Default Lists"
+msgstr "恢复默认列表"
+
+#: shell/netzac/dialogs.cpp
+msgid "Update Filter Lists Now"
+msgstr "立即更新过滤列表"
+
+#: shell/netzac/dialogs.cpp
+msgid "Add Filter List"
+msgstr "添加过滤列表"
+
+#: shell/netzac/dialogs.cpp
+msgid "Filter list address (URL):"
+msgstr "过滤列表地址 (URL)："
+
+#: shell/netzac/dialogs.cpp
+msgid "The address must be a valid http:// or https:// URL."
+msgstr "地址必须是有效的 http:// 或 https:// URL。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ad Blocker is disabled."
+msgstr "广告拦截器已禁用。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Updating filter lists..."
+msgstr "正在更新过滤列表..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Update failed: %1"
+msgstr "更新失败：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "No filter lists loaded yet."
+msgstr "尚未加载过滤列表。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 rules loaded. Last update: %2"
+msgstr "已加载 %1 条规则。上次更新：%2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Never"
+msgstr "从未"
+
+#: shell/netzac/dialogs.cpp
+msgid "Unknown"
+msgstr "未知"
+
+#: shell/netzac/dialogs.cpp
+msgid "File Download"
+msgstr "文件下载"
+
+#: shell/netzac/dialogs.cpp
+msgid "From: %1"
+msgstr "来自：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Size: %1"
+msgstr "大小：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to folder:"
+msgstr "保存到文件夹："
+
+#: shell/netzac/dialogs.cpp
+msgid "Browse..."
+msgstr "浏览..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Save to system temporary folder"
+msgstr "保存到系统临时文件夹"
+
+#: shell/netzac/dialogs.cpp
+msgid "Downloaded:"
+msgstr "已下载："
+
+#: shell/netzac/dialogs.cpp
+msgid "Transfer rate:"
+msgstr "传输速率："
+
+#: shell/netzac/dialogs.cpp
+msgid "Time elapsed:"
+msgstr "已用时间："
+
+#: shell/netzac/dialogs.cpp
+msgid "Estimated time left:"
+msgstr "预计剩余时间："
+
+#: shell/netzac/dialogs.cpp
+msgid "Open file after download completes"
+msgstr "下载完成后打开文件"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open File"
+msgstr "打开文件"
+
+#: shell/netzac/dialogs.cpp
+msgid "Open Folder"
+msgstr "打开文件夹"
+
+#: shell/netzac/dialogs.cpp
+msgid "Start Download"
+msgstr "开始下载"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download was interrupted."
+msgstr "下载已中断。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Saving to: %1"
+msgstr "正保存到：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Calculating..."
+msgstr "正在计算..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Download cancelled."
+msgstr "下载已取消。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Complete - %1"
+msgstr "下载完成 - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Download Failed - %1"
+msgstr "下载失败 - %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Disable GPU hardware acceleration (compatibility mode, restart required)"
+msgstr "禁用 GPU 硬件加速（兼容模式，需要重启）"
+
+#: shell/netzac/dialogs.cpp
+msgid "Enable only on incompatible virtual machines or drivers. Keeping GPU acceleration enabled provides faster web rendering."
+msgstr "仅在不兼容的虚拟机或驱动程序上启用。保持 GPU 加速启用可提供更快的网页渲染速度。"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "The GPU hardware acceleration setting will take effect after restarting Netzac."
+msgstr "GPU 硬件加速设置将在重启 Netzac 后生效。"
+
+#: shell/netzac/preferences.cpp
+msgid "Chrome (Windows)"
+msgstr "Chrome (Windows)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Clipboard Access"
+msgstr "剪贴板访问"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want to allow %1 to read and write your clipboard?"
+msgstr "是否允许 %1 读取和写入您的剪贴板？"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Deny"
+msgstr "拒绝"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Allow"
+msgstr "允许"
+
+#: shell/netzac/dialogs.cpp
+msgid "(Default)"
+msgstr "(默认)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your Git forge (for example GitHub, GitLab or Gitea), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Git URL</b>.</p>"
+msgstr "<p>要配置此按钮以打开您的 Git 托管平台（例如 GitHub、GitLab 或 Gitea），请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>Git URL</b>。</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your chat service, open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Chat URL</b>.</p>"
+msgstr "<p>要配置此按钮以打开您的聊天服务，请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>聊天 URL</b>。</p>"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "<p>To configure this button to open your mail link (for example Gmail or webmail), open <b>Edit &rsaquo; Preferences &rsaquo; Quick Links</b> and set the <b>Mail URL</b>.</p>"
+msgstr "<p>要配置此按钮以打开您的邮箱链接（例如 Gmail 或网页邮箱），请打开<b>编辑 &rsaquo; 偏好设置 &rsaquo; 快捷链接</b>并设置<b>邮件 URL</b>。</p>"
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Chain (%1) ==="
+msgstr "=== 证书链 (%1) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Certificate Properties ==="
+msgstr "=== 证书属性 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Connection ==="
+msgstr "=== 连接 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Extensions ==="
+msgstr "=== 扩展 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued By (Issuer) ==="
+msgstr "=== 颁发者 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Issued To (Subject) ==="
+msgstr "=== 颁发给 (使用者) ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== PEM Certificate ==="
+msgstr "=== PEM 证书 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Raw Certificate Text ==="
+msgstr "=== 原始证书文本 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "=== Validity ==="
+msgstr "=== 有效期 ==="
+
+#: shell/netzac/dialogs.cpp
+msgid "Appearance"
+msgstr "外观"
+
+#: shell/netzac/preferences.cpp
+msgid "Bronze"
+msgstr "古铜"
+
+#: shell/netzac/dialogs.cpp
+msgid "Certificate Details:"
+msgstr "证书详细信息："
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Details: Encryption=%1, Auth=%2, KeyExchange=%3"
+msgstr "密码详情：加密=%1，身份验证=%2，密钥交换=%3"
+
+#: shell/netzac/dialogs.cpp
+msgid "Cipher Suite: %1 (%2 bits)"
+msgstr "密码套件：%1 (%2 位)"
+
+#: shell/netzac/dialogs.cpp
+msgid "Common Name (CN): %1"
+msgstr "通用名称 (CN)：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Details"
+msgstr "复制详细信息"
+
+#: shell/netzac/dialogs.cpp
+msgid "Could not retrieve TLS certificate details: %1"
+msgstr "无法获取 TLS 证书详细信息：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Country (C): %1"
+msgstr "国家/地区 (C)：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Style:"
+msgstr "默认样式："
+
+#: shell/netzac/dialogs.cpp
+msgid "Display Name: %1"
+msgstr "显示名称：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expired"
+msgstr "已过期"
+
+#: shell/netzac/dialogs.cpp
+msgid "Expires On: %1"
+msgstr "到期时间：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Fixed (Code) Font:"
+msgstr "等宽（代码）字体："
+
+#: shell/netzac/dialogs.cpp
+msgid "Font Size (px):"
+msgstr "字体大小 (px)："
+
+#: shell/netzac/preferences.cpp
+msgid "Gold"
+msgstr "金色"
+
+#: shell/netzac/preferences.cpp
+msgid "Graphite"
+msgstr "石墨"
+
+#: shell/netzac/dialogs.cpp
+msgid "Host: %1"
+msgstr "主机：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Inspecting TLS certificate for %1..."
+msgstr "正在检查 %1 的 TLS 证书..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Issued On: %1"
+msgstr "颁发时间：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Issuer: %1"
+msgstr "颁发者：%1"
+
+#: shell/netzac/preferences.cpp
+msgid "Ivy"
+msgstr "常春藤"
+
+#: shell/netzac/preferences.cpp
+msgid "Lavender"
+msgstr "薰衣草"
+
+#: shell/netzac/dialogs.cpp
+msgid "Locality (L): %1"
+msgstr "城市/地区 (L)：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Location: %1"
+msgstr "位置：%1"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Netzac Navigator is not currently set as your default web browser.\n\nWould you like to set Netzac as your default browser for web links?"
+msgstr "Netzac Navigator 当前未设为您的默认网页浏览器。\n\n是否要将 Netzac 设为网页链接的默认浏览器？"
+
+#: shell/netzac/dialogs.cpp
+msgid "No"
+msgstr "否"
+
+#: shell/netzac/dialogs.cpp
+msgid "No TLS/SSL certificate is used for this page."
+msgstr "此页面未使用 TLS/SSL 证书。"
+
+#: shell/netzac/dialogs.cpp
+msgid "No peer certificate was presented by the server."
+msgstr "服务器未提供对等证书。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Not yet valid"
+msgstr "尚未生效"
+
+#: shell/netzac/preferences.cpp
+msgid "Ocean"
+msgstr "海洋"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organization (O): %1"
+msgstr "组织 (O)：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Organizational Unit (OU): %1"
+msgstr "组织单位 (OU)：%1"
+
+#: shell/netzac/preferences.cpp
+msgid "Plum"
+msgstr "梅紫"
+
+#: shell/netzac/dialogs.cpp
+msgid "Port: %1"
+msgstr "端口：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Protocol: %1"
+msgstr "协议：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Public Key: %1"
+msgstr "公钥：%1"
+
+#: shell/netzac/preferences.cpp
+msgid "Rose"
+msgstr "玫瑰"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-1 Fingerprint: %1"
+msgstr "SHA-1 指纹：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256 Fingerprint: %1"
+msgstr "SHA-256 指纹：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "SHA-256: %1"
+msgstr "SHA-256：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif"
+msgstr "无衬线体"
+
+#: shell/netzac/dialogs.cpp
+msgid "Sans-Serif Font:"
+msgstr "无衬线字体："
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbar Accent Color:"
+msgstr "滚动条强调色："
+
+#: shell/netzac/dialogs.cpp
+msgid "Scrollbars:"
+msgstr "滚动条："
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Search with DuckDuckGo..."
+msgstr "使用 DuckDuckGo 搜索..."
+
+#: shell/netzac/dialogs.cpp
+msgid "Self-Signed: %1"
+msgstr "自签名：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serial Number: %1"
+msgstr "序列号：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif"
+msgstr "衬线体"
+
+#: shell/netzac/dialogs.cpp
+msgid "Serif Font:"
+msgstr "衬线字体："
+
+#: shell/netzac/dialogs.cpp
+msgid "Set custom URLs for the bottom-right Mail, Chat and Git buttons.\nLeave a field empty to open its built-in about: page."
+msgstr "为右下角的“邮件”、“聊天”和“Git”按钮设置自定义 URL。\n将字段留空即可打开内置的 about: 页面。"
+
+#: shell/netzac/dialogs.cpp
+msgid "State / Province (ST): %1"
+msgstr "省/自治区/直辖市 (ST)：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status: %1"
+msgstr "状态：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Subject Alternative Names: %1"
+msgstr "使用者备用名称 (SAN)：%1"
+
+#: shell/netzac/preferences.cpp
+msgid "System (ZacOS 9)"
+msgstr "系统 (ZacOS 9)"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS Warnings: %1"
+msgstr "TLS 警告：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "TLS/SSL certificate inspection is unavailable on this system."
+msgstr "此系统不支持 TLS/SSL 证书检查。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Timed out while retrieving certificate from %1."
+msgstr "从 %1 获取证书超时。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Title: %1"
+msgstr "标题：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use Platinum CSS scrollbars on web pages"
+msgstr "在网页上使用 Platinum CSS 滚动条"
+
+#: shell/netzac/dialogs.cpp
+msgid "Use custom fonts and force web pages to render with them"
+msgstr "使用自定义字体并强制网页使用这些字体渲染"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid"
+msgstr "有效"
+
+#: shell/netzac/dialogs.cpp
+msgid "Valid: %1 -> %2"
+msgstr "有效期：%1 -> %2"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Trusted certificate chain"
+msgstr "验证：受信任的证书链"
+
+#: shell/netzac/dialogs.cpp
+msgid "Verification: Warnings detected — %1"
+msgstr "验证：检测到警告 — %1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Version: %1"
+msgstr "版本：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Web Page Fonts:"
+msgstr "网页字体："
+
+#: shell/netzac/dialogs.cpp
+msgid "When enabled, Netzac injects CSS at the start of each page to force rendering with the selected fonts and size."
+msgstr "启用后，Netzac 会在每个页面开头注入 CSS，以强制使用所选字体和字号进行渲染。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Yes"
+msgstr "是"
+
+#: shell/netzac/dialogs.cpp
+msgid "Theme:"
+msgstr "主题："
+
+#: shell/netzac/dialogs.cpp
+msgid "Application Theme:"
+msgstr "应用程序主题："
+
+#: shell/netzac/dialogs.cpp
+msgid "ZacOS 9 Default"
+msgstr "ZacOS 9 默认"
+
+#: shell/netzac/dialogs.cpp
+msgid "Light"
+msgstr "浅色"
+
+#: shell/netzac/dialogs.cpp
+msgid "Dark"
+msgstr "深色"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Do you want Netzac to save the password for \"%1\" on %2 in Windows Credential Manager?"
+msgstr "是否要让 Netzac 将 %2 上“%1”的密码保存在 Windows 凭据管理器中？"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password"
+msgstr "填充已保存的密码"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill Saved Password (%1)"
+msgstr "填充已保存的密码 (%1)"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Fill login and password"
+msgstr "填充用户名和密码"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Filled saved credentials for %1"
+msgstr "已填充 %1 的已保存凭据"
+
+#: shell/netzac/dialogs.cpp
+msgid "Remember passwords (Windows Credential Manager)"
+msgstr "记住密码（Windows 凭据管理器）"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved Passwords for %1"
+msgstr "%1 的已保存密码"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved password for %1 in Windows Credential Manager"
+msgstr "已在 Windows 凭据管理器中保存 %1 的密码"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 is requesting a website permission."
+msgstr "%1 正在请求网站权限。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to access your installed fonts."
+msgstr "%1 想要访问您已安装的字体。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to know your location."
+msgstr "%1 想要获取您的位置信息。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to lock your mouse pointer."
+msgstr "%1 想要锁定您的鼠标指针。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to read and write your clipboard."
+msgstr "%1 想要读取和写入您的剪贴板。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen and audio."
+msgstr "%1 想要共享您的屏幕和音频。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to share your screen."
+msgstr "%1 想要共享您的屏幕。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to show notifications."
+msgstr "%1 想要显示通知。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera and microphone."
+msgstr "%1 想要使用您的摄像头和麦克风。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your camera."
+msgstr "%1 想要使用您的摄像头。"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 wants to use your microphone."
+msgstr "%1 想要使用您的麦克风。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Allows websites to automatically play audio and video without a click first."
+msgstr "允许网站无需先点击即可自动播放音频和视频。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always"
+msgstr "始终允许"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always allow"
+msgstr "始终允许"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always block"
+msgstr "始终拦截"
+
+#: shell/netzac/dialogs.cpp
+msgid "Always start multimedia without requiring interaction"
+msgstr "始终无需交互即可自动播放多媒体"
+
+#: shell/netzac/dialogs.cpp
+msgid "Ask every time"
+msgstr "每次询问"
+
+#: shell/netzac/dialogs.cpp
+msgid "Block"
+msgstr "拦截"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera"
+msgstr "摄像头"
+
+#: shell/netzac/preferences.cpp
+msgid "Camera & Microphone"
+msgstr "摄像头与麦克风"
+
+#: shell/netzac/dialogs.cpp
+msgid "Clear All"
+msgstr "全部清除"
+
+#: shell/netzac/preferences.cpp
+msgid "Clipboard"
+msgstr "剪贴板"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Action"
+msgstr "默认操作"
+
+#: shell/netzac/dialogs.cpp
+msgid "Default Policy for Website Permission Requests:"
+msgstr "网站权限请求的默认策略："
+
+#: shell/netzac/dialogs.cpp
+msgid "Existing Website Permissions:"
+msgstr "现有网站权限："
+
+#: shell/netzac/dialogs.cpp
+msgid "Just Now"
+msgstr "仅此一次"
+
+#: shell/netzac/preferences.cpp
+msgid "Local Fonts"
+msgstr "本地字体"
+
+#: shell/netzac/preferences.cpp
+msgid "Location (Geolocation)"
+msgstr "位置（地理定位）"
+
+#: shell/netzac/preferences.cpp
+msgid "Microphone"
+msgstr "麦克风"
+
+#: shell/netzac/preferences.cpp
+msgid "Mouse Lock"
+msgstr "鼠标锁定"
+
+#: shell/netzac/dialogs.cpp
+msgid "Multimedia Playback:"
+msgstr "多媒体播放："
+
+#: shell/netzac/preferences.cpp
+msgid "Notifications"
+msgstr "通知"
+
+#: shell/netzac/dialogs.cpp
+msgid "Origin: %1"
+msgstr "来源：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permission"
+msgstr "权限"
+
+#: shell/netzac/dialogs.cpp
+msgid "Permissions"
+msgstr "权限"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen & Audio Capture"
+msgstr "屏幕与音频捕获"
+
+#: shell/netzac/preferences.cpp
+msgid "Screen Capture"
+msgstr "屏幕捕获"
+
+#: shell/netzac/dialogs.cpp
+msgid "Status"
+msgstr "状态"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website"
+msgstr "网站"
+
+#: shell/netzac/dialogs.cpp
+msgid "Website Permission Request"
+msgstr "网站权限请求"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "PDF"
+msgstr "PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Page sent to printer"
+msgstr "页面已发送至打印机"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing failed"
+msgstr "打印失败"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Printing page..."
+msgstr "正在打印页面..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF"
+msgstr "将页面保存为 PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save Page as PDF..."
+msgstr "将页面保存为 PDF..."
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Save this page as PDF"
+msgstr "将此页面保存为 PDF"
+
+#: shell/netzac/netzacwindow.cpp
+msgid "Saved PDF: %1"
+msgstr "已保存 PDF：%1"
+
+#: shell/netzac/dialogs.cpp
+msgid "%1 lines — %2 characters"
+msgstr "%1 行 — %2 个字符"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied all source code to clipboard."
+msgstr "已将全部源代码复制到剪贴板。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copied selection to clipboard."
+msgstr "已将选中内容复制到剪贴板。"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy All"
+msgstr "全部复制"
+
+#: shell/netzac/dialogs.cpp
+msgid "Copy Selection"
+msgstr "复制选中内容"
+
+#: shell/netzac/dialogs.cpp
+msgid "HTML Source Code:"
+msgstr "HTML 源代码："
+
+#: shell/netzac/dialogs.cpp
+msgid "Save Source As"
+msgstr "源代码另存为"
+
+#: shell/netzac/dialogs.cpp
+msgid "Wrap lines"
+msgstr "自动换行"

@@ -3,9 +3,11 @@
 /build-windows/
 /dist/
 
-# Windows portable package
+# Windows packages
 /zacos9-netzac*.zip
 /zacos9-netzac*.zip.sha256
+/zacos9-netzac*.exe
+/zacos9-netzac*.exe.sha256
 
 # Local tooling used by scripts/build-windows.ps1
 /.venv/

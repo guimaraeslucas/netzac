@@ -62,6 +62,7 @@ All built-in icons in `shell/netzac/platinum.cpp` (`makeNavIcon`, `makeMiniIcon`
   1. The template: `po/zacos9-netzac.pot`
   2. **Every** language listed in `po/LINGUAS`:
      - `po/ar.po` (Arabic)
+     - `po/de.po` (German)
      - `po/es.po` (Spanish)
      - `po/fr_CA.po` (Canadian French)
      - `po/fr_FR.po` (French)
@@ -69,6 +70,7 @@ All built-in icons in `shell/netzac/platinum.cpp` (`makeNavIcon`, `makeMiniIcon`
      - `po/ja.po` (Japanese)
      - `po/pt.po` (Brazilian Portuguese)
      - `po/ru.po` (Russian)
+     - `po/zh_CN.po` (Simplified Chinese)
 - Never leave untranslated empty `msgstr ""` entries in any `.po` file, and always check for existing `msgid`s before appending to avoid duplicate-definition errors in `msgfmt`.
 - Validate all catalogs after editing:
   ```sh

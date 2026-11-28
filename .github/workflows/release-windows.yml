@@ -25,18 +25,20 @@ env:
   QT_VERSION: '6.8.3'
 
 jobs:
-  build-zip:
-    name: Build portable ZIP (windows x64)
+  build-windows:
+    name: Build Windows packages (x64)
     runs-on: windows-latest
     timeout-minutes: 90
-    # A release that already carries the Windows archive does not need a rebuild.
+    # A release that already carries both Windows packages does not need a rebuild.
     if: >-
       github.event_name != 'release' ||
-      !contains(join(github.event.release.assets.*.name, ','), '_windows-x64.zip')
+      !contains(join(github.event.release.assets.*.name, ','), '_windows-x64.zip') ||
+      !contains(join(github.event.release.assets.*.name, ','), '_windows-x64-setup.exe')
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
       zip: ${{ steps.package.outputs.zip }}
+      installer: ${{ steps.package.outputs.installer }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -104,7 +106,25 @@ jobs:
             }
           }
 
-      - name: Build and package portable ZIP
+      - name: Ensure Inno Setup is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidates = @(
+            (Get-Command iscc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
+            (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+            (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
+          )
+          $iscc = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if (-not $iscc) {
+            Write-Host 'Inno Setup not found; installing via Chocolatey...'
+            choco install innosetup -y --no-progress
+            $iscc = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+            if (-not $iscc) { throw 'Inno Setup (ISCC.exe) could not be installed.' }
+          }
+          Write-Host "Using Inno Setup compiler: $iscc"
+
+      - name: Build and package Windows ZIP and installer
         id: package
         shell: pwsh
         env:
@@ -116,14 +136,23 @@ jobs:
             throw "Qt was not installed correctly at '$qtDir'."
           }
           $zip = "zacos9-netzac_${env:VERSION}_windows-x64.zip"
-          ./scripts/build-windows.ps1 -QtDir $qtDir -BuildType release -Zip -ZipPath $zip
+          $installer = "zacos9-netzac_${env:VERSION}_windows-x64-setup.exe"
+          ./scripts/build-windows.ps1 `
+            -QtDir $qtDir `
+            -BuildType release `
+            -Version $env:VERSION `
+            -Zip -ZipPath $zip `
+            -Installer -InstallerPath $installer
           if (-not (Test-Path $zip)) { throw "Expected archive '$zip' was not created." }
+          if (-not (Test-Path $installer)) { throw "Expected installer '$installer' was not created." }
           [System.IO.File]::AppendAllText($env:GITHUB_OUTPUT, "zip=$zip`n")
+          [System.IO.File]::AppendAllText($env:GITHUB_OUTPUT, "installer=$installer`n")
 
-      - name: Verify ZIP contents
+      - name: Verify package contents
         shell: pwsh
         env:
           ZIP_NAME: ${{ steps.package.outputs.zip }}
+          INSTALLER_NAME: ${{ steps.package.outputs.installer }}
         run: |
           $ErrorActionPreference = 'Stop'
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -154,16 +183,31 @@ jobs:
           }
           Write-Host "Archive contains $($entries.Count) entries."
 
+          $installerItem = Get-Item $env:INSTALLER_NAME
+          if ($installerItem.Length -lt 10MB) {
+            Write-Host "::error::Installer '$($env:INSTALLER_NAME)' is unexpectedly small ($($installerItem.Length) bytes)."
+            exit 1
+          }
+          if ($installerItem.VersionInfo.ProductName -ne 'Netzac Navigator') {
+            Write-Host "::error::Unexpected installer ProductName '$($installerItem.VersionInfo.ProductName)'."
+            exit 1
+          }
+          $installerSizeMb = [math]::Round(($installerItem.Length / 1MB), 1)
+          Write-Host "Installer verified: $($env:INSTALLER_NAME) ($installerSizeMb MB)"
+
       - name: Generate SHA-256
         shell: pwsh
         env:
           ZIP_NAME: ${{ steps.package.outputs.zip }}
+          INSTALLER_NAME: ${{ steps.package.outputs.installer }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $hash = (Get-FileHash -Path $env:ZIP_NAME -Algorithm SHA256).Hash.ToLowerInvariant()
-          # LF endings keep the checksum in the GNU "sha256sum -c" format.
-          $line = "$hash  $($env:ZIP_NAME)`n"
-          [System.IO.File]::WriteAllText("$($env:ZIP_NAME).sha256", $line, [System.Text.Encoding]::ASCII)
+          foreach ($file in @($env:ZIP_NAME, $env:INSTALLER_NAME)) {
+            $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash.ToLowerInvariant()
+            # LF endings keep the checksum in the GNU "sha256sum -c" format.
+            $line = "$hash  $file`n"
+            [System.IO.File]::WriteAllText("$file.sha256", $line, [System.Text.Encoding]::ASCII)
+          }
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
@@ -172,19 +216,22 @@ jobs:
           path: |
             ${{ steps.package.outputs.zip }}
             ${{ steps.package.outputs.zip }}.sha256
+            ${{ steps.package.outputs.installer }}
+            ${{ steps.package.outputs.installer }}.sha256
           if-no-files-found: error
           retention-days: 1
 
   publish-release:
     name: Publish release
-    needs: build-zip
+    needs: build-windows
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: ${{ needs.build-zip.outputs.tag }}
-      VERSION: ${{ needs.build-zip.outputs.version }}
-      ZIP: zacos9-netzac_${{ needs.build-zip.outputs.version }}_windows-x64.zip
+      TAG: ${{ needs.build-windows.outputs.tag }}
+      VERSION: ${{ needs.build-windows.outputs.version }}
+      ZIP: zacos9-netzac_${{ needs.build-windows.outputs.version }}_windows-x64.zip
+      INSTALLER: zacos9-netzac_${{ needs.build-windows.outputs.version }}_windows-x64-setup.exe
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -200,7 +247,7 @@ jobs:
       - name: Publish release
         run: |
           set -eu
-          (cd dist && sha256sum -c "$ZIP.sha256")
+          (cd dist && sha256sum -c "$ZIP.sha256" "$INSTALLER.sha256")
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; uploading assets."
@@ -218,11 +265,14 @@ jobs:
           fi
 
           for attempt in 1 2 3 4 5; do
-            if gh release upload "$TAG" "dist/$ZIP" "dist/$ZIP.sha256" --clobber; then
+            if gh release upload "$TAG" \
+              "dist/$ZIP" "dist/$ZIP.sha256" \
+              "dist/$INSTALLER" "dist/$INSTALLER.sha256" \
+              --clobber; then
               exit 0
             fi
             echo "Upload attempt $attempt failed; retrying in 10s..." >&2
             sleep 10
           done
-          echo "::error::Could not upload the Windows package to release $TAG." >&2
+          echo "::error::Could not upload the Windows packages to release $TAG." >&2
           exit 1

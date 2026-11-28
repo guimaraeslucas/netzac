@@ -2,12 +2,13 @@
 <#
 .SYNOPSIS
     Build zacos9-netzac on Windows (MSVC 2022 + Qt 6 WebEngine) and produce a
-    self-contained portable folder.
+    self-contained portable folder, ZIP archive, and/or Inno Setup installer.
 
 .DESCRIPTION
     The Unix/ZacOS build is untouched: this script only drives Meson/Ninja with
     the MSVC toolchain, then runs windeployqt so the resulting folder runs on a
-    machine without Qt installed.
+    machine without Qt installed. Optionally packages a portable ZIP (-Zip)
+    and/or an Inno Setup installer (-Installer).
 
 .EXAMPLE
     scripts\build-windows.ps1
@@ -16,7 +17,7 @@
     scripts\build-windows.ps1 -QtDir C:\Qt\6.8.3\msvc2022_64 -Zip
 
 .EXAMPLE
-    scripts\build-windows.ps1 -Zip -ZipPath zacos9-netzac_1.0.0_windows-x64.zip
+    scripts\build-windows.ps1 -Zip -ZipPath zacos9-netzac_1.0.0_windows-x64.zip -Installer -InstallerPath zacos9-netzac_1.0.0_windows-x64-setup.exe -Version 1.0.0
 #>
 [CmdletBinding()]
 param(
@@ -27,7 +28,11 @@ param(
     [string]$BuildType = 'release',
     [switch]$SkipDeploy,
     [switch]$Zip,
-    [string]$ZipPath
+    [string]$ZipPath,
+    [switch]$Installer,
+    [string]$InstallerPath,
+    [string]$Version,
+    [string]$IsccPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -208,6 +213,76 @@ try {
         }
         if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
         Move-Item $tempZip $ZipPath -Force
+    }
+
+    if ($Installer) {
+        $distExe = Join-Path $DistDir 'zacos9-netzac.exe'
+        if (-not (Test-Path $distExe)) {
+            throw "Deployed executable not found at '$distExe'. Run without -SkipDeploy first."
+        }
+
+        $iscc = $IsccPath
+        if (-not $iscc) {
+            $isccCmd = Get-Command iscc -ErrorAction SilentlyContinue
+            if ($isccCmd) { $iscc = $isccCmd.Source }
+        }
+        if (-not $iscc) {
+            $candidates = @(
+                (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+                (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe')
+            )
+            $iscc = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+        }
+        if (-not $iscc -or -not (Test-Path $iscc)) {
+            throw 'Inno Setup 6 (ISCC.exe) was not found. Install Inno Setup 6 or pass -IsccPath explicitly.'
+        }
+
+        $resolvedVersion = $Version
+        if (-not $resolvedVersion) {
+            $mesonBuild = Join-Path $root 'meson.build'
+            if (Test-Path $mesonBuild) {
+                $mesonText = Get-Content $mesonBuild -Raw
+                if ($mesonText -match "version\s*:\s*'([^']+)'") {
+                    $resolvedVersion = $matches[1]
+                }
+            }
+        }
+        if (-not $resolvedVersion) { $resolvedVersion = '1.0.0' }
+
+        $numericParts = @()
+        if ($resolvedVersion -match '^(\d+(?:\.\d+){0,3})') {
+            $numericParts = @($matches[1].Split('.'))
+        }
+        while ($numericParts.Count -lt 4) { $numericParts += '0' }
+        $numericVersion = ($numericParts[0..3]) -join '.'
+
+        if (-not $InstallerPath) {
+            $InstallerPath = "zacos9-netzac_${resolvedVersion}_windows-x64-setup.exe"
+        }
+        if (-not [System.IO.Path]::IsPathRooted($InstallerPath)) {
+            $InstallerPath = Join-Path $root $InstallerPath
+        }
+        $installerDir = Split-Path -Parent $InstallerPath
+        if ($installerDir) { New-Item -ItemType Directory -Path $installerDir -Force | Out-Null }
+        $installerBase = [System.IO.Path]::GetFileNameWithoutExtension($InstallerPath)
+
+        $resolvedDistDir = (Resolve-Path $DistDir).Path
+        $issScript = Join-Path $root 'scripts\netzac.iss'
+        if (-not (Test-Path $issScript)) { throw "Inno Setup script not found: $issScript" }
+
+        Write-Step "Creating installer $InstallerPath (ISCC: $iscc)"
+        & $iscc '/Qp' `
+            "/DAppVersion=$resolvedVersion" `
+            "/DAppVersionNumeric=$numericVersion" `
+            "/DSourceDir=$resolvedDistDir" `
+            "/O$installerDir" `
+            "/F$installerBase" `
+            $issScript
+        if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+        if (-not (Test-Path $InstallerPath)) { throw "Expected installer '$InstallerPath' was not created." }
+
+        $installerSizeMb = [math]::Round(((Get-Item $InstallerPath).Length / 1MB), 1)
+        Write-Step "Installer ready: $InstallerPath ($installerSizeMb MB)"
     }
 
     Write-Host "Executable: $(Resolve-Path $exe)" -ForegroundColor Green
